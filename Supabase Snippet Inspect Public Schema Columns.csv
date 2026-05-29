@@ -1,0 +1,101 @@
+table_name,column_name,data_type,is_nullable,column_default
+actas_entrega,id,uuid,NO,gen_random_uuid()
+actas_entrega,numero_acta,character varying,NO,null
+actas_entrega,asignacion_id,uuid,YES,null
+actas_entrega,persona_entrega_nombre,character varying,YES,null
+actas_entrega,persona_entrega_dni,character varying,YES,null
+actas_entrega,persona_entrega_cargo,character varying,YES,null
+actas_entrega,persona_recibe_id,uuid,YES,null
+actas_entrega,fecha_acta,date,NO,CURRENT_DATE
+actas_entrega,lugar,character varying,YES,null
+actas_entrega,observaciones,text,YES,null
+actas_entrega,pdf_generado,boolean,YES,false
+actas_entrega,created_at,timestamp without time zone,YES,now()
+ambientes,id,uuid,NO,gen_random_uuid()
+ambientes,nombre,character varying,NO,null
+ambientes,codigo,character varying,YES,null
+ambientes,piso_id,uuid,YES,null
+ambientes,tipo,character varying,YES,null
+ambientes,descripcion,text,YES,null
+ambientes,created_at,timestamp without time zone,YES,now()
+areas,id,uuid,NO,gen_random_uuid()
+areas,nombre,character varying,NO,null
+areas,descripcion,text,YES,null
+areas,created_at,timestamp without time zone,YES,now()
+asignacion_toners,id,uuid,NO,gen_random_uuid()
+asignacion_toners,toner_id,uuid,YES,null
+asignacion_toners,impresora_id,uuid,YES,null
+asignacion_toners,persona_id,uuid,YES,null
+asignacion_toners,oficina_id,uuid,YES,null
+asignacion_toners,fecha_asignacion,date,NO,CURRENT_DATE
+asignacion_toners,fecha_terminado,date,YES,null
+asignacion_toners,duracion_dias,integer,YES,null
+asignacion_toners,estado,character varying,YES,'Activo'::character varying
+asignacion_toners,observaciones,text,YES,null
+asignacion_toners,documento_referencia,character varying,YES,null
+asignacion_toners,numero_acta,character varying,YES,null
+asignacion_toners,created_at,timestamp without time zone,YES,now()
+asignaciones,id,uuid,NO,gen_random_uuid()
+asignaciones,bien_id,uuid,YES,null
+asignaciones,persona_id,uuid,YES,null
+asignaciones,oficina_id,uuid,YES,null
+asignaciones,fecha_asignacion,date,NO,CURRENT_DATE
+asignaciones,fecha_actualizacion,date,YES,CURRENT_DATE
+asignaciones,observaciones,text,YES,null
+asignaciones,created_at,timestamp without time zone,YES,now()
+asignaciones,ambiente_id,uuid,YES,null
+asignaciones,ubicacion_detalle,text,YES,null
+asignaciones,estado_asignacion,character varying,YES,'Activo'::character varying
+asignaciones,asignacion_activa,boolean,YES,true
+asignaciones,fecha_fin,date,YES,null
+bienes,id,uuid,NO,gen_random_uuid()
+bienes,tipo_equipo,character varying,NO,null
+bienes,marca,character varying,YES,null
+bienes,modelo,character varying,YES,null
+bienes,color,character varying,YES,null
+bienes,other,text,YES,null
+bienes,codigo_ti,character varying,YES,null
+bienes,codigo_patrimonial,character varying,YES,null
+bienes,serie,character varying,YES,null
+bienes,anio_compra,integer,YES,null
+bienes,orden_compra,character varying,YES,null
+bienes,condicion,character varying,YES,null
+bienes,valor_compra,numeric,YES,null
+bienes,estado,character varying,YES,'Activo'::character varying
+bienes,created_at,timestamp without time zone,YES,now()
+bienes,color_toner,character varying,YES,null
+bienes,rendimiento,integer,YES,null
+bienes,lote,character varying,YES,null
+bienes,fecha_vencimiento,date,YES,null
+bienes,proveedor,character varying,YES,null
+historial_movimientos,id,uuid,NO,gen_random_uuid()
+historial_movimientos,bien_id,uuid,YES,null
+historial_movimientos,tipo_movimiento_id,uuid,YES,null
+historial_movimientos,persona_origen_id,uuid,YES,null
+historial_movimientos,persona_destino_id,uuid,YES,null
+historial_movimientos,ambiente_origen_id,uuid,YES,null
+historial_movimientos,ambiente_destino_id,uuid,YES,null
+historial_movimientos,oficina_origen_id,uuid,YES,null
+historial_movimientos,oficina_destino_id,uuid,YES,null
+historial_movimientos,fecha_movimiento,date,NO,CURRENT_DATE
+historial_movimientos,motivo,text,YES,null
+historial_movimientos,documento_referencia,character varying,YES,null
+historial_movimientos,usuario_registro,character varying,YES,null
+historial_movimientos,observaciones,text,YES,null
+historial_movimientos,created_at,timestamp without time zone,YES,now()
+oficinas,id,uuid,NO,gen_random_uuid()
+oficinas,nombre,character varying,NO,null
+oficinas,codigo,character varying,YES,null
+oficinas,area_id,uuid,YES,null
+oficinas,created_at,timestamp without time zone,YES,now()
+personas,id,uuid,NO,gen_random_uuid()
+personas,nombres,character varying,NO,null
+personas,apellidos,character varying,NO,null
+personas,dni,character varying,NO,null
+personas,cargo,character varying,YES,null
+personas,email,character varying,YES,null
+personas,telefono,character varying,YES,null
+personas,created_at,timestamp without time zone,YES,now()
+pisos,id,uuid,NO,gen_random_uuid()
+pisos,numero,integer,NO,null
+pisos,nombre,character varying,YES,null
