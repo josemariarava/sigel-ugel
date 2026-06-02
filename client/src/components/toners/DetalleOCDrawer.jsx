@@ -314,7 +314,7 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onAgregar
                                                 </TableCell>
                                                 <TableCell>
                                                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                        toner.estado === 'Disponible'
+                                                        toner.estado === 'Disponible' || toner.estado === 'Activo'
                                                             ? 'bg-emerald-100 text-emerald-800'
                                                             : toner.estado === 'Asignado'
                                                                 ? 'bg-amber-100 text-amber-800'

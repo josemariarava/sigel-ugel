@@ -1,7 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { FluentProvider, webLightTheme } from '@fluentui/react-components'
+import { FluentProvider, webLightTheme, Spinner } from '@fluentui/react-components'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import Sidebar from './components/layout/Sidebar'
 import Navbar from './components/layout/Navbar'
+import ProtectedRoute from './components/layout/ProtectedRoute'
+import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Bienes from './pages/Bienes'
 import StockToners from './pages/StockToners'
@@ -10,27 +13,51 @@ import Asignaciones from './pages/Asignaciones'
 import Ambientes from './pages/Ambientes'
 import Configuracion from './pages/Configuracion'
 
+function AppContent() {
+    const { user, loading } = useAuth()
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+                <div className="text-center">
+                    <Spinner size="large" />
+                    <p className="text-sm text-gray-500 mt-3">Cargando...</p>
+                </div>
+            </div>
+        )
+    }
+
+    if (!user) return <Login />
+
+    return (
+        <div className="min-h-screen bg-gray-100">
+            <Sidebar />
+            <Navbar />
+            <main className="ml-64 pt-16">
+                <div className="p-6">
+                    <Routes>
+                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                        <Route path="/bienes" element={<ProtectedRoute><Bienes /></ProtectedRoute>} />
+                        <Route path="/stock-toners" element={<ProtectedRoute><StockToners /></ProtectedRoute>} />
+                        <Route path="/personas" element={<ProtectedRoute><Personas /></ProtectedRoute>} />
+                        <Route path="/asignaciones" element={<ProtectedRoute><Asignaciones /></ProtectedRoute>} />
+                        <Route path="/ambientes" element={<ProtectedRoute><Ambientes /></ProtectedRoute>} />
+                        <Route path="/configuracion" element={<ProtectedRoute><Configuracion /></ProtectedRoute>} />
+                        <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+                    </Routes>
+                </div>
+            </main>
+        </div>
+    )
+}
+
 function App() {
     return (
         <FluentProvider theme={webLightTheme}>
-            <div className="min-h-screen bg-gray-100">
-                <Sidebar />
-                <Navbar />
-                <main className="ml-64 pt-16">
-                    <div className="p-6">
-                        <Routes>
-                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                            <Route path="/dashboard" element={<Dashboard />} />
-                            <Route path="/bienes" element={<Bienes />} />
-                            <Route path="/stock-toners" element={<StockToners />} />
-                            <Route path="/personas" element={<Personas />} />
-                            <Route path="/asignaciones" element={<Asignaciones />} />
-                            <Route path="/ambientes" element={<Ambientes />} />
-                            <Route path="/configuracion" element={<Configuracion />} />
-                        </Routes>
-                    </div>
-                </main>
-            </div>
+            <AuthProvider>
+                <AppContent />
+            </AuthProvider>
         </FluentProvider>
     )
 }

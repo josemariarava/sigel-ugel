@@ -60,7 +60,7 @@ const StockToners = () => {
             if (!map[key]) {
                 map[key] = { marca: t.marca, modelo: t.modelo, activos: 0, asignados: 0, agotados: 0, total: 0 }
             }
-            if (t.estado === 'Disponible') map[key].activos++
+            if (t.estado === 'Disponible' || t.estado === 'Activo') map[key].activos++
             else if (t.estado === 'Asignado') map[key].asignados++
             else map[key].agotados++
             map[key].total++
@@ -77,7 +77,7 @@ const StockToners = () => {
             if (!map[t.compra_detalle_id]) {
                 map[t.compra_detalle_id] = { activos: 0, asignados: 0, agotados: 0, total: 0 }
             }
-            if (t.estado === 'Disponible') map[t.compra_detalle_id].activos++
+            if (t.estado === 'Disponible' || t.estado === 'Activo') map[t.compra_detalle_id].activos++
             else if (t.estado === 'Asignado') map[t.compra_detalle_id].asignados++
             else map[t.compra_detalle_id].agotados++
             map[t.compra_detalle_id].total++
@@ -111,7 +111,7 @@ const StockToners = () => {
 
     const totales = useMemo(() => {
         return toners.reduce((acc, t) => {
-            if (t.estado === 'Disponible') acc.disponibles++
+            if (t.estado === 'Disponible' || t.estado === 'Activo') acc.disponibles++
             else if (t.estado === 'Asignado') acc.asignados++
             else acc.agotados++
             return acc
@@ -363,7 +363,7 @@ const StockToners = () => {
                                         <TableCell className="font-mono text-xs">{t.serie || '—'}</TableCell>
                                         <TableCell>
                                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                t.estado === 'Disponible'
+                                                t.estado === 'Disponible' || t.estado === 'Activo'
                                                     ? 'bg-emerald-100 text-emerald-800'
                                                     : t.estado === 'Asignado'
                                                         ? 'bg-amber-100 text-amber-800'

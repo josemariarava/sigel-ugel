@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
+import { useAuth } from '../context/AuthContext'
 import {
     AddRegular,
     EditRegular,
     DeleteRegular,
     DismissRegular,
     ArrowSyncRegular,
-    BuildingRegular
+    BuildingRegular,
+    PersonCircleRegular,
+    LockClosedRegular
 } from '@fluentui/react-icons'
 import {
     Button,
@@ -31,11 +34,16 @@ import {
     DrawerHeaderTitle,
     Badge,
     Tooltip,
-    Subtitle2
+    Subtitle2,
+    TabList,
+    Tab,
+    Spinner
 } from '@fluentui/react-components'
+import ConfirmDialog from '../components/shared/ConfirmDialog'
 
 const Configuracion = () => {
     const [marcas, setMarcas] = useState([])
+    const [deleteTarget, setDeleteTarget] = useState(null)
     const [modelos, setModelos] = useState([])
     const [selectedMarca, setSelectedMarca] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -46,6 +54,19 @@ const Configuracion = () => {
     const [modeloForm, setModeloForm] = useState({ marca_id: '', nombre: '' })
 
     const { dispatchToast } = useToastController()
+    const { user } = useAuth()
+
+    const [selectedTab, setSelectedTab] = useState('catalogo')
+    const [profileForm, setProfileForm] = useState({ nombre: '' })
+    const [passwordForm, setPasswordForm] = useState({ newPassword: '', confirmPassword: '' })
+    const [savingProfile, setSavingProfile] = useState(false)
+    const [savingPassword, setSavingPassword] = useState(false)
+
+    useEffect(() => {
+        if (user?.user_metadata?.nombre) {
+            setProfileForm({ nombre: user.user_metadata.nombre })
+        }
+    }, [user])
 
     const mostrarToast = (mensaje, tipo = 'success') => {
         dispatchToast(
@@ -158,6 +179,54 @@ const Configuracion = () => {
         }
     }
 
+    // PERFIL
+    const guardarPerfil = async () => {
+        if (!profileForm.nombre.trim()) {
+            mostrarToast('El nombre es obligatorio', 'error')
+            return
+        }
+        try {
+            setSavingProfile(true)
+            const { error } = await supabase.auth.updateUser({
+                data: { nombre: profileForm.nombre.trim() }
+            })
+            if (error) throw error
+            mostrarToast('Perfil actualizado correctamente')
+        } catch (error) {
+            mostrarToast(handleApiError(error, 'actualizar perfil'), 'error')
+        } finally {
+            setSavingProfile(false)
+        }
+    }
+
+    const cambiarPassword = async () => {
+        if (!passwordForm.newPassword) {
+            mostrarToast('La nueva contraseña es obligatoria', 'error')
+            return
+        }
+        if (passwordForm.newPassword.length < 6) {
+            mostrarToast('La contraseña debe tener al menos 6 caracteres', 'error')
+            return
+        }
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+            mostrarToast('Las contraseñas no coinciden', 'error')
+            return
+        }
+        try {
+            setSavingPassword(true)
+            const { error } = await supabase.auth.updateUser({
+                password: passwordForm.newPassword
+            })
+            if (error) throw error
+            mostrarToast('Contraseña actualizada correctamente')
+            setPasswordForm({ newPassword: '', confirmPassword: '' })
+        } catch (error) {
+            mostrarToast(handleApiError(error, 'cambiar contraseña'), 'error')
+        } finally {
+            setSavingPassword(false)
+        }
+    }
+
     const seleccionarMarca = (marca) => {
         setSelectedMarca(marca)
         cargarModelos(marca.id)
@@ -209,22 +278,28 @@ const Configuracion = () => {
         }
     }
 
-    const eliminarMarca = async (id) => {
-        if (!confirm('¿Estás seguro de eliminar esta marca? También se eliminarán sus modelos asociados.')) return
+    const eliminarMarca = (id, nombre) => {
+        setDeleteTarget({ type: 'marca', id, nombre })
+    }
+
+    const confirmEliminarMarca = async () => {
+        if (!deleteTarget) return
         try {
             const { error } = await supabase
                 .from('marcas')
                 .delete()
-                .eq('id', id)
+                .eq('id', deleteTarget.id)
             if (error) throw error
             mostrarToast('Marca eliminada correctamente')
-            if (selectedMarca?.id === id) {
+            if (selectedMarca?.id === deleteTarget.id) {
                 setSelectedMarca(null)
                 setModelos([])
             }
             cargarMarcas()
         } catch (error) {
             mostrarToast(handleApiError(error, 'eliminar marca'), 'error')
+        } finally {
+            setDeleteTarget(null)
         }
     }
 
@@ -278,18 +353,24 @@ const Configuracion = () => {
         }
     }
 
-    const eliminarModelo = async (id) => {
-        if (!confirm('¿Estás seguro de eliminar este modelo?')) return
+    const eliminarModelo = (id, nombre) => {
+        setDeleteTarget({ type: 'modelo', id, nombre })
+    }
+
+    const confirmEliminarModelo = async () => {
+        if (!deleteTarget) return
         try {
             const { error } = await supabase
                 .from('modelos')
                 .delete()
-                .eq('id', id)
+                .eq('id', deleteTarget.id)
             if (error) throw error
             mostrarToast('Modelo eliminado correctamente')
             cargarModelos(selectedMarca.id)
         } catch (error) {
             mostrarToast(handleApiError(error, 'eliminar modelo'), 'error')
+        } finally {
+            setDeleteTarget(null)
         }
     }
 
@@ -300,8 +381,17 @@ const Configuracion = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Configuración</h1>
-                    <p className="text-sm text-gray-500 mt-0.5">Catálogo de marcas y modelos de tóneres</p>
+                    <p className="text-sm text-gray-500 mt-0.5">Catálogo de marcas y modelos, perfil de usuario</p>
                 </div>
+            </div>
+
+            <TabList selectedValue={selectedTab} onTabSelect={(_, d) => setSelectedTab(d.value)}>
+                <Tab value="catalogo">Catálogo</Tab>
+                <Tab value="perfil">Mi Perfil</Tab>
+            </TabList>
+
+            {selectedTab === 'catalogo' ? (
+                <>
                 <div className="flex gap-2">
                     <Button
                         appearance="subtle"
@@ -318,10 +408,7 @@ const Configuracion = () => {
                         Nueva Marca
                     </Button>
                 </div>
-            </div>
-
-            {/* Marcas */}
-            <Card className="!p-0 overflow-hidden">
+                <Card className="!p-0 overflow-hidden">
                 <div className="px-4 py-3 border-b bg-gray-50 flex justify-between items-center">
                     <Subtitle2>Marcas registradas</Subtitle2>
                     <Badge appearance="filled" color="brand" size="small">{marcas.length}</Badge>
@@ -373,7 +460,7 @@ const Configuracion = () => {
                                                     <Button
                                                         appearance="subtle"
                                                         icon={<DeleteRegular />}
-                                                        onClick={() => eliminarMarca(marca.id)}
+                                                        onClick={() => eliminarMarca(marca.id, marca.nombre)}
                                                         size="small"
                                                     />
                                                 </Tooltip>
@@ -436,7 +523,7 @@ const Configuracion = () => {
                                                     <Button
                                                         appearance="subtle"
                                                         icon={<DeleteRegular />}
-                                                        onClick={() => eliminarModelo(modelo.id)}
+                                                        onClick={() => eliminarModelo(modelo.id, modelo.nombre)}
                                                         size="small"
                                                     />
                                                 </Tooltip>
@@ -448,6 +535,76 @@ const Configuracion = () => {
                         </TableBody>
                     </Table>
                 </Card>
+            )}
+                </>
+            ) : (
+                <div className="space-y-6">
+                    {/* Perfil */}
+                    <Card className="!p-0 overflow-hidden">
+                        <div className="px-4 py-3 border-b bg-gray-50 flex items-center gap-2">
+                            <PersonCircleRegular className="text-blue-600" />
+                            <Subtitle2>Información del perfil</Subtitle2>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <Field label="Correo electrónico">
+                                <Input value={user?.email || ''} disabled />
+                            </Field>
+                            <Field label="Nombre completo">
+                                <Input
+                                    value={profileForm.nombre}
+                                    onChange={(e) => setProfileForm({ ...profileForm, nombre: e.target.value })}
+                                    placeholder="Tu nombre completo"
+                                />
+                            </Field>
+                            <div className="flex justify-end">
+                                <Button
+                                    appearance="primary"
+                                    icon={<PersonCircleRegular />}
+                                    onClick={guardarPerfil}
+                                    disabled={savingProfile}
+                                >
+                                    {savingProfile ? <Spinner size="tiny" /> : 'Guardar cambios'}
+                                </Button>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* Seguridad */}
+                    <Card className="!p-0 overflow-hidden">
+                        <div className="px-4 py-3 border-b bg-gray-50 flex items-center gap-2">
+                            <LockClosedRegular className="text-blue-600" />
+                            <Subtitle2>Cambiar contraseña</Subtitle2>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <Field label="Nueva contraseña" required>
+                                <Input
+                                    type="password"
+                                    value={passwordForm.newPassword}
+                                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                                    placeholder="Mínimo 6 caracteres"
+                                />
+                            </Field>
+                            <Field label="Confirmar contraseña" required>
+                                <Input
+                                    type="password"
+                                    value={passwordForm.confirmPassword}
+                                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                                    placeholder="Repite la nueva contraseña"
+                                />
+                            </Field>
+                            <div className="flex justify-end">
+                                <Button
+                                    appearance="primary"
+                                    icon={<LockClosedRegular />}
+                                    onClick={cambiarPassword}
+                                    disabled={savingPassword}
+                                >
+                                    {savingPassword ? <Spinner size="tiny" /> : 'Actualizar contraseña'}
+                                </Button>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
             )}
 
             {/* Drawer Marca */}
@@ -504,6 +661,18 @@ const Configuracion = () => {
                     </div>
                 </DrawerBody>
             </Drawer>
+
+            <ConfirmDialog
+                title={deleteTarget?.type === 'marca' ? 'Eliminar marca' : 'Eliminar modelo'}
+                open={!!deleteTarget}
+                message={
+                    deleteTarget?.type === 'marca'
+                        ? `¿Estás seguro de eliminar la marca "${deleteTarget?.nombre}"? También se eliminarán sus modelos asociados.`
+                        : `¿Estás seguro de eliminar el modelo "${deleteTarget?.nombre}"?`
+                }
+                onConfirm={deleteTarget?.type === 'marca' ? confirmEliminarMarca : confirmEliminarModelo}
+                onCancel={() => setDeleteTarget(null)}
+            />
         </div>
     )
 }

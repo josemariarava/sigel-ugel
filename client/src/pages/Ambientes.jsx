@@ -34,9 +34,11 @@ import {
     DrawerHeaderTitle,
     Badge
 } from '@fluentui/react-components'
+import ConfirmDialog from '../components/shared/ConfirmDialog'
 
 const Ambientes = () => {
     const [activeSubTab, setActiveSubTab] = useState('ambientes')
+    const [deleteTarget, setDeleteTarget] = useState(null)
     const [ambientes, setAmbientes] = useState([])
     const [pisos, setPisos] = useState([])
     const [areas, setAreas] = useState([])
@@ -193,9 +195,13 @@ const Ambientes = () => {
         }
     }
 
-    const handleDelete = async (id, nombre) => {
-        if (!confirm(`¿Estás seguro de eliminar "${nombre}"?`)) return
+    const handleDelete = (id, nombre) => {
+        setDeleteTarget({ id, nombre })
+    }
 
+    const confirmDelete = async () => {
+        if (!deleteTarget) return
+        const { id } = deleteTarget
         try {
             if (activeSubTab === 'ambientes') {
                 const { data: asigs } = await supabase.from('asignaciones').select('id').eq('ambiente_id', id).limit(1)
@@ -228,6 +234,8 @@ const Ambientes = () => {
             cargarDatos()
         } catch (error) {
             mostrarToast(handleApiError(error, 'eliminar'), 'error')
+        } finally {
+            setDeleteTarget(null)
         }
     }
 
@@ -566,6 +574,13 @@ const Ambientes = () => {
                     </Button>
                 </div>
             </Drawer>
+
+            <ConfirmDialog
+                open={!!deleteTarget}
+                message={deleteTarget ? `¿Estás seguro de eliminar "${deleteTarget.nombre}"?` : ''}
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteTarget(null)}
+            />
         </div>
     )
 }

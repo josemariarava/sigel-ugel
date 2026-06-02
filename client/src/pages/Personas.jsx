@@ -38,9 +38,11 @@ import {
   DrawerHeader,
   DrawerHeaderTitle
 } from '@fluentui/react-components'
+import ConfirmDialog from '../components/shared/ConfirmDialog'
 
 const Personas = () => {
   const [personas, setPersonas] = useState([])
+  const [deleteTarget, setDeleteTarget] = useState(null)
   const [areas, setAreas] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -172,30 +174,35 @@ const Personas = () => {
     setOpenDrawer(true)
   }
 
-  const handleDelete = async (id, nombreCompleto) => {
-    if (confirm(`¿Estás seguro de eliminar a ${nombreCompleto}?`)) {
-      try {
-        const { data: asignaciones } = await supabase
-          .from('asignaciones')
-          .select('id')
-          .eq('persona_id', id)
+  const handleDelete = (id, nombreCompleto) => {
+    setDeleteTarget({ id, nombre: nombreCompleto })
+  }
 
-        if (asignaciones && asignaciones.length > 0) {
-          mostrarToast('No se puede eliminar porque tiene bienes asignados', 'error')
-          return
-        }
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      const { data: asignaciones } = await supabase
+        .from('asignaciones')
+        .select('id')
+        .eq('persona_id', deleteTarget.id)
 
-        const { error } = await supabase
-          .from('personas')
-          .delete()
-          .eq('id', id)
-
-        if (error) throw error
-        mostrarToast('Persona eliminada correctamente')
-        cargarPersonas()
-      } catch (error) {
-        mostrarToast(handleApiError(error, 'eliminar persona'), 'error')
+      if (asignaciones && asignaciones.length > 0) {
+        mostrarToast('No se puede eliminar porque tiene bienes asignados', 'error')
+        return
       }
+
+      const { error } = await supabase
+        .from('personas')
+        .delete()
+        .eq('id', deleteTarget.id)
+
+      if (error) throw error
+      mostrarToast('Persona eliminada correctamente')
+      cargarPersonas()
+    } catch (error) {
+      mostrarToast(handleApiError(error, 'eliminar persona'), 'error')
+    } finally {
+      setDeleteTarget(null)
     }
   }
 
@@ -528,6 +535,14 @@ const Personas = () => {
 
         </DrawerBody>
       </Drawer>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Confirmar eliminación"
+        message={deleteTarget ? `¿Estás seguro de eliminar a ${deleteTarget.nombre}?` : ''}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }
