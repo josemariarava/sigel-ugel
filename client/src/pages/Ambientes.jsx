@@ -9,7 +9,8 @@ import {
     ArrowSyncRegular,
     DismissRegular,
     BuildingRegular,
-    LocationRegular
+    LocationRegular,
+    LockClosedRegular
 } from '@fluentui/react-icons'
 import {
     Button,
@@ -133,6 +134,10 @@ const Ambientes = () => {
                     mostrarToast('El nombre del ambiente es obligatorio', 'error')
                     return
                 }
+                if (editMode && selectedItem && esAlmacenGeneral(selectedItem) && formData.nombre.trim() !== selectedItem.nombre) {
+                    mostrarToast('No se puede renombrar el Almacén General porque es requerido por el sistema', 'error')
+                    return
+                }
                 const payload = {
                     nombre: formData.nombre.trim(),
                     codigo: formData.codigo.trim() || null,
@@ -204,6 +209,11 @@ const Ambientes = () => {
         const { id } = deleteTarget
         try {
             if (activeSubTab === 'ambientes') {
+                const amb = ambientes.find(a => a.id === id)
+                if (amb && esAlmacenGeneral(amb)) {
+                    mostrarToast('No se puede eliminar el Almacén General porque es requerido por el sistema', 'error')
+                    return
+                }
                 const { data: asigs } = await supabase.from('asignaciones').select('id').eq('ambiente_id', id).limit(1)
                 if (asigs && asigs.length > 0) {
                     mostrarToast('No se puede eliminar porque tiene bienes asignados', 'error')
@@ -246,6 +256,9 @@ const Ambientes = () => {
         a.area?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         a.tipo?.toLowerCase().includes(searchTerm.toLowerCase())
     )
+
+    const esAlmacenGeneral = (amb) =>
+        amb?.nombre === 'Almacén General' || amb?.tipo === 'Almacén'
 
     const getTipoBadge = (tipo) => {
         switch (tipo) {
@@ -359,9 +372,20 @@ const Ambientes = () => {
                                 ) : (
                                     filteredAmbientes.map((amb) => {
                                         const badge = getTipoBadge(amb.tipo)
+                                        const esSistema = esAlmacenGeneral(amb)
                                         return (
                                             <TableRow key={amb.id} className="hover:bg-gray-50/50 transition-colors">
-                                                <TableCell><span className="font-medium text-gray-800 text-sm">{amb.nombre}</span></TableCell>
+                                                <TableCell>
+                                                    <span className="font-medium text-gray-800 text-sm">
+                                                        {amb.nombre}
+                                                        {esSistema && (
+                                                            <span className="ml-2 inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                                                <LockClosedRegular style={{ fontSize: '11px' }} />
+                                                                Sistema
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                </TableCell>
                                                 <TableCell><span className="font-mono text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded border border-gray-200">{amb.codigo || '-'}</span></TableCell>
                                                 <TableCell className="text-sm text-gray-700">
                                                     {amb.piso ? (
@@ -379,8 +403,8 @@ const Ambientes = () => {
                                                 <TableCell><Badge appearance="filled" color={badge.color} size="small">{badge.label}</Badge></TableCell>
                                                 <TableCell>
                                                     <div className="flex gap-1 justify-center">
-                                                        <Button appearance="subtle" icon={<EditRegular className="text-blue-600" />} onClick={() => abrirDrawer(amb)} size="small" title="Editar" />
-                                                        <Button appearance="subtle" icon={<DeleteRegular className="text-red-600" />} onClick={() => handleDelete(amb.id, amb.nombre)} size="small" title="Eliminar" />
+                                                        <Button appearance="subtle" icon={<EditRegular className="text-blue-600" />} onClick={() => abrirDrawer(amb)} size="small" title={esSistema ? 'Editar (nombre protegido)' : 'Editar'} />
+                                                        <Button appearance="subtle" icon={<DeleteRegular className={`${esSistema ? 'text-gray-300' : 'text-red-600'}`} />} onClick={() => handleDelete(amb.id, amb.nombre)} size="small" title={esSistema ? 'Protegido por el sistema' : 'Eliminar'} disabled={esSistema} />
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -479,13 +503,19 @@ const Ambientes = () => {
                 <DrawerBody className="p-6 my-6 space-y-5">
                     {activeSubTab === 'ambientes' && (
                         <>
+                            {editMode && esAlmacenGeneral(selectedItem) && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2 text-sm text-amber-800">
+                                    <LockClosedRegular className="text-amber-500 mt-0.5 shrink-0" style={{ fontSize: '16px' }} />
+                                    <span>Este ambiente es parte del sistema y no puede ser renombrado ni eliminado.</span>
+                                </div>
+                            )}
                             <div className="flex flex-col gap-3">
                                 <Subtitle2 className="text-blue-700 flex items-center gap-1">
                                     <LocationRegular style={{ fontSize: '16px' }} /> Datos del Ambiente
                                 </Subtitle2>
                                 <Divider color="brand" />
                                 <Field label="Nombre del ambiente *" required>
-                                    <Input name="nombre" value={formData.nombre} onChange={handleInputChange} placeholder="Ej. Oficina 101, Almacén General..." />
+                                    <Input name="nombre" value={formData.nombre} onChange={handleInputChange} placeholder="Ej. Oficina 101, Almacén General..." disabled={editMode && esAlmacenGeneral(selectedItem)} />
                                 </Field>
                                 <Field label="Código">
                                     <Input name="codigo" value={formData.codigo} onChange={handleInputChange} placeholder="Ej. OF-101, ALM-001..." />

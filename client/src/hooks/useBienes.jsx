@@ -401,8 +401,23 @@ const useBienes = () => {
         }
 
         try {
-            const sanitized = { ...formData }
-            const nullableFields = ['fecha_vencimiento', 'valor_compra', 'rendimiento', 'anio_compra', 'codigo_ti']
+            const safeFields = [
+                'tipo_equipo', 'marca', 'modelo', 'marca_id', 'modelo_id',
+                'serie', 'codigo_patrimonial', 'codigo_ti', 'anio_compra',
+                'orden_compra', 'condicion', 'valor_compra', 'estado',
+                'color_toner', 'color', 'rendimiento', 'lote',
+                'fecha_vencimiento', 'proveedor', 'ubicacion_almacen', 'other'
+            ]
+            const sanitized = {}
+            safeFields.forEach(k => {
+                const val = formData[k]
+                if (k === 'marca_id' || k === 'modelo_id') {
+                    sanitized[k] = val || null
+                } else {
+                    sanitized[k] = val
+                }
+            })
+            const nullableFields = ['fecha_vencimiento', 'valor_compra', 'rendimiento', 'anio_compra', 'codigo_ti', 'color']
             nullableFields.forEach(f => {
                 if (sanitized[f] === '') sanitized[f] = null
             })

@@ -126,7 +126,7 @@ const GestionToners = () => {
                                         </td>
                                     </tr>
                                 ) : (
-                                    h.filteredAsignaciones.map((asig) => (
+                                    h.paginatedData.map((asig) => (
                                         <tr key={asig.id} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-2">
@@ -225,6 +225,43 @@ const GestionToners = () => {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                )}
+                {!h.loading && h.filteredAsignaciones.length > h.PAGE_SIZE && (
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-500">
+                        <span>
+                            Mostrando {(h.currentPage - 1) * h.PAGE_SIZE + 1}–{Math.min(h.currentPage * h.PAGE_SIZE, h.filteredAsignaciones.length)} de {h.filteredAsignaciones.length}
+                        </span>
+                        <div className="flex items-center gap-1">
+                            <Button size="small" appearance="subtle" disabled={h.currentPage <= 1} onClick={() => h.setCurrentPage(h.currentPage - 1)}>
+                                Anterior
+                            </Button>
+                            {Array.from({ length: Math.min(h.totalPages, 5) }, (_, i) => {
+                                let pageNum
+                                if (h.totalPages <= 5) {
+                                    pageNum = i + 1
+                                } else if (h.currentPage <= 3) {
+                                    pageNum = i + 1
+                                } else if (h.currentPage >= h.totalPages - 2) {
+                                    pageNum = h.totalPages - 4 + i
+                                } else {
+                                    pageNum = h.currentPage - 2 + i
+                                }
+                                return (
+                                    <Button
+                                        key={pageNum}
+                                        size="small"
+                                        appearance={h.currentPage === pageNum ? 'primary' : 'subtle'}
+                                        onClick={() => h.setCurrentPage(pageNum)}
+                                    >
+                                        {pageNum}
+                                    </Button>
+                                )
+                            })}
+                            <Button size="small" appearance="subtle" disabled={h.currentPage >= h.totalPages} onClick={() => h.setCurrentPage(h.currentPage + 1)}>
+                                Siguiente
+                            </Button>
+                        </div>
                     </div>
                 )}
             </Card>

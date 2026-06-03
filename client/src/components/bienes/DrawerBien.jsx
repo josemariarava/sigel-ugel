@@ -163,7 +163,18 @@ const DrawerBien = ({
 
                             {formData.tipo_equipo !== 'Tóner' && (
                                 <Field label="Color">
-                                    <Input name="color" value={formData.color || ''} onChange={handleInputChange} placeholder="Negro, Gris, Blanco" />
+                                    <Input name="color" value={formData.color || ''} onChange={handleInputChange} placeholder="Buscar o escribir color..." list="color-suggestions" />
+                                    <datalist id="color-suggestions">
+                                        <option value="Negro" />
+                                        <option value="Blanco" />
+                                        <option value="Gris" />
+                                        <option value="Azul" />
+                                        <option value="Rojo" />
+                                        <option value="Plateado" />
+                                        <option value="Verde" />
+                                        <option value="Beige" />
+                                        <option value="Multicolor" />
+                                    </datalist>
                                 </Field>
                             )}
 

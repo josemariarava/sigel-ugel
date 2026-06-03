@@ -49,9 +49,16 @@ const Asignaciones = () => {
                     <p className="text-xs text-gray-500 mt-0.5">Trazabilidad de bienes patrimoniales distribuidos por personal y ambientes físicos</p>
                 </div>
                 {h.activeTab !== 'toners' && (
-                    <Button appearance="primary" icon={<AddRegular />} onClick={() => { h.resetForm(); h.openModalAsignacion() }}>
-                        Nueva Asignación
-                    </Button>
+                    <>
+                        <Tooltip content="Revisa asignaciones activas sin movimiento en los últimos 3 meses" relationship="label">
+                            <Button icon={<WarningRegular />} onClick={h.verificarBienesSinMovimiento}>
+                                Verificar
+                            </Button>
+                        </Tooltip>
+                        <Button appearance="primary" icon={<AddRegular />} onClick={() => { h.resetForm(); h.openModalAsignacion() }}>
+                            Nueva Asignación
+                        </Button>
+                    </>
                 )}
             </div>
 
@@ -133,7 +140,7 @@ const Asignaciones = () => {
                             <input type="text" placeholder="Buscar por equipo, código, responsable..." value={h.searchTerm} onChange={(e) => h.setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 text-xs border rounded-lg" />
                         </div>
                         <div className="flex gap-2">
-                            <Button size="small" icon={<DocumentPdfRegular />} onClick={h.exportarAPdf} disabled={h.exportandoPdf}>PDF</Button>
+                            <Button size="small" icon={<DocumentPdfRegular />} onClick={h.exportarAPdf} disabled={h.exportando}>PDF</Button>
                             <Button size="small" icon={<ArrowSyncRegular />} onClick={h.exportarAExcel} disabled={h.exportando}>Excel</Button>
                             <Button size="small" icon={<HistoryRegular />} onClick={h.generarReportePorPeriodo}>Reporte</Button>
                             <Button size="small" icon={<ArrowSyncRegular />} onClick={h.cargarDatos}>Sync</Button>
@@ -160,7 +167,7 @@ const Asignaciones = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y text-xs">
-                                        {h.asignacionesFiltradasAvanzado.map((asig) => (
+                                        {h.paginatedData.map((asig) => (
                                             <tr key={asig.id} className="hover:bg-slate-50/50">
                                                 <td className="px-6 py-3.5 font-semibold">
                                                     {asig.bien?.tipo_equipo}
@@ -185,7 +192,7 @@ const Asignaciones = () => {
                                                     <div className="flex gap-1 justify-center">
                                                         <Tooltip content="Ver bienes"><Button size="small" appearance="subtle" icon={<EyeRegular />} onClick={() => h.verBienesPorPersona(asig.persona_id, asig.persona?.nombres, asig.persona?.apellidos)} /></Tooltip>
                                                         <Tooltip content="Acta cargo"><Button size="small" appearance="subtle" icon={<DocumentPdfRegular />} className="text-green-600" onClick={() => h.generarActaCargo(asig.persona_id, asig.persona?.nombres, asig.persona?.apellidos, asig.persona)} /></Tooltip>
-                                                        <Tooltip content="Trasladar"><Button size="small" appearance="subtle" icon={<ArrowSwapRegular />} onClick={() => { h.setSelectedAsignacion(asig); h.setOpenTrasladoModal(true) }} /></Tooltip>
+                                                        <Tooltip content="Trasladar / Devolver / Baja"><Button size="small" appearance="subtle" icon={<ArrowSwapRegular />} onClick={() => { h.setSelectedAsignacion(asig); h.setOpenTrasladoModal(true) }} /></Tooltip>
                                                         <Tooltip content="Historial"><Button size="small" appearance="subtle" icon={<HistoryRegular />} onClick={() => { h.cargarHistorialMovimientos(asig.bien_id, asig.bien); h.setOpenHistorialModal(true) }} /></Tooltip>
                                                         {asig.acta_url ? (
                                                             <Tooltip content="Ver Acta">
@@ -206,6 +213,43 @@ const Asignaciones = () => {
                                         ))}
                                     </tbody>
                                 </table>
+                            </div>
+                        )}
+                        {!h.loading && h.asignacionesFiltradasAvanzado.length > h.PAGE_SIZE && (
+                            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 text-xs text-gray-500">
+                                <span>
+                                    Mostrando {(h.currentPage - 1) * h.PAGE_SIZE + 1}–{Math.min(h.currentPage * h.PAGE_SIZE, h.asignacionesFiltradasAvanzado.length)} de {h.asignacionesFiltradasAvanzado.length}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                    <Button size="small" appearance="subtle" disabled={h.currentPage <= 1} onClick={() => h.setCurrentPage(h.currentPage - 1)}>
+                                        Anterior
+                                    </Button>
+                                    {Array.from({ length: Math.min(h.totalPages, 5) }, (_, i) => {
+                                        let pageNum
+                                        if (h.totalPages <= 5) {
+                                            pageNum = i + 1
+                                        } else if (h.currentPage <= 3) {
+                                            pageNum = i + 1
+                                        } else if (h.currentPage >= h.totalPages - 2) {
+                                            pageNum = h.totalPages - 4 + i
+                                        } else {
+                                            pageNum = h.currentPage - 2 + i
+                                        }
+                                        return (
+                                            <Button
+                                                key={pageNum}
+                                                size="small"
+                                                appearance={h.currentPage === pageNum ? 'primary' : 'subtle'}
+                                                onClick={() => h.setCurrentPage(pageNum)}
+                                            >
+                                                {pageNum}
+                                            </Button>
+                                        )
+                                    })}
+                                    <Button size="small" appearance="subtle" disabled={h.currentPage >= h.totalPages} onClick={() => h.setCurrentPage(h.currentPage + 1)}>
+                                        Siguiente
+                                    </Button>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -371,7 +415,6 @@ const Asignaciones = () => {
                 handleAmbienteChange={h.handleAmbienteChange}
                 handleInputChange={h.handleInputChange}
                 handleSubmit={h.handleSubmit} resetForm={h.resetForm}
-                getCondicionBadge={h.getCondicionBadge} getEstadoBienBadge={h.getEstadoBienBadge}
             />
 
             <DrawerDetalle
@@ -384,7 +427,8 @@ const Asignaciones = () => {
                 openTrasladoModal={h.openTrasladoModal} setOpenTrasladoModal={h.setOpenTrasladoModal}
                 selectedAsignacion={h.selectedAsignacion}
                 trasladoData={h.trasladoData} setTrasladoData={h.setTrasladoData}
-                infoNuevoResponsable={h.infoNuevoResponsable} infoNuevoAmbiente={h.infoNuevoAmbiente}
+                infoNuevoResponsable={h.infoNuevoResponsable} setInfoNuevoResponsable={h.setInfoNuevoResponsable}
+                infoNuevoAmbiente={h.infoNuevoAmbiente} setInfoNuevoAmbiente={h.setInfoNuevoAmbiente}
                 handleNuevoResponsableChange={h.handleNuevoResponsableChange}
                 handleNuevoAmbienteChange={h.handleNuevoAmbienteChange}
                 handleTraslado={h.handleTraslado} resetTrasladoForm={h.resetTrasladoForm}

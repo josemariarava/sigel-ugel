@@ -146,7 +146,7 @@ export default function DrawerAsignacionToners({
                     <Field label="Piso">
                         <select
                             value={selectedPiso}
-                            onChange={(e) => { setSelectedPiso(e.target.value); setFormData({ ...formData, ambiente_id: '' }) }}
+                            onChange={(e) => { setSelectedPiso(e.target.value); handleInputChange({ target: { name: 'ambiente_id', value: '' } }) }}
                             className="w-full text-sm border rounded-lg px-3 py-2.5 bg-white"
                         >
                             <option value="">-- Piso --</option>

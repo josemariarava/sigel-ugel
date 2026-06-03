@@ -1,10 +1,26 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
 import { createActaCargoPdf, createActaAsignacionPdf } from '../lib/pdfGenerator'
 import { Toast, ToastTitle, ToastBody } from '@fluentui/react-components'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+
+const ESTADOS = {
+    ASIGNACION: {
+        ACTIVO: 'Activo',
+        TRASLADADO: 'Trasladado',
+        DEVUELTO: 'Devuelto',
+        BAJA: 'Baja'
+    },
+    BIEN: {
+        ACTIVO: 'Activo',
+        ASIGNADO: 'Asignado',
+        DISPONIBLE: 'Disponible',
+        DADO_BAJA: 'Dado de Baja',
+        AGOTADO: 'Agotado'
+    }
+}
 
 export function useAsignaciones(dispatchToast) {
     const [activeTab, setActiveTab] = useState('lista')
@@ -23,8 +39,6 @@ export function useAsignaciones(dispatchToast) {
     const [editMode, setEditMode] = useState(false)
     const [selectedAsignacion, setSelectedAsignacion] = useState(null)
     const [selectedPiso, setSelectedPiso] = useState('')
-    const [exportandoPdf, setExportandoPdf] = useState(false)
-
     const [searchTermBien, setSearchTermBien] = useState('')
     const [showBienDropdown, setShowBienDropdown] = useState(false)
 
@@ -58,24 +72,32 @@ export function useAsignaciones(dispatchToast) {
     const [formData, setFormData] = useState({
         bien_id: '',
         persona_id: '',
-        oficina_id: '',
         ambiente_id: '',
         fecha_asignacion: new Date().toISOString().split('T')[0],
         documento_referencia: '',
         persona_origen_id: '',
         motivo: '',
         observaciones: '',
-        estado_asignacion: 'Activo'
+        estado_asignacion: ESTADOS.ASIGNACION.ACTIVO
     })
 
-    const [estadisticas, setEstadisticas] = useState({
-        totalAsignaciones: 0,
-        activos: 0,
-        trasladados: 0,
-        devueltos: 0,
-        baja: 0,
-        enAlmacen: 0
-    })
+    const almacenGeneral = useMemo(() =>
+        todosLosAmbientes?.find(a => a.nombre === 'Almacén General' || a.tipo === 'Almacén'),
+        [todosLosAmbientes]
+    )
+
+    const estadisticas = useMemo(() => {
+        return {
+            totalAsignaciones: asignaciones.length,
+            activos: asignaciones.filter(a => a.estado_asignacion === ESTADOS.ASIGNACION.ACTIVO).length,
+            trasladados: asignaciones.filter(a => a.estado_asignacion === ESTADOS.ASIGNACION.TRASLADADO).length,
+            devueltos: asignaciones.filter(a => a.estado_asignacion === ESTADOS.ASIGNACION.DEVUELTO).length,
+            baja: asignaciones.filter(a => a.estado_asignacion === ESTADOS.ASIGNACION.BAJA).length,
+            enAlmacen: asignaciones.filter(a =>
+                a.ambiente_id === almacenGeneral?.id && a.estado_asignacion === ESTADOS.ASIGNACION.DEVUELTO
+            ).length
+        }
+    }, [asignaciones, todosLosAmbientes])
 
     const [filtros, setFiltros] = useState({
         fechaInicio: '',
@@ -93,6 +115,9 @@ export function useAsignaciones(dispatchToast) {
 
     const [exportando, setExportando] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState(null)
+    const [tiposMovimiento, setTiposMovimiento] = useState([])
+    const [currentPage, setCurrentPage] = useState(1)
+    const PAGE_SIZE = 25
 
     const filteredAsignaciones = asignaciones.filter(asig =>
         asig.bien?.tipo_equipo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -113,9 +138,25 @@ export function useAsignaciones(dispatchToast) {
 
     const asignacionesFiltradasAvanzado = filteredAsignaciones.filter(aplicarFiltrosAvanzados)
 
+    const totalPages = Math.max(1, Math.ceil(asignacionesFiltradasAvanzado.length / PAGE_SIZE))
+    const paginatedData = useMemo(() => {
+        const start = (currentPage - 1) * PAGE_SIZE
+        return asignacionesFiltradasAvanzado.slice(start, start + PAGE_SIZE)
+    }, [asignacionesFiltradasAvanzado, currentPage])
+
+    useEffect(() => {
+        if (currentPage > totalPages) setCurrentPage(totalPages)
+    }, [asignacionesFiltradasAvanzado.length])
+
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [filtros])
+
+    const tipoMovimientoId = (nombre) => tiposMovimiento.find(t => t.nombre === nombre)?.id || null
+
     const bienesDisponibles = bienes.filter(bien =>
         !asignaciones.some(asig =>
-            asig.bien_id === bien.id && asig.estado_asignacion === 'Activo'
+            asig.bien_id === bien.id && asig.estado_asignacion === ESTADOS.ASIGNACION.ACTIVO
         )
     )
 
@@ -141,21 +182,21 @@ export function useAsignaciones(dispatchToast) {
     }, [selectedPiso, todosLosAmbientes])
 
     useEffect(() => {
-        if (asignaciones.length > 0) {
-            calcularEstadisticas()
-            verificarBienesSinMovimiento()
+        if (todosLosAmbientes.length > 0 && !almacenGeneral) {
+            mostrarToast('⚠️ No se encontró "Almacén General" en el sistema. Las devoluciones fallarán. Cree un ambiente con nombre "Almacén General" en algún piso.', 'warning')
         }
-    }, [asignaciones])
+    }, [todosLosAmbientes, almacenGeneral])
 
     const cargarDatos = async () => {
         try {
             setLoading(true)
-            const [asignacionesResult, personasResult, pisosResult, ambientesResult, areasResult] = await Promise.all([
+            const [asignacionesResult, personasResult, pisosResult, ambientesResult, areasResult, tiposMovResult] = await Promise.all([
                 supabase.from('asignaciones').select(`*, bien:bienes(*), persona:personas(*), ambiente:ambientes(*, piso:pisos(*))`).order('fecha_asignacion', { ascending: false }),
                 supabase.from('personas').select('*, area:areas(*)').order('apellidos'),
                 supabase.from('pisos').select('*').order('numero'),
                 supabase.from('ambientes').select('*, piso:pisos(*), area:areas(*)').order('nombre'),
                 supabase.from('areas').select('*').order('nombre'),
+                supabase.from('tipos_movimiento').select('*'),
             ])
 
             setAsignaciones(asignacionesResult.data || [])
@@ -163,6 +204,7 @@ export function useAsignaciones(dispatchToast) {
             setPisos(pisosResult.data || [])
             setTodosLosAmbientes(ambientesResult.data || [])
             setAreas(areasResult.data || [])
+            setTiposMovimiento(tiposMovResult.data || [])
 
         } catch (error) {
             mostrarToast(handleApiError(error, 'cargar datos'), 'error')
@@ -176,27 +218,13 @@ export function useAsignaciones(dispatchToast) {
             const { data, error } = await supabase
                 .from('bienes')
                 .select('*')
-                .in('estado', ['Activo', 'Asignado', 'Disponible'])
+                .in('estado', [ESTADOS.BIEN.ACTIVO, ESTADOS.BIEN.ASIGNADO, ESTADOS.BIEN.DISPONIBLE])
                 .order('tipo_equipo')
             if (error) throw error
             setBienes(data || [])
         } catch (error) {
             mostrarToast(handleApiError(error, 'cargar bienes'), 'error')
         }
-    }
-
-    const calcularEstadisticas = () => {
-        const stats = {
-            totalAsignaciones: asignaciones.length,
-            activos: asignaciones.filter(a => a.estado_asignacion === 'Activo').length,
-            trasladados: asignaciones.filter(a => a.estado_asignacion === 'Trasladado').length,
-            devueltos: asignaciones.filter(a => a.estado_asignacion === 'Devuelto').length,
-            baja: asignaciones.filter(a => a.estado_asignacion === 'Baja').length,
-            enAlmacen: asignaciones.filter(a =>
-                a.ambiente?.nombre === 'Almacén General' && a.estado_asignacion === 'Devuelto'
-            ).length
-        }
-        setEstadisticas(stats)
     }
 
     const mostrarToast = (mensaje, tipo = 'success') => {
@@ -212,7 +240,7 @@ export function useAsignaciones(dispatchToast) {
     const verBienesPorPersona = (personaId, personaNombre, personaApellidos) => {
         const bienesAsignados = asignaciones.filter(asig =>
             asig.persona_id === personaId &&
-            asig.estado_asignacion === 'Activo'
+            asig.estado_asignacion === ESTADOS.ASIGNACION.ACTIVO
         )
         setBienesPorPersona(bienesAsignados)
         setSelectedPersonaDetalle({
@@ -228,7 +256,7 @@ export function useAsignaciones(dispatchToast) {
         const ambienteSeleccionado = todosLosAmbientes.find(a => a.id === ambienteId)
         const bienesEnUbicacion = asignaciones.filter(asig =>
             asig.ambiente_id === ambienteId &&
-            asig.estado_asignacion === 'Activo'
+            asig.estado_asignacion === ESTADOS.ASIGNACION.ACTIVO
         )
         setBienesPorPersona(bienesEnUbicacion)
         setSelectedPersonaDetalle({
@@ -264,7 +292,7 @@ export function useAsignaciones(dispatchToast) {
         setFormData({ ...formData, ambiente_id: ambienteId })
 
         if (ambienteSeleccionado) {
-            const cantidadBienes = asignaciones.filter(a => a.ambiente_id === ambienteId && a.estado_asignacion === 'Activo').length
+            const cantidadBienes = asignaciones.filter(a => a.ambiente_id === ambienteId && a.estado_asignacion === ESTADOS.ASIGNACION.ACTIVO).length
             setInfoAmbiente({
                 nombre: ambienteSeleccionado.nombre,
                 codigo: ambienteSeleccionado.codigo,
@@ -312,11 +340,11 @@ export function useAsignaciones(dispatchToast) {
 
     const generarActaCargo = async (personaId, personaNombre, personaApellidos, personaData) => {
         try {
-            setExportandoPdf(true)
+            setExportando(true)
 
             const bienesPersona = asignaciones.filter(asig =>
                 asig.persona_id === personaId &&
-                asig.estado_asignacion === 'Activo'
+                asig.estado_asignacion === ESTADOS.ASIGNACION.ACTIVO
             )
 
             if (bienesPersona.length === 0) {
@@ -332,13 +360,13 @@ export function useAsignaciones(dispatchToast) {
         } catch (error) {
             mostrarToast(handleApiError(error, 'generar acta'), 'error')
         } finally {
-            setExportandoPdf(false)
+            setExportando(false)
         }
     }
 
     const generarActaAsignacion = async (asignacion) => {
         try {
-            setExportandoPdf(true)
+            setExportando(true)
 
             const doc = createActaAsignacionPdf({ asignacion })
 
@@ -379,7 +407,7 @@ export function useAsignaciones(dispatchToast) {
         } catch (error) {
             mostrarToast(handleApiError(error, 'generar acta'), 'error')
         } finally {
-            setExportandoPdf(false)
+            setExportando(false)
         }
     }
 
@@ -432,7 +460,7 @@ export function useAsignaciones(dispatchToast) {
 
     const exportarAPdf = async () => {
         try {
-            setExportandoPdf(true)
+            setExportando(true)
 
             const doc = new jsPDF({
                 orientation: 'landscape',
@@ -499,7 +527,7 @@ export function useAsignaciones(dispatchToast) {
         } catch (error) {
             mostrarToast(handleApiError(error, 'generar PDF'), 'error')
         } finally {
-            setExportandoPdf(false)
+            setExportando(false)
         }
     }
 
@@ -531,12 +559,14 @@ export function useAsignaciones(dispatchToast) {
         tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 3)
 
         const bienesInactivos = asignaciones.filter(asig =>
-            asig.estado_asignacion === 'Activo' &&
+            asig.estado_asignacion === ESTADOS.ASIGNACION.ACTIVO &&
             new Date(asig.fecha_actualizacion || asig.fecha_asignacion) < tresMesesAtras
         )
 
         if (bienesInactivos.length > 0) {
             mostrarToast(`📢 ${bienesInactivos.length} bienes sin movimiento en los últimos 3 meses`, 'info')
+        } else {
+            mostrarToast('✅ Todos los bienes tienen movimiento reciente', 'success')
         }
     }
 
@@ -591,55 +621,13 @@ export function useAsignaciones(dispatchToast) {
 
         try {
             const asignacionActual = selectedAsignacion
+            const tipo = trasladoData.tipo
             const motivoFinal = trasladoData.motivo === 'Otro'
                 ? trasladoData.motivo_especifico
                 : trasladoData.motivo
 
-            let tipoMovimientoId = null
-            let nuevoEstado = 'Activo'
-
-            if (trasladoData.tipo === 'traslado') {
-                tipoMovimientoId = 2
-                nuevoEstado = 'Trasladado'
-            } else if (trasladoData.tipo === 'devolucion') {
-                tipoMovimientoId = 3
-                nuevoEstado = 'Devuelto'
-            } else if (trasladoData.tipo === 'baja') {
-                tipoMovimientoId = 6
-                nuevoEstado = 'Baja'
-            }
-
-            const updateData = {
-                fecha_actualizacion: trasladoData.fecha,
-                estado_asignacion: nuevoEstado
-            }
-
-            if (trasladoData.tipo === 'traslado') {
-                updateData.persona_id = trasladoData.persona_destino_id
-                updateData.ambiente_id = trasladoData.ambiente_destino_id
-            } else if (trasladoData.tipo === 'devolucion') {
-                const almacen = todosLosAmbientes.find(a =>
-                    a.nombre === 'Almacén General' || a.tipo === 'Almacén'
-                )
-                if (almacen) {
-                    updateData.ambiente_id = almacen.id
-                }
-                updateData.persona_id = null
-                const estadoBien = asignacionActual.bien?.tipo_equipo === 'Tóner' ? 'Disponible' : 'Activo'
-                await supabase.from('bienes').update({ estado: estadoBien }).eq('id', asignacionActual.bien_id)
-            } else if (trasladoData.tipo === 'baja') {
-                await supabase
-                    .from('bienes')
-                    .update({ estado: 'Dado de Baja' })
-                    .eq('id', asignacionActual.bien_id)
-            }
-
-            const { error: updateError } = await supabase
-                .from('asignaciones')
-                .update(updateData)
-                .eq('id', asignacionActual.id)
-
-            if (updateError) throw updateError
+            const tipoMovId = tipoMovimientoId(getTipoMovNombre(tipo))
+            const almacen = getAlmacenGeneral()
 
             const personaRegistro = trasladoData.usuario_registro
                 ? personas.find(p => p.id === trasladoData.usuario_registro)
@@ -648,30 +636,56 @@ export function useAsignaciones(dispatchToast) {
                 ? `${personaRegistro.nombres} ${personaRegistro.apellidos}`
                 : null
 
-            const movimiento = {
-                bien_id: asignacionActual.bien_id,
-                tipo_movimiento_id: tipoMovimientoId,
-                persona_origen_id: asignacionActual.persona_id,
-                persona_destino_id: trasladoData.tipo === 'traslado' ? trasladoData.persona_destino_id : null,
-                ambiente_origen_id: asignacionActual.ambiente_id,
-                ambiente_destino_id: trasladoData.tipo === 'devolucion'
-                    ? todosLosAmbientes.find(a => a.nombre === 'Almacén General')?.id
-                    : trasladoData.ambiente_destino_id,
-                fecha_movimiento: trasladoData.fecha,
-                motivo: motivoFinal,
-                documento_referencia: trasladoData.documento_referencia,
-                observaciones: trasladoData.observaciones,
-                usuario_registro: usuarioRegistroNombre
+            if (tipo === 'traslado') {
+                await actualizarBienSegunTipo(tipo, asignacionActual)
+
+                const { data: newAsignacion, error: insertError } = await supabase
+                    .from('asignaciones')
+                    .insert({
+                        bien_id: asignacionActual.bien_id,
+                        persona_id: trasladoData.persona_destino_id,
+                        ambiente_id: trasladoData.ambiente_destino_id,
+                        estado_asignacion: ESTADOS.ASIGNACION.ACTIVO,
+                        fecha_asignacion: trasladoData.fecha,
+                        fecha_actualizacion: trasladoData.fecha,
+                        observaciones: trasladoData.observaciones || `Transferido desde ${asignacionActual.persona?.nombres || ''} ${asignacionActual.persona?.apellidos || ''}`,
+                        documento_referencia: trasladoData.documento_referencia || null
+                    })
+                    .select()
+                    .single()
+                if (insertError) throw insertError
+
+                const { error: updateError } = await supabase
+                    .from('asignaciones')
+                    .update({
+                        estado_asignacion: ESTADOS.ASIGNACION.TRASLADADO,
+                        fecha_actualizacion: trasladoData.fecha
+                    })
+                    .eq('id', asignacionActual.id)
+                if (updateError) {
+                    await supabase.from('asignaciones').delete().eq('id', newAsignacion.id)
+                    throw updateError
+                }
+            } else {
+                await actualizarBienSegunTipo(tipo, asignacionActual)
+
+                const updateData = buildUpdateAsignacion(tipo, asignacionActual, almacen)
+                const { error: updateError } = await supabase
+                    .from('asignaciones')
+                    .update(updateData)
+                    .eq('id', asignacionActual.id)
+                if (updateError) throw updateError
             }
 
-            await registrarMovimiento(movimiento)
-
-            mostrarToast(
-                trasladoData.tipo === 'traslado' ? '✅ Bien trasladado exitosamente' :
-                    trasladoData.tipo === 'devolucion' ? '↩️ Bien devuelto al almacén' :
-                        '⚠️ Bien dado de baja',
-                'success'
+            const movOk = await registrarMovimiento(
+                getMovimiento(tipo, asignacionActual, tipoMovId, motivoFinal, usuarioRegistroNombre)
             )
+
+            const mensajeBase = tipo === 'traslado' ? '✅ Bien trasladado exitosamente' :
+                tipo === 'devolucion' ? '↩️ Bien devuelto al almacén' :
+                    '⚠️ Bien dado de baja'
+
+            mostrarToast(movOk ? mensajeBase : mensajeBase + ' ⚠️ El historial no pudo guardarse', movOk ? 'success' : 'warning')
 
             setOpenTrasladoModal(false)
             resetTrasladoForm()
@@ -752,9 +766,9 @@ export function useAsignaciones(dispatchToast) {
                 const { error } = await supabase.from('asignaciones').insert([payload])
                 if (error) throw error
 
-                await registrarMovimiento({
+                const movOk = await registrarMovimiento({
                     bien_id: formData.bien_id,
-                    tipo_movimiento_id: 1,
+                    tipo_movimiento_id: tipoMovimientoId('Asignación Inicial'),
                     persona_origen_id: formData.persona_origen_id || null,
                     persona_destino_id: formData.persona_id,
                     ambiente_destino_id: formData.ambiente_id || null,
@@ -764,9 +778,9 @@ export function useAsignaciones(dispatchToast) {
                     observaciones: formData.observaciones || 'Asignación inicial del bien'
                 })
 
-                await supabase.from('bienes').update({ estado: 'Asignado' }).eq('id', formData.bien_id)
+                await supabase.from('bienes').update({ estado: ESTADOS.BIEN.ASIGNADO }).eq('id', formData.bien_id)
 
-                mostrarToast('Asignación registrada ✅')
+                mostrarToast(movOk ? 'Asignación registrada ✅' : 'Asignación registrada ⚠️ No se pudo guardar el historial', movOk ? 'success' : 'warning')
             }
 
             setOpenModal(false)
@@ -795,7 +809,7 @@ export function useAsignaciones(dispatchToast) {
             persona_origen_id: '',
             motivo: '',
             observaciones: asignacion.observaciones || '',
-            estado_asignacion: asignacion.estado_asignacion || 'Activo'
+            estado_asignacion: asignacion.estado_asignacion || ESTADOS.ASIGNACION.ACTIVO
         })
         if (asignacion.ambiente?.piso_id) setSelectedPiso(asignacion.ambiente.piso_id)
 
@@ -817,7 +831,7 @@ export function useAsignaciones(dispatchToast) {
 
         const ambienteData = todosLosAmbientes.find(a => a.id === asignacion.ambiente_id)
         if (ambienteData) {
-            const cantidadBienes = asignaciones.filter(a => a.ambiente_id === ambienteData.id && a.estado_asignacion === 'Activo').length
+            const cantidadBienes = asignaciones.filter(a => a.ambiente_id === ambienteData.id && a.estado_asignacion === ESTADOS.ASIGNACION.ACTIVO).length
             setInfoAmbiente({
                 nombre: ambienteData.nombre,
                 codigo: ambienteData.codigo,
@@ -842,8 +856,8 @@ export function useAsignaciones(dispatchToast) {
             const { error } = await supabase.from('asignaciones').delete().eq('id', deleteTarget.id)
             if (error) throw error
 
-            if (deleteTarget.estado_asignacion === 'Activo') {
-                const estadoBien = deleteTarget.bien?.tipo_equipo === 'Tóner' ? 'Disponible' : 'Activo'
+            if (deleteTarget.estado_asignacion === ESTADOS.ASIGNACION.ACTIVO) {
+                const estadoBien = deleteTarget.bien?.tipo_equipo === 'Tóner' ? ESTADOS.BIEN.DISPONIBLE : ESTADOS.BIEN.ACTIVO
                 await supabase.from('bienes').update({ estado: estadoBien }).eq('id', deleteTarget.bien_id)
             }
 
@@ -874,7 +888,7 @@ export function useAsignaciones(dispatchToast) {
             persona_origen_id: '',
             motivo: '',
             observaciones: '',
-            estado_asignacion: 'Activo'
+            estado_asignacion: ESTADOS.ASIGNACION.ACTIVO
         })
     }
 
@@ -892,31 +906,68 @@ export function useAsignaciones(dispatchToast) {
         }))
     }
 
+    const getEstadoPorTipo = (tipo) => {
+        switch (tipo) {
+        case 'traslado': return ESTADOS.ASIGNACION.TRASLADADO
+        case 'devolucion': return ESTADOS.ASIGNACION.DEVUELTO
+        case 'baja': return ESTADOS.ASIGNACION.BAJA
+        default: return ESTADOS.ASIGNACION.ACTIVO
+        }
+    }
+
+    const getTipoMovNombre = (tipo) => {
+        switch (tipo) {
+            case 'traslado': return 'Traslado'
+            case 'devolucion': return 'Devolución'
+            case 'baja': return 'Baja Definitiva'
+            default: return null
+        }
+    }
+
+    const getAlmacenGeneral = () => almacenGeneral
+
+    const buildUpdateAsignacion = (tipo, asignacionActual, almacen) => {
+        const payload = {
+            fecha_actualizacion: trasladoData.fecha,
+            estado_asignacion: getEstadoPorTipo(tipo)
+        }
+        if (tipo === 'devolucion') {
+            if (almacen) payload.ambiente_id = almacen.id
+            payload.persona_id = null
+        }
+        return payload
+    }
+
+    const actualizarBienSegunTipo = async (tipo, asignacionActual) => {
+        if (tipo === 'devolucion') {
+            const estadoBien = asignacionActual.bien?.tipo_equipo === 'Tóner' ? ESTADOS.BIEN.DISPONIBLE : ESTADOS.BIEN.ACTIVO
+            await supabase.from('bienes').update({ estado: estadoBien }).eq('id', asignacionActual.bien_id)
+        } else if (tipo === 'baja') {
+            await supabase.from('bienes').update({ estado: ESTADOS.BIEN.DADO_BAJA }).eq('id', asignacionActual.bien_id)
+        }
+    }
+
+    const getMovimiento = (tipo, asignacionActual, tipoMovId, motivoFinal, usuarioRegistroNombre) => ({
+        bien_id: asignacionActual.bien_id,
+        tipo_movimiento_id: tipoMovId,
+        persona_origen_id: asignacionActual.persona_id,
+        persona_destino_id: tipo === 'traslado' ? trasladoData.persona_destino_id : null,
+        ambiente_origen_id: asignacionActual.ambiente_id,
+        ambiente_destino_id: tipo === 'devolucion' ? getAlmacenGeneral()?.id : trasladoData.ambiente_destino_id,
+        fecha_movimiento: trasladoData.fecha,
+        motivo: motivoFinal,
+        documento_referencia: trasladoData.documento_referencia,
+        observaciones: trasladoData.observaciones,
+        usuario_registro: usuarioRegistroNombre
+    })
+
     const getEstadoColor = (estado) => {
         switch (estado) {
-            case 'Activo': return 'bg-green-50 text-green-700 border-green-200'
-            case 'Trasladado': return 'bg-amber-50 text-amber-700 border-amber-200'
-            case 'Devuelto': return 'bg-blue-50 text-blue-700 border-blue-200'
-            case 'Baja': return 'bg-red-50 text-red-700 border-red-200'
+            case ESTADOS.ASIGNACION.ACTIVO: return 'bg-green-50 text-green-700 border-green-200'
+            case ESTADOS.ASIGNACION.TRASLADADO: return 'bg-amber-50 text-amber-700 border-amber-200'
+            case ESTADOS.ASIGNACION.DEVUELTO: return 'bg-blue-50 text-blue-700 border-blue-200'
+            case ESTADOS.ASIGNACION.BAJA: return 'bg-red-50 text-red-700 border-red-200'
             default: return 'bg-slate-100 text-slate-600'
-        }
-    }
-
-    const getCondicionBadge = (condicion) => {
-        switch (condicion) {
-            case 'Bueno': return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">Bueno</span>
-            case 'Regular': return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 border border-yellow-200">Regular</span>
-            case 'Malo': return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">Malo</span>
-            case 'Chatarra': return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">Chatarra</span>
-            default: return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">{condicion || '—'}</span>
-        }
-    }
-
-    const getEstadoBienBadge = (estado) => {
-        switch (estado) {
-            case 'Activo': return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">Disponible</span>
-            case 'Asignado': return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Asignado</span>
-            default: return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">{estado}</span>
         }
     }
 
@@ -932,7 +983,6 @@ export function useAsignaciones(dispatchToast) {
         editMode, setEditMode,
         selectedAsignacion, setSelectedAsignacion,
         selectedPiso, setSelectedPiso,
-        exportandoPdf, setExportandoPdf,
         searchTermBien, setSearchTermBien,
         showBienDropdown, setShowBienDropdown,
         openTrasladoModal, setOpenTrasladoModal,
@@ -954,8 +1004,9 @@ export function useAsignaciones(dispatchToast) {
         exportando, setExportando,
         filteredAsignaciones,
         asignacionesFiltradasAvanzado,
+        paginatedData, currentPage, setCurrentPage, totalPages, PAGE_SIZE,
         bienesDisponibles, bienesFiltrados,
-        cargarDatos, mostrarToast,
+        cargarDatos, verificarBienesSinMovimiento, mostrarToast,
         verBienesPorPersona, verBienesPorUbicacion,
         handlePersonaChange, handleAmbienteChange,
         handleNuevoResponsableChange, handleNuevoAmbienteChange,
@@ -965,6 +1016,6 @@ export function useAsignaciones(dispatchToast) {
         handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete,
         deleteTarget, setDeleteTarget, resetForm,
         obtenerPisosMapa, obtenerAreasMapa,
-        getEstadoColor, getCondicionBadge, getEstadoBienBadge,
+        getEstadoColor,
     }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
 import { createActaTonerPdf } from '../lib/pdfGeneratorToners'
@@ -28,6 +28,8 @@ export function useGestionToners(dispatchToast) {
     const [openHistorialModal, setOpenHistorialModal] = useState(false)
     const [historialAsignaciones, setHistorialAsignaciones] = useState([])
     const [deleteTarget, setDeleteTarget] = useState(null)
+    const [currentPage, setCurrentPage] = useState(1)
+    const PAGE_SIZE = 25
 
     const [formData, setFormData] = useState({
         toner_id: '',
@@ -453,7 +455,7 @@ export function useGestionToners(dispatchToast) {
 
             try {
                 const blob = doc.output('blob')
-                const fileName = `actas/Acta_Toner_${asignacion.numero_acta || 'NUEVA'}.pdf`
+                const fileName = `toners/Acta_Toner_${asignacion.numero_acta || 'NUEVA'}.pdf`
 
                 const { error: uploadError } = await supabase.storage
                     .from('actas')
@@ -664,6 +666,20 @@ export function useGestionToners(dispatchToast) {
         asig.impresora?.marca?.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
+    const totalPages = Math.max(1, Math.ceil(filteredAsignaciones.length / PAGE_SIZE))
+    const paginatedData = useMemo(() => {
+        const start = (currentPage - 1) * PAGE_SIZE
+        return filteredAsignaciones.slice(start, start + PAGE_SIZE)
+    }, [filteredAsignaciones, currentPage])
+
+    useEffect(() => {
+        if (currentPage > totalPages) setCurrentPage(totalPages)
+    }, [filteredAsignaciones.length])
+
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [searchTerm])
+
     const tonersDisponibles = toners.filter(toner =>
         !asignaciones.some(asig =>
             asig.toner_id === toner.id && asig.estado === 'Activo'
@@ -709,7 +725,7 @@ export function useGestionToners(dispatchToast) {
         formData, setFormData,
         selectedTonerPreview, stockMismoModelo,
         entregadoPor, setEntregadoPor,
-        filteredAsignaciones, tonersDisponibles,
+        filteredAsignaciones, paginatedData, currentPage, setCurrentPage, totalPages, PAGE_SIZE, tonersDisponibles,
         getEstadoColor, calcularDuracion,
         cargarDatos, cargarImpresoras, mostrarToast,
         handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete,
