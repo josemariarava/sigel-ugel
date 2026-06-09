@@ -34,6 +34,10 @@ const DrawerBien = ({
     modelosFiltrados,
     marcaManual,
     setMarcaManual,
+    modeloManual,
+    setModeloManual,
+    diagnostico,
+    diagnosticar,
     ambientes,
     resetForm
 }) => {
@@ -79,10 +83,12 @@ const DrawerBien = ({
                             <span className="w-1.5 h-4 bg-blue-600 rounded-full"></span>
                             1. Detalles del Hardware
                         </Subtitle2>
+
                         <Divider />
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <Field label="Tipo de Equipo" required>
-                                <Select name="tipo_equipo" value={formData.tipo_equipo} onChange={handleInputChange}>
+                                <Select name="tipo_equipo" value={formData.tipo_equipo} onChange={handleInputChange}  style={{ width: '100%' }} >
                                     <option value="">Seleccionar tipo...</option>
                                     <optgroup label="🖥️ Equipos de Cómputo">
                                         <option value="Laptop">💻 Laptop</option>
@@ -118,13 +124,13 @@ const DrawerBien = ({
                             </Field>
 
                             <Field label="Número de Serie">
-                                <Input name="serie" value={formData.serie || ''} onChange={handleInputChange} placeholder="SN-12345XYZ" />
+                                <Input name="serie" value={formData.serie || ''} onChange={handleInputChange} placeholder="SN-12345XYZ" style={{ width: '100%' }} className='py-1.5' />
                             </Field>
 
                             <Field label="Marca">
-                                {formData.tipo_equipo === 'Tóner' && !marcaManual ? (
+                                {!marcaManual ? (
                                     <div className="space-y-1">
-                                        <select name="marca_id" value={formData.marca_id || ''} onChange={handleInputChange} className="w-full text-sm border rounded-lg px-3 py-2.5 bg-white">
+                                        <select name="marca_id" value={formData.marca_id || ''} onChange={handleInputChange} className="w-full text-sm border rounded-sm px-3 py-1 bg-white">
                                             <option value="">-- Seleccionar Marca --</option>
                                             {marcas.map(m => (
                                                 <option key={m.id} value={m.id}>{m.nombre}</option>
@@ -137,17 +143,16 @@ const DrawerBien = ({
                                 ) : (
                                     <div className="space-y-1">
                                         <Input name="marca" value={formData.marca || ''} onChange={handleInputChange} placeholder="HP, Lenovo, Epson" />
-                                        {formData.tipo_equipo === 'Tóner' && (
-                                            <button type="button" onClick={() => setMarcaManual(false)} className="text-xs text-blue-600 hover:underline">
-                                                📋 Usar catálogo
-                                            </button>
-                                        )}
+                                        <button type="button" onClick={() => setMarcaManual(false)} className="text-xs text-blue-600 hover:underline">
+                                            📋 Usar catálogo
+                                        </button>
                                     </div>
                                 )}
                             </Field>
 
+
                             <Field label="Modelo">
-                                {formData.tipo_equipo === 'Tóner' && !marcaManual && formData.marca_id ? (
+                                {!modeloManual && formData.marca_id ? (
                                     <div className="space-y-1">
                                         <select name="modelo_id" value={formData.modelo_id || ''} onChange={handleInputChange} className="w-full text-sm border rounded-lg px-3 py-2.5 bg-white">
                                             <option value="">-- Seleccionar Modelo --</option>
@@ -155,9 +160,19 @@ const DrawerBien = ({
                                                 <option key={m.id} value={m.id}>{m.nombre}</option>
                                             ))}
                                         </select>
+                                        <button type="button" onClick={() => setModeloManual(true)} className="text-xs text-blue-600 hover:underline">
+                                            ✏️ Escribir manualmente
+                                        </button>
                                     </div>
                                 ) : (
-                                    <Input name="modelo" value={formData.modelo || ''} onChange={handleInputChange} placeholder="ThinkPad E14, LaserJet Pro" />
+                                    <div className="space-y-1">
+                                        <Input name="modelo" value={formData.modelo || ''} onChange={handleInputChange} placeholder="ThinkPad E14, LaserJet Pro" />
+                                        {formData.marca_id && (
+                                            <button type="button" onClick={() => setModeloManual(false)} className="text-xs text-blue-600 hover:underline">
+                                                📋 Usar catálogo
+                                            </button>
+                                        )}
+                                    </div>
                                 )}
                             </Field>
 
@@ -178,6 +193,31 @@ const DrawerBien = ({
                                 </Field>
                             )}
 
+                            {formData.tipo_equipo === 'Monitor' && (
+                                <Field label="Tamaño de Pantalla">
+                                    <Input name="tamano_pantalla" value={formData.tamano_pantalla || ''} onChange={handleInputChange} placeholder='Ej. 21.5", 27", 32"' />
+                                </Field>
+                            )}
+
+                        </div>
+
+                        <div className="mt-2">
+                            <button type="button" onClick={diagnosticar} className="text-xs text-gray-500 hover:text-blue-600 underline">
+                                🔍 Diagnosticar agentito
+                            </button>
+                            {diagnostico && (
+                                <div className={`mt-1 p-2 rounded text-xs border ${diagnostico.error ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-800'}`}>
+                                    {diagnostico.error ? (
+                                        diagnostico.mensaje
+                                    ) : (
+                                        <>
+                                            <span className="font-semibold">✅ Agentito OK</span>
+                                            <span className="ml-2 text-gray-500">| {diagnostico.usuario} @ {diagnostico.hostname}</span>
+                                            <span className="ml-2 text-gray-500">| {diagnostico.windows}</span>
+                                        </>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -228,6 +268,36 @@ const DrawerBien = ({
                                             <option key={a.id} value={a.nombre}>📍 {a.nombre}</option>
                                         ))}
                                     </select>
+                                </Field>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Grupo específico para Equipos de Cómputo */}
+                    {['Laptop', 'Desktop', 'CPU', 'Tablet', 'All-in-One'].includes(formData.tipo_equipo) && (
+                        <div className="bg-cyan-50 p-4 rounded-xl border border-cyan-200">
+                            <Subtitle2 className="text-cyan-700 flex items-center gap-2 mb-3">
+                                <LaptopRegular />
+                                Especificaciones del Equipo
+                            </Subtitle2>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Field label="Procesador">
+                                    <Input name="procesador" value={formData.procesador || ''} onChange={handleInputChange} placeholder="Ej. Intel Core i5-12400" />
+                                </Field>
+                                <Field label="Memoria RAM">
+                                    <Input name="ram" value={formData.ram || ''} onChange={handleInputChange} placeholder="Ej. 8 GB, 16 GB" />
+                                </Field>
+                                <Field label="Almacenamiento">
+                                    <Input name="almacenamiento" value={formData.almacenamiento || ''} onChange={handleInputChange} placeholder="Ej. 256 GB, 512 GB" />
+                                </Field>
+                                <Field label="Tipo de Almacenamiento">
+                                    <Input name="tipo_almacenamiento" value={formData.tipo_almacenamiento || ''} onChange={handleInputChange} placeholder="SSD, HDD, NVMe" />
+                                </Field>
+                                <Field label="Sistema Operativo">
+                                    <Input name="sistema_operativo" value={formData.sistema_operativo || ''} onChange={handleInputChange} placeholder="Ej. Windows 11, Ubuntu 24.04" />
+                                </Field>
+                                <Field label="Dirección MAC">
+                                    <Input name="direccion_mac" value={formData.direccion_mac || ''} onChange={handleInputChange} placeholder="Ej. 00:1A:2B:3C:4D:5E" />
                                 </Field>
                             </div>
                         </div>
@@ -378,6 +448,13 @@ const DrawerBien = ({
                                 <p className="text-gray-500">Color:</p>
                                 <p className="text-right text-gray-800 font-medium">{formData.color || formData.color_toner || '—'}</p>
 
+                                {formData.tipo_equipo === 'Monitor' && (
+                                    <>
+                                        <p className="text-gray-500">Tamaño:</p>
+                                        <p className="text-right text-gray-800 font-medium">{formData.tamano_pantalla || '—'}</p>
+                                    </>
+                                )}
+
                                 <p className="text-gray-500">Año de Adquisición:</p>
                                 <p className="text-right text-gray-800 font-medium">{formData.anio_compra || '—'}</p>
 
@@ -386,6 +463,36 @@ const DrawerBien = ({
                                     {formData.valor_compra ? `S/ ${parseFloat(formData.valor_compra).toFixed(2)}` : 'S/ 0.00'}
                                 </p>
                             </div>
+
+                            {/* Especificaciones de Equipo de Cómputo en vista previa */}
+                            {['Laptop', 'Desktop', 'CPU', 'Tablet', 'All-in-One'].includes(formData.tipo_equipo) && (
+                                <>
+                                    <Divider />
+                                    <div className="bg-cyan-50 p-2 rounded-lg">
+                                        <p className="text-[10px] uppercase font-bold text-cyan-600 block mb-2">💻 Especificaciones del Equipo</p>
+                                        <div className="grid grid-cols-2 gap-1 text-xs">
+                                            <span className="text-gray-500">Procesador:</span>
+                                            <span className="text-right font-medium">{formData.procesador || '—'}</span>
+                                            <span className="text-gray-500">RAM:</span>
+                                            <span className="text-right font-medium">{formData.ram || '—'}</span>
+                                            <span className="text-gray-500">Almacenamiento:</span>
+                                            <span className="text-right font-medium">{formData.almacenamiento || '—'}</span>
+                                            <span className="text-gray-500">Tipo Disco:</span>
+                                            <span className="text-right font-medium">{formData.tipo_almacenamiento || '—'}</span>
+                                            <span className="text-gray-500">Sistema Operativo:</span>
+                                            <span className="text-right font-medium">{formData.sistema_operativo || '—'}</span>
+                                            <span className="text-gray-500">Dirección MAC:</span>
+                                            <span className="text-right font-medium">{formData.direccion_mac || '—'}</span>
+                                            {['All-in-One'].includes(formData.tipo_equipo) && (
+                                                <>
+                                                    <span className="text-gray-500">Tamaño Pantalla:</span>
+                                                    <span className="text-right font-medium">{formData.tamano_pantalla || '—'}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
 
                             {/* Datos específicos de Tóner en vista previa */}
                             {formData.tipo_equipo === 'Tóner' && (

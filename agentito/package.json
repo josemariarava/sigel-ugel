@@ -1,0 +1,14 @@
+{
+  "name": "agentito",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node index.js",
+    "build:exe": "npx pkg index.js --targets node18-win-x64 --output agentito.exe"
+  },
+  "pkg": {
+    "assets": [
+      "detect_monitor.ps1"
+    ]
+  }
+}

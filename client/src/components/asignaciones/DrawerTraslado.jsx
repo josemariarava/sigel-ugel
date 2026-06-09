@@ -48,7 +48,8 @@ export default function DrawerTraslado({
     infoNuevoAmbiente, setInfoNuevoAmbiente,
     handleNuevoResponsableChange, handleNuevoAmbienteChange,
     handleTraslado, resetTrasladoForm,
-    personas, todosLosAmbientes
+    personas, todosLosAmbientes,
+    submitting
 }) {
     const tipo = trasladoData.tipo || 'traslado'
 
@@ -262,8 +263,8 @@ export default function DrawerTraslado({
                     onClick={() => { setOpenTrasladoModal(false); resetTrasladoForm() }}>
                     Cancelar
                 </Button>
-                <Button appearance="primary" onClick={handleTraslado}>
-                    {tipo === 'traslado' ? 'Confirmar Traslado' : tipo === 'devolucion' ? 'Confirmar Devolución' : 'Confirmar Baja'}
+                <Button appearance="primary" onClick={handleTraslado} disabled={submitting}>
+                    {submitting ? 'Guardando...' : (tipo === 'traslado' ? 'Confirmar Traslado' : tipo === 'devolucion' ? 'Confirmar Devolución' : 'Confirmar Baja')}
                 </Button>
             </DrawerFooter>
         </Drawer>

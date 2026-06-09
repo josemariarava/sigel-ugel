@@ -19,6 +19,7 @@ export default function DrawerAsignacionToners({
     selectedPiso, setSelectedPiso,
     ambientes, ambientesFiltrados, pisos,
     handleSubmit, resetForm,
+    submitting,
 }) {
     return (
         <Drawer position="end" open={openDrawer} onOpenChange={(_, data) => setOpenDrawer(data.open)} size='medium'>
@@ -211,8 +212,8 @@ export default function DrawerAsignacionToners({
 
             <DrawerFooter className="border-t pt-4 pb-4 bg-gray-50 flex justify-end gap-3">
                 <Button appearance="secondary" onClick={() => setOpenDrawer(false)}>Cancelar</Button>
-                <Button appearance="primary" onClick={handleSubmit}>
-                    {editMode ? 'Actualizar' : 'Confirmar Asignación'}
+                <Button appearance="primary" onClick={handleSubmit} disabled={submitting}>
+                    {submitting ? 'Guardando...' : (editMode ? 'Actualizar' : 'Confirmar Asignación')}
                 </Button>
             </DrawerFooter>
         </Drawer>

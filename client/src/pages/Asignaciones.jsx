@@ -415,6 +415,7 @@ const Asignaciones = () => {
                 handleAmbienteChange={h.handleAmbienteChange}
                 handleInputChange={h.handleInputChange}
                 handleSubmit={h.handleSubmit} resetForm={h.resetForm}
+                submitting={h.submitting}
             />
 
             <DrawerDetalle
@@ -433,6 +434,7 @@ const Asignaciones = () => {
                 handleNuevoAmbienteChange={h.handleNuevoAmbienteChange}
                 handleTraslado={h.handleTraslado} resetTrasladoForm={h.resetTrasladoForm}
                 personas={h.personas} todosLosAmbientes={h.todosLosAmbientes}
+                submitting={h.submitting}
             />
 
             <DrawerHistorial
@@ -452,6 +454,7 @@ const Asignaciones = () => {
                 message="¿Eliminar este registro? Esta acción no se puede deshacer."
                 onConfirm={h.confirmDelete}
                 onCancel={() => h.setDeleteTarget(null)}
+                disabled={h.submitting}
             >
                 {h.deleteTarget && (
                     <div className="border border-red-200 bg-red-50 rounded-lg p-3 text-sm space-y-1">

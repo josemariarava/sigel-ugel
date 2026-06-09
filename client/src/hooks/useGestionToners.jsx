@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
 import { createActaTonerPdf } from '../lib/pdfGeneratorToners'
@@ -28,6 +28,8 @@ export function useGestionToners(dispatchToast) {
     const [openHistorialModal, setOpenHistorialModal] = useState(false)
     const [historialAsignaciones, setHistorialAsignaciones] = useState([])
     const [deleteTarget, setDeleteTarget] = useState(null)
+    const [submitting, setSubmitting] = useState(false)
+    const submittingRef = useRef(false)
     const [currentPage, setCurrentPage] = useState(1)
     const PAGE_SIZE = 25
 
@@ -205,6 +207,7 @@ export function useGestionToners(dispatchToast) {
     }
 
     const handleSubmit = async () => {
+        if (submittingRef.current) return
         if (!formData.toner_id || !formData.persona_id) {
             mostrarToast('Complete los campos obligatorios', 'error')
             return
@@ -214,6 +217,8 @@ export function useGestionToners(dispatchToast) {
             return
         }
 
+        submittingRef.current = true
+        setSubmitting(true)
         try {
             const payload = {
                 toner_id: formData.toner_id,
@@ -297,6 +302,9 @@ export function useGestionToners(dispatchToast) {
             cargarDatos()
         } catch (error) {
             mostrarToast(handleApiError(error, 'guardar asignación de tóner'), 'error')
+        } finally {
+            submittingRef.current = false
+            setSubmitting(false)
         }
     }
 
@@ -328,7 +336,9 @@ export function useGestionToners(dispatchToast) {
     }
 
     const confirmDelete = async () => {
-        if (!deleteTarget) return
+        if (submittingRef.current || !deleteTarget) return
+        submittingRef.current = true
+        setSubmitting(true)
         try {
             const { error } = await supabase
                 .from('asignacion_toners')
@@ -371,16 +381,21 @@ export function useGestionToners(dispatchToast) {
         } catch (error) {
             mostrarToast(handleApiError(error, 'eliminar asignación de tóner'), 'error')
         } finally {
+            submittingRef.current = false
+            setSubmitting(false)
             setDeleteTarget(null)
         }
     }
 
     const handleTerminar = async () => {
+        if (submittingRef.current) return
         if (!terminarData.fecha_terminado) {
             mostrarToast('Seleccione la fecha de terminado', 'error')
             return
         }
 
+        submittingRef.current = true
+        setSubmitting(true)
         try {
             const fechaAsignacion = new Date(selectedAsignacion.fecha_asignacion)
             const fechaTermino = new Date(terminarData.fecha_terminado)
@@ -437,6 +452,9 @@ export function useGestionToners(dispatchToast) {
             cargarDatos()
         } catch (error) {
             mostrarToast(handleApiError(error, 'terminar tóner'), 'error')
+        } finally {
+            submittingRef.current = false
+            setSubmitting(false)
         }
     }
 
@@ -608,7 +626,7 @@ export function useGestionToners(dispatchToast) {
 
             const asignacionIdsEnMovimientos = new Set(
                 (movimientos || [])
-                    .filter(m => m.tipo === 'asignacion' && m.metadata?.asignacion_id)
+                    .filter(m => m.metadata?.asignacion_id)
                     .map(m => m.metadata.asignacion_id)
             )
             ;(asignaciones || []).forEach(a => {
@@ -730,6 +748,7 @@ export function useGestionToners(dispatchToast) {
         cargarDatos, cargarImpresoras, mostrarToast,
         handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete,
         deleteTarget, setDeleteTarget,
+        submitting,
         handleTerminar, generarActaManual, verHistorial, resetForm,
     }
 }

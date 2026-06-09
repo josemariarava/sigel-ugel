@@ -279,6 +279,7 @@ const GestionToners = () => {
                 ambientes={h.ambientes} ambientesFiltrados={h.ambientesFiltrados}
                 pisos={h.pisos}
                 handleSubmit={h.handleSubmit} resetForm={h.resetForm}
+                submitting={h.submitting}
             />
 
             <ModalTerminar
@@ -286,6 +287,7 @@ const GestionToners = () => {
                 selectedAsignacion={h.selectedAsignacion}
                 terminarData={h.terminarData} setTerminarData={h.setTerminarData}
                 handleTerminar={h.handleTerminar}
+                submitting={h.submitting}
             />
 
             <ModalHistorialToners
@@ -299,6 +301,7 @@ const GestionToners = () => {
                 message="¿Estás seguro? El tóner quedará disponible nuevamente."
                 onConfirm={h.confirmDelete}
                 onCancel={() => h.setDeleteTarget(null)}
+                disabled={h.submitting}
             >
                 {h.deleteTarget && (
                     <div className="border border-red-200 bg-red-50 rounded-lg p-3 text-sm space-y-1">

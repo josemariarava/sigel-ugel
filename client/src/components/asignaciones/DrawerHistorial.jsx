@@ -65,10 +65,10 @@ export default function DrawerHistorial({
                             const esActual = index === historialMovimientos.length - 1
 
                             const config = {
-                                Asignación: { icon: CheckmarkCircleRegular, bg: 'bg-green-500', line: 'border-green-300', label: 'Asignación', labelBg: 'bg-green-100 text-green-800' },
+                                'Asignación Inicial': { icon: CheckmarkCircleRegular, bg: 'bg-green-500', line: 'border-green-300', label: 'Asignación Inicial', labelBg: 'bg-green-100 text-green-800' },
                                 Traslado: { icon: ArrowSwapRegular, bg: 'bg-blue-500', line: 'border-blue-300', label: 'Traslado', labelBg: 'bg-blue-100 text-blue-800' },
                                 Devolución: { icon: ArrowReplyRegular, bg: 'bg-amber-500', line: 'border-amber-300', label: 'Devolución', labelBg: 'bg-amber-100 text-amber-800' },
-                                Baja: { icon: WarningRegular, bg: 'bg-red-500', line: 'border-red-300', label: 'Baja', labelBg: 'bg-red-100 text-red-800' },
+                                'Baja Definitiva': { icon: WarningRegular, bg: 'bg-red-500', line: 'border-red-300', label: 'Baja Definitiva', labelBg: 'bg-red-100 text-red-800' },
                             }
                             const cfg = config[tipo] || { icon: HistoryRegular, bg: 'bg-gray-500', line: 'border-gray-300', label: tipo || 'Movimiento', labelBg: 'bg-gray-100 text-gray-800' }
                             const Icon = cfg.icon
@@ -133,7 +133,7 @@ export default function DrawerHistorial({
                                                     )}
                                                 </div>
                                             )}
-                                            {!mov.persona_origen && mov.ambiente_destino && (
+                                            {!mov.persona_origen && !mov.persona_destino && mov.ambiente_destino && (
                                                 <div className="flex items-center gap-2 text-gray-500">
                                                     <LocationRegular style={{ fontSize: '14px' }} className="text-gray-400 shrink-0" />
                                                     <span className="text-xs text-gray-400 font-medium">Ubicación:</span>

@@ -46,7 +46,8 @@ export default function DrawerAsignacion({
     infoResponsable, infoAmbiente,
     areas,
     handlePersonaChange, handleAmbienteChange, handleInputChange,
-    handleSubmit, resetForm
+    handleSubmit, resetForm,
+    submitting
 }) {
     return (
         <Drawer position="end" open={openModal} onOpenChange={(_, data) => setOpenModal(data.open)} size='medium'>
@@ -382,8 +383,8 @@ export default function DrawerAsignacion({
                 }}>
                     Cancelar
                 </Button>
-                <Button appearance="primary" icon={<CheckmarkCircleRegular />} onClick={handleSubmit}>
-                    {editMode ? 'Actualizar Asignación' : 'Confirmar Asignación'}
+                <Button appearance="primary" icon={<CheckmarkCircleRegular />} onClick={handleSubmit} disabled={submitting}>
+                    {submitting ? 'Guardando...' : (editMode ? 'Actualizar Asignación' : 'Confirmar Asignación')}
                 </Button>
             </DrawerFooter>
         </Drawer>

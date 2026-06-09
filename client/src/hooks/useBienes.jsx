@@ -37,8 +37,17 @@ const emptyForm = {
     lote: '',
     fecha_vencimiento: '',
     proveedor: '',
-    ubicacion_almacen: ''
+    ubicacion_almacen: '',
+    procesador: '',
+    ram: '',
+    almacenamiento: '',
+    tipo_almacenamiento: '',
+    sistema_operativo: '',
+    direccion_mac: '',
+    tamano_pantalla: ''
 }
+
+const AGENTITO_URLS = ['http://localhost:5899', 'http://127.0.0.1:5899']
 
 const useBienes = () => {
     const [bienes, setBienes] = useState([])
@@ -53,6 +62,8 @@ const useBienes = () => {
     const [modelos, setModelos] = useState([])
     const [modelosFiltrados, setModelosFiltrados] = useState([])
     const [marcaManual, setMarcaManual] = useState(false)
+    const [modeloManual, setModeloManual] = useState(false)
+    const [exportando, setExportando] = useState(false)
 
     const [comprasAgrupadas, setComprasAgrupadas] = useState([])
     const [openDetalleDrawer, setOpenDetalleDrawer] = useState(false)
@@ -69,6 +80,39 @@ const useBienes = () => {
 
     const [tonerCountsByDetalle, setTonerCountsByDetalle] = useState({})
     const [deleteTarget, setDeleteTarget] = useState(null)
+    const [diagnostico, setDiagnostico] = useState(null)
+
+    async function fetchAgentito(path) {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 6000)
+      try {
+        const res = await Promise.any(
+          AGENTITO_URLS.map(base => fetch(base + path, { signal: controller.signal }).then(r => {
+            if (!r.ok) throw new Error('Status ' + r.status)
+            return r
+          }))
+        )
+        clearTimeout(timeoutId)
+        return res
+      } catch {
+        clearTimeout(timeoutId)
+        return null
+      }
+    }
+
+    async function diagnosticar() {
+      const res = await fetchAgentito('/api/diagnose')
+      if (!res) {
+        setDiagnostico({ error: true, mensaje: 'No se pudo conectar al agentito. Verifica que agentito.exe esté ejecutándose como Administrador.' })
+        return
+      }
+      try {
+        const data = await res.json()
+        setDiagnostico({ error: false, ...data })
+      } catch {
+        setDiagnostico({ error: true, mensaje: 'El agentito respondió pero con datos inválidos.' })
+      }
+    }
 
     // Stats se calculan desde una query ligera (solo tipo_equipo, sin filtros)
     const [statsLight, setStatsLight] = useState([])
@@ -364,14 +408,42 @@ const useBienes = () => {
         const { name, value } = e.target
         setFormData(prev => {
             const next = { ...prev, [name]: value }
-            if (name === 'tipo_equipo') {
+            if (name === 'tipo_equipo' && prev.tipo_equipo !== value) {
+                const tiposComputo = ['CPU', 'Desktop', 'Laptop', 'All-in-One', 'Tablet']
+
+                next.serie = ''
+                next.marca = ''
+                next.marca_id = ''
+                next.modelo = ''
+                next.modelo_id = ''
+
+                if (!tiposComputo.includes(value)) {
+                    next.procesador = ''
+                    next.ram = ''
+                    next.almacenamiento = ''
+                    next.tipo_almacenamiento = ''
+                    next.sistema_operativo = ''
+                    next.direccion_mac = ''
+                }
+                if (value !== 'Monitor') {
+                    next.tamano_pantalla = ''
+                }
+                if (value !== 'Tóner') {
+                    next.color_toner = ''
+                    next.rendimiento = ''
+                    next.lote = ''
+                    next.fecha_vencimiento = ''
+                    next.proveedor = ''
+                    next.ubicacion_almacen = ''
+                }
+
                 if (value === 'Tóner') {
                     next.color = null
                     if (!editMode) {
                         next.condicion = 'Bueno'
                         next.estado = 'Disponible'
                     }
-                } else if (prev.tipo_equipo === 'Tóner' && value !== 'Tóner') {
+                } else if (prev.tipo_equipo === 'Tóner') {
                     next.color = ''
                     if (!editMode) next.estado = 'Activo'
                 }
@@ -392,6 +464,215 @@ const useBienes = () => {
             const filtrados = modelos.filter(m => m.marca_id === value)
             setModelosFiltrados(filtrados)
         }
+
+        if (name === 'tipo_equipo' && formData.tipo_equipo !== value) {
+            setModelosFiltrados([])
+            const tiposComputo = ['CPU', 'Desktop', 'Laptop', 'All-in-One', 'Tablet']
+            if (tiposComputo.includes(value)) {
+                intentarAutoDetectar()
+            } else if (value === 'Monitor') {
+                intentarAutoDetectarMonitor()
+            }
+        }
+    }
+
+    const intentarAutoDetectar = async () => {
+        try {
+            const res = await fetchAgentito('/api/info')
+            if (!res) {
+                mostrarToast('Agentito no disponible — verifica que agentito.exe esté ejecutándose', 'error')
+                return
+            }
+            const data = await res.json()
+
+            const marcaDetectada = (data.marca || '').trim()
+            const match = marcas.find(m => m.nombre.toLowerCase() === marcaDetectada.toLowerCase())
+            const marcaId = match ? match.id : ''
+            const modeloDetectado = (data.modelo || '').trim()
+            let modeloId = ''
+            let modeloManual_ = true
+            if (match) {
+                const modelosDeMarca = modelos.filter(m => m.marca_id === match.id)
+                const modeloMatch = modelosDeMarca.find(m => m.nombre.toLowerCase() === modeloDetectado.toLowerCase())
+                if (modeloMatch) {
+                    modeloId = modeloMatch.id
+                    modeloManual_ = false
+                }
+            }
+
+            setFormData(prev => ({
+                ...prev,
+                serie: data.numero_serie || '',
+                marca: marcaDetectada,
+                marca_id: marcaId,
+                modelo: modeloDetectado,
+                modelo_id: modeloId,
+                procesador: data.procesador || '',
+                ram: data.ram || '',
+                almacenamiento: data.almacenamiento || '',
+                tipo_almacenamiento: data.tipo_almacenamiento || '',
+                sistema_operativo: data.sistema_operativo || '',
+                direccion_mac: data.direccion_mac || '',
+            }))
+
+            if (match) {
+                const filtrados = modelos.filter(m => m.marca_id === match.id)
+                setModelosFiltrados(filtrados)
+                setMarcaManual(false)
+            } else {
+                setMarcaManual(true)
+            }
+            setModeloManual(modeloManual_)
+
+            mostrarToast('Datos del equipo detectados ✅', 'success')
+        } catch {
+            mostrarToast('Error al leer datos del agentito — intenta de nuevo', 'error')
+        }
+    }
+
+    const intentarAutoDetectarMonitor = async () => {
+        try {
+            const res = await fetchAgentito('/api/monitor')
+            if (!res) {
+                mostrarToast('Agentito no disponible — verifica que agentito.exe esté ejecutándose', 'error')
+                return
+            }
+            const data = await res.json()
+
+            if (!Array.isArray(data) || data.length === 0) {
+                mostrarToast('No se detectaron monitores conectados', 'error')
+                return
+            }
+
+            const monitor = data[0]
+            const marcaDetectada = (monitor.marca || '').trim()
+            const match = marcas.find(m => m.nombre.toLowerCase() === marcaDetectada.toLowerCase())
+            const marcaId = match ? match.id : ''
+            const modeloDetectado = (monitor.modelo || '').trim()
+            let modeloId = ''
+            let modeloManual_ = true
+            if (match) {
+                const modelosDeMarca = modelos.filter(m => m.marca_id === match.id)
+                const modeloMatch = modelosDeMarca.find(m => m.nombre.toLowerCase() === modeloDetectado.toLowerCase())
+                if (modeloMatch) {
+                    modeloId = modeloMatch.id
+                    modeloManual_ = false
+                }
+            }
+
+            setFormData(prev => ({
+                ...prev,
+                marca: marcaDetectada,
+                marca_id: marcaId,
+                modelo: modeloDetectado,
+                modelo_id: modeloId,
+                serie: monitor.serie || '',
+                tamano_pantalla: monitor.tamano_pantalla || '',
+            }))
+
+            if (match) {
+                const filtrados = modelos.filter(m => m.marca_id === match.id)
+                setModelosFiltrados(filtrados)
+                setMarcaManual(false)
+            } else {
+                setMarcaManual(true)
+            }
+            setModeloManual(modeloManual_)
+
+            if (data.length > 1) {
+                mostrarToast('Se detectaron ' + data.length + ' monitores — se usó el primero', 'success')
+            } else {
+                mostrarToast('Monitor detectado ✅', 'success')
+            }
+        } catch {
+            mostrarToast('Error al leer datos del agentito — intenta de nuevo', 'error')
+        }
+    }
+
+    function normalizeName(str) {
+      if (!str) return ''
+      const cleaned = str.trim().replace(/\s+/g, ' ')
+      if (!cleaned) return ''
+      if (cleaned === cleaned.toLowerCase()) {
+        return cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
+      }
+      return cleaned
+    }
+
+    async function findOrCreateMarca(name) {
+      if (!name) return null
+      const normalized = normalizeName(name)
+      if (!normalized) return null
+
+      const existing = marcas.find(m => m.nombre.toLowerCase() === normalized.toLowerCase())
+      if (existing) return existing.id
+
+      const { data: existingDb } = await supabase
+        .from('marcas')
+        .select('id')
+        .ilike('nombre', normalized)
+        .maybeSingle()
+      if (existingDb) return existingDb.id
+
+      const { data: created, error } = await supabase
+        .from('marcas')
+        .insert([{ nombre: normalized }])
+        .select()
+        .single()
+
+      if (error) {
+        if (error.code === '23505') {
+          const { data: retry } = await supabase
+            .from('marcas')
+            .select('id')
+            .ilike('nombre', normalized)
+            .single()
+          return retry?.id || null
+        }
+        throw error
+      }
+
+      setMarcas(prev => [...prev, created].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+      return created.id
+    }
+
+    async function findOrCreateModelo(name, marcaId) {
+      if (!name || !marcaId) return null
+      const normalized = normalizeName(name)
+      if (!normalized) return null
+
+      const existing = modelos.find(m => m.nombre.toLowerCase() === normalized.toLowerCase() && m.marca_id === marcaId)
+      if (existing) return existing.id
+
+      const { data: existingDb } = await supabase
+        .from('modelos')
+        .select('id')
+        .eq('marca_id', marcaId)
+        .ilike('nombre', normalized)
+        .maybeSingle()
+      if (existingDb) return existingDb.id
+
+      const { data: created, error } = await supabase
+        .from('modelos')
+        .insert([{ nombre: normalized, marca_id: marcaId }])
+        .select()
+        .single()
+
+      if (error) {
+        if (error.code === '23505') {
+          const { data: retry } = await supabase
+            .from('modelos')
+            .select('id')
+            .eq('marca_id', marcaId)
+            .ilike('nombre', normalized)
+            .single()
+          return retry?.id || null
+        }
+        throw error
+      }
+
+      setModelos(prev => [...prev, created].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+      return created.id
     }
 
     const handleSubmit = async () => {
@@ -401,12 +682,35 @@ const useBienes = () => {
         }
 
         try {
+            if (!editMode && formData.codigo_patrimonial) {
+                const { count } = await supabase
+                    .from('bienes')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('codigo_patrimonial', formData.codigo_patrimonial)
+                if (count > 0) {
+                    mostrarToast('El código patrimonial ya está registrado para otro bien', 'error')
+                    return
+                }
+            }
+
+            let marcaId = formData.marca_id
+            if ((marcaManual || !marcaId) && formData.marca) {
+                marcaId = await findOrCreateMarca(formData.marca)
+            }
+
+            let modeloId = formData.modelo_id
+            if ((modeloManual || !modeloId) && formData.modelo && marcaId) {
+                modeloId = await findOrCreateModelo(formData.modelo, marcaId)
+            }
+
             const safeFields = [
                 'tipo_equipo', 'marca', 'modelo', 'marca_id', 'modelo_id',
                 'serie', 'codigo_patrimonial', 'codigo_ti', 'anio_compra',
                 'orden_compra', 'condicion', 'valor_compra', 'estado',
                 'color_toner', 'color', 'rendimiento', 'lote',
-                'fecha_vencimiento', 'proveedor', 'ubicacion_almacen', 'other'
+                'fecha_vencimiento', 'proveedor', 'ubicacion_almacen', 'other',
+                'procesador', 'ram', 'almacenamiento', 'tipo_almacenamiento',
+                'sistema_operativo', 'direccion_mac', 'tamano_pantalla'
             ]
             const sanitized = {}
             safeFields.forEach(k => {
@@ -417,7 +721,10 @@ const useBienes = () => {
                     sanitized[k] = val
                 }
             })
-            const nullableFields = ['fecha_vencimiento', 'valor_compra', 'rendimiento', 'anio_compra', 'codigo_ti', 'color']
+            sanitized.marca_id = marcaId
+            sanitized.modelo_id = modeloId
+            const nullableFields = ['fecha_vencimiento', 'valor_compra', 'rendimiento', 'anio_compra', 'codigo_ti', 'color', 'codigo_patrimonial',
+                'procesador', 'ram', 'almacenamiento', 'tipo_almacenamiento', 'sistema_operativo', 'direccion_mac', 'tamano_pantalla']
             nullableFields.forEach(f => {
                 if (sanitized[f] === '') sanitized[f] = null
             })
@@ -441,6 +748,7 @@ const useBienes = () => {
 
             setOpenDrawer(false)
             resetForm()
+            cargarCatalogo()
             loadStats()
             cargarBienesPorCategoria(activeTab)
         } catch (error) {
@@ -472,7 +780,14 @@ const useBienes = () => {
             lote: bien.lote || '',
             fecha_vencimiento: bien.fecha_vencimiento || '',
             proveedor: bien.proveedor || '',
-            ubicacion_almacen: bien.ubicacion_almacen || ''
+            ubicacion_almacen: bien.ubicacion_almacen || '',
+            procesador: bien.procesador || '',
+            ram: bien.ram || '',
+            almacenamiento: bien.almacenamiento || '',
+            tipo_almacenamiento: bien.tipo_almacenamiento || '',
+            sistema_operativo: bien.sistema_operativo || '',
+            direccion_mac: bien.direccion_mac || '',
+            tamano_pantalla: bien.tamano_pantalla || ''
         })
         if (bien.marca_id) {
             const filtrados = modelos.filter(m => m.marca_id === bien.marca_id)
@@ -491,6 +806,17 @@ const useBienes = () => {
     const confirmDelete = async () => {
         if (!deleteTarget) return
         try {
+            const { count } = await supabase
+                .from('asignaciones')
+                .select('id', { count: 'exact', head: true })
+                .eq('bien_id', deleteTarget.id)
+                .eq('estado_asignacion', 'Activo')
+
+            if (count > 0) {
+                mostrarToast('No se puede eliminar porque el bien tiene una asignación activa', 'error')
+                return
+            }
+
             const { error } = await supabase
                 .from('bienes')
                 .delete()
@@ -511,6 +837,7 @@ const useBienes = () => {
         setEditMode(false)
         setSelectedBien(null)
         setMarcaManual(false)
+        setModeloManual(false)
         setModelosFiltrados([])
         setFormData({ ...emptyForm })
     }
@@ -558,12 +885,68 @@ const useBienes = () => {
         activos: statsLight.filter(b => b.estado === 'Activo').length
     }
 
+    const exportarAExcel = async () => {
+        try {
+            setExportando(true)
+            const { utils, writeFile } = await import('xlsx')
+            const datosExportar = filteredBienes.map(bien => ({
+                'Tipo de Equipo': bien.tipo_equipo || '',
+                'Marca': bien.marca || '',
+                'Modelo': bien.modelo || '',
+                'Código Patrimonial': bien.codigo_patrimonial || '',
+                'Código TI': bien.codigo_ti || '',
+                'Serie': bien.serie || '',
+                'Condición': bien.condicion || '',
+                'Estado': bien.estado || '',
+                'Año Compra': bien.anio_compra || '',
+                'Valor Compra': bien.valor_compra || '',
+                'Orden Compra': bien.orden_compra || '',
+                'Color': bien.color || '',
+                'Procesador': bien.procesador || '',
+                'RAM': bien.ram || '',
+                'Almacenamiento': bien.almacenamiento || '',
+                'Tipo Almacenamiento': bien.tipo_almacenamiento || '',
+                'Sistema Operativo': bien.sistema_operativo || '',
+                'Dirección MAC': bien.direccion_mac || '',
+                'Tamaño Pantalla': bien.tamano_pantalla || '',
+                'Color Tóner': bien.color_toner || '',
+                'Rendimiento': bien.rendimiento || '',
+                'Lote': bien.lote || '',
+                'Fecha Vencimiento': bien.fecha_vencimiento || '',
+                'Proveedor': bien.proveedor || '',
+                'Ubicación Almacén': bien.ubicacion_almacen || '',
+                'Observaciones': bien.other || ''
+            }))
+
+            const ws = utils.json_to_sheet(datosExportar)
+            ws['!cols'] = [
+                { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 20 },
+                { wch: 14 }, { wch: 16 }, { wch: 12 }, { wch: 14 },
+                { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 12 },
+                { wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 18 },
+                { wch: 22 }, { wch: 20 }, { wch: 14 }, { wch: 14 },
+                { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 20 },
+                { wch: 30 }
+            ]
+
+            const wb = utils.book_new()
+            utils.book_append_sheet(wb, ws, 'Bienes')
+            writeFile(wb, `bienes_${new Date().toISOString().split('T')[0]}.xlsx`)
+
+            mostrarToast('Exportación completada ✅', 'success')
+        } catch (error) {
+            mostrarToast(handleApiError(error, 'exportar datos'), 'error')
+        } finally {
+            setExportando(false)
+        }
+    }
+
     return {
         bienes, loading, searchTerm, setSearchTerm,
         openDrawer, setOpenDrawer,
         editMode, selectedBien,
         activeTab, setActiveTab,
-        marcas, modelos, modelosFiltrados, marcaManual, setMarcaManual,
+        marcas, modelos, modelosFiltrados, marcaManual, setMarcaManual, modeloManual, setModeloManual,
         comprasAgrupadas, openDetalleDrawer, setOpenDetalleDrawer,
         openCompraDrawer, setOpenCompraDrawer,
         selectedCompra, setSelectedCompra,
@@ -578,7 +961,9 @@ const useBienes = () => {
         handleRegistrarCompra,
         handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete,
         deleteTarget, setDeleteTarget,
-        resetForm
+        diagnostico, diagnosticar,
+        resetForm,
+        exportando, exportarAExcel
     }
 }
 

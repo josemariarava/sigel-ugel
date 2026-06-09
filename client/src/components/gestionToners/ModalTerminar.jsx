@@ -5,6 +5,7 @@ export default function ModalTerminar({
     selectedAsignacion,
     terminarData, setTerminarData,
     handleTerminar,
+    submitting,
 }) {
     if (!openTerminarModal) return null
 
@@ -43,7 +44,7 @@ export default function ModalTerminar({
                 </div>
                 <div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
                     <Button appearance="secondary" onClick={() => setOpenTerminarModal(false)}>Cancelar</Button>
-                    <Button appearance="primary" onClick={handleTerminar}>Confirmar Terminado</Button>
+                    <Button appearance="primary" onClick={handleTerminar} disabled={submitting}>{submitting ? 'Guardando...' : 'Confirmar Terminado'}</Button>
                 </div>
             </div>
         </div>

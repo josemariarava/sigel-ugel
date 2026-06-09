@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
 import { createActaCargoPdf, createActaAsignacionPdf } from '../lib/pdfGenerator'
@@ -115,6 +115,8 @@ export function useAsignaciones(dispatchToast) {
 
     const [exportando, setExportando] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState(null)
+    const [submitting, setSubmitting] = useState(false)
+    const submittingRef = useRef(false)
     const [tiposMovimiento, setTiposMovimiento] = useState([])
     const [currentPage, setCurrentPage] = useState(1)
     const PAGE_SIZE = 25
@@ -414,6 +416,7 @@ export function useAsignaciones(dispatchToast) {
     const exportarAExcel = async () => {
         try {
             setExportando(true)
+            const { utils, writeFile } = await import('xlsx')
             const datosExportar = asignacionesFiltradasAvanzado.map(asig => ({
                 'Tipo de Bien': asig.bien?.tipo_equipo,
                 'Marca': asig.bien?.marca || '',
@@ -429,26 +432,16 @@ export function useAsignaciones(dispatchToast) {
                 'Observaciones': asig.observaciones || ''
             }))
 
-            const headers = Object.keys(datosExportar[0] || {})
-            const csvRows = [headers.join(',')]
+            const ws = utils.json_to_sheet(datosExportar)
+            ws['!cols'] = [
+                { wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 20 },
+                { wch: 15 }, { wch: 30 }, { wch: 12 }, { wch: 20 },
+                { wch: 28 }, { wch: 16 }, { wch: 14 }, { wch: 30 }
+            ]
 
-            for (const row of datosExportar) {
-                const values = headers.map(header => {
-                    const value = row[header] || ''
-                    return `"${String(value).replace(/"/g, '""')}"`
-                })
-                csvRows.push(values.join(','))
-            }
-
-            const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' })
-            const link = document.createElement('a')
-            const url = URL.createObjectURL(blob)
-            link.href = url
-            link.setAttribute('download', `asignaciones_${new Date().toISOString().split('T')[0]}.csv`)
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-            URL.revokeObjectURL(url)
+            const wb = utils.book_new()
+            utils.book_append_sheet(wb, ws, 'Asignaciones')
+            writeFile(wb, `asignaciones_${new Date().toISOString().split('T')[0]}.xlsx`)
 
             mostrarToast('Exportación completada ✅', 'success')
         } catch (error) {
@@ -598,6 +591,20 @@ export function useAsignaciones(dispatchToast) {
 
     const registrarMovimiento = async (movimiento) => {
         try {
+            const { data: existing } = await supabase
+                .from('historial_movimientos')
+                .select('id')
+                .eq('bien_id', movimiento.bien_id)
+                .eq('tipo_movimiento_id', movimiento.tipo_movimiento_id)
+                .eq('fecha_movimiento', movimiento.fecha_movimiento)
+                .eq('persona_destino_id', movimiento.persona_destino_id)
+                .limit(1)
+
+            if (existing && existing.length > 0) {
+                console.log('[registrar movimiento] Duplicado omitido:', movimiento.bien_id, movimiento.tipo_movimiento_id)
+                return true
+            }
+
             const { error } = await supabase
                 .from('historial_movimientos')
                 .insert([movimiento])
@@ -610,6 +617,7 @@ export function useAsignaciones(dispatchToast) {
     }
 
     const handleTraslado = async () => {
+        if (submittingRef.current) return
         if (!trasladoData.persona_destino_id && trasladoData.tipo === 'traslado') {
             mostrarToast('Seleccione el nuevo responsable', 'error')
             return
@@ -619,6 +627,8 @@ export function useAsignaciones(dispatchToast) {
             return
         }
 
+        submittingRef.current = true
+        setSubmitting(true)
         try {
             const asignacionActual = selectedAsignacion
             const tipo = trasladoData.tipo
@@ -693,6 +703,9 @@ export function useAsignaciones(dispatchToast) {
             cargarBienesActivos()
         } catch (error) {
             mostrarToast(handleApiError(error, 'trasladar bien'), 'error')
+        } finally {
+            submittingRef.current = false
+            setSubmitting(false)
         }
     }
 
@@ -718,12 +731,31 @@ export function useAsignaciones(dispatchToast) {
     }
 
     const handleSubmit = async () => {
+        if (submittingRef.current) return
         if (!formData.bien_id || !formData.persona_id) {
             mostrarToast('Complete los campos obligatorios', 'error')
             return
         }
 
+        submittingRef.current = true
+        setSubmitting(true)
         try {
+            if (!editMode) {
+                const { data: existingActiva } = await supabase
+                    .from('asignaciones')
+                    .select('id')
+                    .eq('bien_id', formData.bien_id)
+                    .eq('estado_asignacion', ESTADOS.ASIGNACION.ACTIVO)
+                    .limit(1)
+
+                if (existingActiva && existingActiva.length > 0) {
+                    mostrarToast('⚠️ Este bien ya está asignado actualmente. Use la opción "Traslado" para transferirlo a otro responsable.', 'error')
+                    submittingRef.current = false
+                    setSubmitting(false)
+                    return
+                }
+            }
+
             const anio = new Date().getFullYear()
 
             let numeroActa = null
@@ -789,6 +821,9 @@ export function useAsignaciones(dispatchToast) {
             cargarBienesActivos()
         } catch (error) {
             mostrarToast(handleApiError(error, 'guardar asignación'), 'error')
+        } finally {
+            submittingRef.current = false
+            setSubmitting(false)
         }
     }
 
@@ -851,7 +886,9 @@ export function useAsignaciones(dispatchToast) {
     }
 
     const confirmDelete = async () => {
-        if (!deleteTarget) return
+        if (submittingRef.current || !deleteTarget) return
+        submittingRef.current = true
+        setSubmitting(true)
         try {
             const { error } = await supabase.from('asignaciones').delete().eq('id', deleteTarget.id)
             if (error) throw error
@@ -867,6 +904,8 @@ export function useAsignaciones(dispatchToast) {
         } catch (error) {
             mostrarToast(handleApiError(error, 'eliminar asignación'), 'error')
         } finally {
+            submittingRef.current = false
+            setSubmitting(false)
             setDeleteTarget(null)
         }
     }
@@ -1015,6 +1054,7 @@ export function useAsignaciones(dispatchToast) {
         cargarHistorialMovimientos, handleTraslado, resetTrasladoForm,
         handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete,
         deleteTarget, setDeleteTarget, resetForm,
+        submitting,
         obtenerPisosMapa, obtenerAreasMapa,
         getEstadoColor,
     }

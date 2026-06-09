@@ -45,6 +45,7 @@ const Bienes = () => {
         editMode,
         activeTab, setActiveTab,
         marcas, modelos, modelosFiltrados, marcaManual, setMarcaManual,
+        modeloManual, setModeloManual,
         comprasAgrupadas, openDetalleDrawer, setOpenDetalleDrawer,
         openCompraDrawer, setOpenCompraDrawer,
         selectedCompra, setSelectedCompra,
@@ -59,7 +60,9 @@ const Bienes = () => {
         handleRegistrarCompra,
         handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete,
         deleteTarget, setDeleteTarget,
-        resetForm
+        diagnostico, diagnosticar,
+        resetForm,
+        exportando, exportarAExcel
     } = useBienes()
 
     const onCloseDrawer = () => {
@@ -78,6 +81,14 @@ const Bienes = () => {
                     <p className="text-sm text-gray-500 mt-0.5">Administración del inventario tecnológico</p>
                 </div>
                 <div className="flex gap-2">
+                    <Button
+                        appearance="secondary"
+                        icon={<ArrowSyncRegular />}
+                        onClick={exportarAExcel}
+                        disabled={exportando}
+                    >
+                        {exportando ? 'Exportando...' : 'Exportar Excel'}
+                    </Button>
                     <Button
                         appearance="secondary"
                         icon={<CartRegular />}
@@ -332,6 +343,10 @@ const Bienes = () => {
                 modelosFiltrados={modelosFiltrados}
                 marcaManual={marcaManual}
                 setMarcaManual={setMarcaManual}
+                modeloManual={modeloManual}
+                setModeloManual={setModeloManual}
+                diagnostico={diagnostico}
+                diagnosticar={diagnosticar}
                 ambientes={ambientes}
                 resetForm={resetForm}
             />

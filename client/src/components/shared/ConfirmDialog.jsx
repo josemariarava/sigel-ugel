@@ -1,6 +1,6 @@
 import { Button, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions } from '@fluentui/react-components'
 
-const ConfirmDialog = ({ open, title, message, children, confirmText = 'Sí, eliminar', cancelText = 'Cancelar', onConfirm, onCancel }) => {
+const ConfirmDialog = ({ open, title, message, children, confirmText = 'Sí, eliminar', cancelText = 'Cancelar', onConfirm, onCancel, disabled }) => {
     return (
         <Dialog open={open} modalType="modal">
             <DialogSurface>
@@ -12,7 +12,7 @@ const ConfirmDialog = ({ open, title, message, children, confirmText = 'Sí, eli
                     </DialogContent>
                     <DialogActions>
                         <Button appearance="secondary" onClick={onCancel}>{cancelText}</Button>
-                        <Button appearance="primary" onClick={onConfirm}>{confirmText}</Button>
+                        <Button appearance="primary" onClick={onConfirm} disabled={disabled}>{disabled ? 'Eliminando...' : confirmText}</Button>
                     </DialogActions>
                 </DialogBody>
             </DialogSurface>
