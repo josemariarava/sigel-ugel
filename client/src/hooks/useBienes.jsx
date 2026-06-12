@@ -81,6 +81,8 @@ const useBienes = () => {
     const [tonerCountsByDetalle, setTonerCountsByDetalle] = useState({})
     const [deleteTarget, setDeleteTarget] = useState(null)
     const [diagnostico, setDiagnostico] = useState(null)
+    const [monitoresDetectados, setMonitoresDetectados] = useState([])
+    const [monitorSeleccionadoIndex, setMonitorSeleccionadoIndex] = useState(null)
 
     async function fetchAgentito(path) {
       const controller = new AbortController()
@@ -467,6 +469,8 @@ const useBienes = () => {
 
         if (name === 'tipo_equipo' && formData.tipo_equipo !== value) {
             setModelosFiltrados([])
+            setMonitoresDetectados([])
+            setMonitorSeleccionadoIndex(null)
             const tiposComputo = ['CPU', 'Desktop', 'Laptop', 'All-in-One', 'Tablet']
             if (tiposComputo.includes(value)) {
                 intentarAutoDetectar()
@@ -530,6 +534,42 @@ const useBienes = () => {
         }
     }
 
+    const aplicarMonitor = (monitor) => {
+        const marcaDetectada = (monitor.marca || '').trim()
+        const match = marcas.find(m => m.nombre.toLowerCase() === marcaDetectada.toLowerCase())
+        const marcaId = match ? match.id : ''
+        const modeloDetectado = (monitor.modelo || '').trim()
+        let modeloId = ''
+        let modeloManual_ = true
+        if (match) {
+            const modelosDeMarca = modelos.filter(m => m.marca_id === match.id)
+            const modeloMatch = modelosDeMarca.find(m => m.nombre.toLowerCase() === modeloDetectado.toLowerCase())
+            if (modeloMatch) {
+                modeloId = modeloMatch.id
+                modeloManual_ = false
+            }
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            marca: marcaDetectada,
+            marca_id: marcaId,
+            modelo: modeloDetectado,
+            modelo_id: modeloId,
+            serie: monitor.serie || '',
+            tamano_pantalla: monitor.tamano_pantalla || '',
+        }))
+
+        if (match) {
+            const filtrados = modelos.filter(m => m.marca_id === match.id)
+            setModelosFiltrados(filtrados)
+            setMarcaManual(false)
+        } else {
+            setMarcaManual(true)
+        }
+        setModeloManual(modeloManual_)
+    }
+
     const intentarAutoDetectarMonitor = async () => {
         try {
             const res = await fetchAgentito('/api/monitor')
@@ -544,49 +584,25 @@ const useBienes = () => {
                 return
             }
 
-            const monitor = data[0]
-            const marcaDetectada = (monitor.marca || '').trim()
-            const match = marcas.find(m => m.nombre.toLowerCase() === marcaDetectada.toLowerCase())
-            const marcaId = match ? match.id : ''
-            const modeloDetectado = (monitor.modelo || '').trim()
-            let modeloId = ''
-            let modeloManual_ = true
-            if (match) {
-                const modelosDeMarca = modelos.filter(m => m.marca_id === match.id)
-                const modeloMatch = modelosDeMarca.find(m => m.nombre.toLowerCase() === modeloDetectado.toLowerCase())
-                if (modeloMatch) {
-                    modeloId = modeloMatch.id
-                    modeloManual_ = false
-                }
-            }
-
-            setFormData(prev => ({
-                ...prev,
-                marca: marcaDetectada,
-                marca_id: marcaId,
-                modelo: modeloDetectado,
-                modelo_id: modeloId,
-                serie: monitor.serie || '',
-                tamano_pantalla: monitor.tamano_pantalla || '',
-            }))
-
-            if (match) {
-                const filtrados = modelos.filter(m => m.marca_id === match.id)
-                setModelosFiltrados(filtrados)
-                setMarcaManual(false)
-            } else {
-                setMarcaManual(true)
-            }
-            setModeloManual(modeloManual_)
+            setMonitoresDetectados(data)
+            setMonitorSeleccionadoIndex(0)
+            aplicarMonitor(data[0])
 
             if (data.length > 1) {
-                mostrarToast('Se detectaron ' + data.length + ' monitores — se usó el primero', 'success')
+                mostrarToast('Se detectaron ' + data.length + ' monitores — selecciona cuál usar abajo', 'success')
             } else {
                 mostrarToast('Monitor detectado ✅', 'success')
             }
         } catch {
             mostrarToast('Error al leer datos del agentito — intenta de nuevo', 'error')
         }
+    }
+
+    const seleccionarMonitor = (index) => {
+        const monitor = monitoresDetectados[index]
+        if (!monitor) return
+        setMonitorSeleccionadoIndex(index)
+        aplicarMonitor(monitor)
     }
 
     function normalizeName(str) {
@@ -759,6 +775,8 @@ const useBienes = () => {
     const handleEdit = (bien) => {
         setEditMode(true)
         setSelectedBien(bien)
+        setMonitoresDetectados([])
+        setMonitorSeleccionadoIndex(null)
         setFormData({
             tipo_equipo: bien.tipo_equipo || '',
             marca: bien.marca || '',
@@ -839,6 +857,8 @@ const useBienes = () => {
         setMarcaManual(false)
         setModeloManual(false)
         setModelosFiltrados([])
+        setMonitoresDetectados([])
+        setMonitorSeleccionadoIndex(null)
         setFormData({ ...emptyForm })
     }
 
@@ -962,6 +982,8 @@ const useBienes = () => {
         handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete,
         deleteTarget, setDeleteTarget,
         diagnostico, diagnosticar,
+        intentarAutoDetectarMonitor,
+        monitoresDetectados, monitorSeleccionadoIndex, seleccionarMonitor,
         resetForm,
         exportando, exportarAExcel
     }

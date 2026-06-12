@@ -61,6 +61,8 @@ const Bienes = () => {
         handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete,
         deleteTarget, setDeleteTarget,
         diagnostico, diagnosticar,
+        intentarAutoDetectarMonitor,
+        monitoresDetectados, monitorSeleccionadoIndex, seleccionarMonitor,
         resetForm,
         exportando, exportarAExcel
     } = useBienes()
@@ -347,6 +349,10 @@ const Bienes = () => {
                 setModeloManual={setModeloManual}
                 diagnostico={diagnostico}
                 diagnosticar={diagnosticar}
+                intentarAutoDetectarMonitor={intentarAutoDetectarMonitor}
+                monitoresDetectados={monitoresDetectados}
+                monitorSeleccionadoIndex={monitorSeleccionadoIndex}
+                seleccionarMonitor={seleccionarMonitor}
                 ambientes={ambientes}
                 resetForm={resetForm}
             />

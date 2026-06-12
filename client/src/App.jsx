@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { FluentProvider, webLightTheme, Spinner } from '@fluentui/react-components'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Sidebar from './components/layout/Sidebar'
@@ -10,11 +10,20 @@ import Bienes from './pages/Bienes'
 import StockToners from './pages/StockToners'
 import Personas from './pages/Personas'
 import Asignaciones from './pages/Asignaciones'
+import Bitacora from './pages/Bitacora'
 import Ambientes from './pages/Ambientes'
 import Configuracion from './pages/Configuracion'
 
 function AppContent() {
     const { user, loading } = useAuth()
+    const navigate = useNavigate()
+    const location = useLocation()
+
+    const activePage = location.pathname.replace('/', '') || 'dashboard'
+
+    const handlePageChange = (page) => {
+        navigate('/' + page)
+    }
 
     if (loading) {
         return (
@@ -31,9 +40,9 @@ function AppContent() {
 
     return (
         <div className="min-h-screen bg-gray-100">
-            <Sidebar />
+            <Sidebar activePage={activePage} onPageChange={handlePageChange} />
             <Navbar />
-            <main className="ml-64 pt-16">
+            <main className="ml-72 pt-16">
                 <div className="p-6">
                     <Routes>
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -43,6 +52,7 @@ function AppContent() {
                         <Route path="/personas" element={<ProtectedRoute><Personas /></ProtectedRoute>} />
                         <Route path="/asignaciones" element={<ProtectedRoute><Asignaciones /></ProtectedRoute>} />
                         <Route path="/ambientes" element={<ProtectedRoute><Ambientes /></ProtectedRoute>} />
+                        <Route path="/bitacora" element={<ProtectedRoute><Bitacora /></ProtectedRoute>} />
                         <Route path="/configuracion" element={<ProtectedRoute><Configuracion /></ProtectedRoute>} />
                         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
                     </Routes>

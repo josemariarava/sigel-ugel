@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
     Button,
     Input,
@@ -12,6 +13,8 @@ import {
     DrawerBody,
     DrawerHeader,
     DrawerHeaderTitle,
+    Badge,
+    Spinner
 } from '@fluentui/react-components'
 import {
     DismissRegular,
@@ -20,6 +23,10 @@ import {
     PrintRegular,
     CartRegular,
     DesktopRegular,
+    ArrowSyncRegular,
+    CheckmarkCircleRegular,
+    TvRegular,        // ← Usar TvRegular en lugar de MonitorRegular
+    WarningRegular
 } from '@fluentui/react-icons'
 
 const DrawerBien = ({
@@ -38,9 +45,21 @@ const DrawerBien = ({
     setModeloManual,
     diagnostico,
     diagnosticar,
+    intentarAutoDetectarMonitor,
+    monitoresDetectados,
+    monitorSeleccionadoIndex,
+    seleccionarMonitor,
     ambientes,
     resetForm
 }) => {
+    const [detectandoMonitores, setDetectandoMonitores] = useState(false)
+
+    const handleDiagnosticarConLoading = async () => {
+        setDetectandoMonitores(true)
+        await intentarAutoDetectarMonitor()
+        setDetectandoMonitores(false)
+    }
+
     return (
         <Drawer
             position="end"
@@ -88,7 +107,7 @@ const DrawerBien = ({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <Field label="Tipo de Equipo" required>
-                                <Select name="tipo_equipo" value={formData.tipo_equipo} onChange={handleInputChange}  style={{ width: '100%' }} >
+                                <Select name="tipo_equipo" value={formData.tipo_equipo} onChange={handleInputChange} style={{ width: '100%' }}>
                                     <option value="">Seleccionar tipo...</option>
                                     <optgroup label="🖥️ Equipos de Cómputo">
                                         <option value="Laptop">💻 Laptop</option>
@@ -124,7 +143,7 @@ const DrawerBien = ({
                             </Field>
 
                             <Field label="Número de Serie">
-                                <Input name="serie" value={formData.serie || ''} onChange={handleInputChange} placeholder="SN-12345XYZ" style={{ width: '100%' }} className='py-1.5' />
+                                <Input name="serie" value={formData.serie || ''} onChange={handleInputChange} placeholder="SN-12345XYZ" style={{ width: '100%' }} />
                             </Field>
 
                             <Field label="Marca">
@@ -150,7 +169,6 @@ const DrawerBien = ({
                                 )}
                             </Field>
 
-
                             <Field label="Modelo">
                                 {!modeloManual && formData.marca_id ? (
                                     <div className="space-y-1">
@@ -164,14 +182,16 @@ const DrawerBien = ({
                                             ✏️ Escribir manualmente
                                         </button>
                                     </div>
-                                ) : (
+                                ) : formData.marca_id ? (
                                     <div className="space-y-1">
                                         <Input name="modelo" value={formData.modelo || ''} onChange={handleInputChange} placeholder="ThinkPad E14, LaserJet Pro" />
-                                        {formData.marca_id && (
-                                            <button type="button" onClick={() => setModeloManual(false)} className="text-xs text-blue-600 hover:underline">
-                                                📋 Usar catálogo
-                                            </button>
-                                        )}
+                                        <button type="button" onClick={() => setModeloManual(false)} className="text-xs text-blue-600 hover:underline">
+                                            📋 Usar catálogo
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-1">
+                                        <p className="text-sm text-gray-400 italic py-1">Seleccione una marca primero</p>
                                     </div>
                                 )}
                             </Field>
@@ -198,29 +218,165 @@ const DrawerBien = ({
                                     <Input name="tamano_pantalla" value={formData.tamano_pantalla || ''} onChange={handleInputChange} placeholder='Ej. 21.5", 27", 32"' />
                                 </Field>
                             )}
-
                         </div>
 
-                        <div className="mt-2">
-                            <button type="button" onClick={diagnosticar} className="text-xs text-gray-500 hover:text-blue-600 underline">
-                                🔍 Diagnosticar agentito
-                            </button>
-                            {diagnostico && (
-                                <div className={`mt-1 p-2 rounded text-xs border ${diagnostico.error ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-800'}`}>
-                                    {diagnostico.error ? (
-                                        diagnostico.mensaje
-                                    ) : (
-                                        <>
-                                            <span className="font-semibold">✅ Agentito OK</span>
-                                            <span className="ml-2 text-gray-500">| {diagnostico.usuario} @ {diagnostico.hostname}</span>
-                                            <span className="ml-2 text-gray-500">| {diagnostico.windows}</span>
-                                        </>
+                        {/* SECCIÓN MEJORADA PARA MONITORES */}
+                        {formData.tipo_equipo === 'Monitor' && (
+                            <div className="mt-2">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Button
+                                        appearance="secondary"
+                                        icon={detectandoMonitores ? <Spinner size="tiny" /> : <ArrowSyncRegular />}
+                                        onClick={handleDiagnosticarConLoading}
+                                        disabled={detectandoMonitores}
+                                        size="small"
+                                    >
+                                        {detectandoMonitores ? 'Detectando monitores...' : '🔍 Detectar monitores conectados'}
+                                    </Button>
+                                    
+                                    {diagnostico && !diagnostico.error && (
+                                        <Badge appearance="tint" color="success" size="small">
+                                            Agentito activo
+                                        </Badge>
                                     )}
                                 </div>
-                            )}
-                        </div>
+
+                                {diagnostico?.error && (
+                                    <div className="mb-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                                        <div className="flex items-center gap-2 text-red-700">
+                                            <WarningRegular />
+                                            <span className="text-sm font-medium">Agentito no disponible</span>
+                                        </div>
+                                        <p className="text-xs text-red-600 mt-1">{diagnostico.mensaje}</p>
+                                    </div>
+                                )}
+
+                                {monitoresDetectados.length > 0 && (
+                                    <div className="mt-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <Subtitle2 className="text-blue-600 flex items-center gap-1">
+                                                <TvRegular /> {/* ← Cambiado a TvRegular */}
+                                                Monitores detectados ({monitoresDetectados.length})
+                                            </Subtitle2>
+                                            {monitoresDetectados.length > 1 && (
+                                                <Caption1 className="text-amber-600">
+                                                    💡 Selecciona cuál monitor registrar
+                                                </Caption1>
+                                            )}
+                                        </div>
+                                        
+                                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                                            {monitoresDetectados.map((monitor, idx) => {
+                                                const isSelected = monitorSeleccionadoIndex === idx
+                                                return (
+                                                    <div
+                                                        key={idx}
+                                                        onClick={() => seleccionarMonitor(idx)}
+                                                        className={`
+                                                            p-3 rounded-lg cursor-pointer transition-all duration-200
+                                                            border-2
+                                                            ${isSelected 
+                                                                ? 'bg-blue-50 border-blue-500 shadow-md' 
+                                                                : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-sm'
+                                                            }
+                                                        `}
+                                                    >
+                                                        <div className="flex items-start justify-between">
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className="font-semibold text-gray-800">
+                                                                        🖥️ Monitor {idx + 1}
+                                                                    </span>
+                                                                    {isSelected && (
+                                                                        <Badge appearance="filled" color="brand" size="tiny">
+                                                                            <CheckmarkCircleRegular className="w-3 h-3 inline mr-1" />
+                                                                            Seleccionado
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                                
+                                                                <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                                                                    {monitor.marca && (
+                                                                        <>
+                                                                            <span className="text-gray-500">Marca:</span>
+                                                                            <span className="font-medium text-gray-800">{monitor.marca}</span>
+                                                                        </>
+                                                                    )}
+                                                                    {monitor.modelo && (
+                                                                        <>
+                                                                            <span className="text-gray-500">Modelo:</span>
+                                                                            <span className="font-medium text-gray-800">{monitor.modelo}</span>
+                                                                        </>
+                                                                    )}
+                                                                    {monitor.serie && (
+                                                                        <>
+                                                                            <span className="text-gray-500">N° Serie:</span>
+                                                                            <span className="font-mono text-xs text-gray-600">{monitor.serie}</span>
+                                                                        </>
+                                                                    )}
+                                                                    {monitor.tamano_pantalla && (
+                                                                        <>
+                                                                            <span className="text-gray-500">Tamaño:</span>
+                                                                            <span className="font-medium text-gray-800">{monitor.tamano_pantalla}</span>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            {isSelected && (
+                                                                <div className="ml-2">
+                                                                    <CheckmarkCircleRegular className="w-6 h-6 text-blue-600" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                        
+                                        {monitoresDetectados.length > 1 && monitorSeleccionadoIndex === null && (
+                                            <p className="text-xs text-amber-600 mt-2 text-center">
+                                                ⚠️ Haz clic en un monitor para cargar sus datos en el formulario
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {monitoresDetectados.length === 0 && diagnostico && !diagnostico.error && (
+                                    <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                                        <p className="text-sm text-yellow-700">
+                                            📺 No se detectaron monitores conectados
+                                        </p>
+                                        <p className="text-xs text-yellow-600 mt-1">
+                                            Verifica que los monitores estén encendidos y conectados correctamente.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Diagnóstico general para otros tipos */}
+                        {formData.tipo_equipo !== 'Monitor' && (
+                            <div className="mt-2">
+                                <button type="button" onClick={diagnosticar} className="text-xs text-gray-500 hover:text-blue-600 underline">
+                                    🔍 Diagnosticar agentito
+                                </button>
+                                {diagnostico && !diagnostico.error && (
+                                    <div className="mt-1 p-2 rounded text-xs border border-green-200 bg-green-50 text-green-800">
+                                        <span className="font-semibold">✅ Agentito OK</span>
+                                        <span className="ml-2 text-gray-500">| {diagnostico.usuario} @ {diagnostico.hostname}</span>
+                                    </div>
+                                )}
+                                {diagnostico?.error && (
+                                    <div className="mt-1 p-2 rounded text-xs border border-red-200 bg-red-50 text-red-700">
+                                        {diagnostico.mensaje}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
+                    {/* El resto del formulario continúa igual... */}
                     {/* Grupo específico para Tóner */}
                     {formData.tipo_equipo === 'Tóner' && (
                         <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
@@ -303,7 +459,7 @@ const DrawerBien = ({
                         </div>
                     )}
 
-                    {/* Grupo 2 */}
+                    {/* Grupo 2 - Identificadores */}
                     <div className="flex flex-col gap-3">
                         <Subtitle2 className="text-blue-600 flex items-center gap-2">
                             <span className="w-1.5 h-4 bg-blue-600 rounded-full"></span>
@@ -314,14 +470,13 @@ const DrawerBien = ({
                             <Field label="Código Patrimonial">
                                 <Input name="codigo_patrimonial" value={formData.codigo_patrimonial || ''} onChange={handleInputChange} placeholder="742212340001" className="font-mono" />
                             </Field>
-
                             <Field label="Código TI Interno">
                                 <Input name="codigo_ti" value={formData.codigo_ti || ''} onChange={handleInputChange} placeholder="UGEL-TI-045" className="font-mono" />
                             </Field>
                         </div>
                     </div>
 
-                    {/* Grupo 3 */}
+                    {/* Grupo 3 - Logística */}
                     <div className="flex flex-col gap-3">
                         <Subtitle2 className="text-blue-600 flex items-center gap-2">
                             <span className="w-1.5 h-4 bg-blue-600 rounded-full"></span>
@@ -332,16 +487,13 @@ const DrawerBien = ({
                             <Field label="Año Compra">
                                 <Input type="number" name="anio_compra" value={formData.anio_compra || ''} onChange={handleInputChange} />
                             </Field>
-
                             <Field label="Valor (S/)">
                                 <Input type="number" name="valor_compra" value={formData.valor_compra || ''} onChange={handleInputChange} placeholder="0.00" step="0.01" />
                             </Field>
-
                             <Field label="Orden Compra">
                                 <Input name="orden_compra" value={formData.orden_compra || ''} onChange={handleInputChange} placeholder="O/C 2026-089" />
                             </Field>
                         </div>
-
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {formData.tipo_equipo !== 'Tóner' && (
                                 <Field label="Condición Física">
@@ -353,7 +505,6 @@ const DrawerBien = ({
                                     </Select>
                                 </Field>
                             )}
-
                             <Field label="Estado Operativo">
                                 <Select name="estado" value={formData.estado} onChange={handleInputChange}>
                                     {formData.tipo_equipo === 'Tóner' ? (
@@ -373,7 +524,7 @@ const DrawerBien = ({
                         </div>
                     </div>
 
-                    {/* Grupo 4 */}
+                    {/* Grupo 4 - Notas */}
                     <div className="flex flex-col gap-3">
                         <Subtitle2 className="text-blue-600 flex items-center gap-2">
                             <span className="w-1.5 h-4 bg-blue-600 rounded-full"></span>
@@ -386,15 +537,13 @@ const DrawerBien = ({
                     </div>
                 </div>
 
-                {/* COLUMNA DERECHA: VISTA PREVIA DINÁMICA */}
+                {/* COLUMNA DERECHA: VISTA PREVIA */}
                 <div className="w-5/12 bg-gray-50 p-6 flex flex-col justify-between h-full border-l border-gray-200">
                     <div className="flex flex-col gap-4">
                         <div className="flex items-center gap-2 text-gray-500">
                             <EyeRegular />
                             <Caption1 className="uppercase tracking-wider font-semibold">Vista Previa del Registro</Caption1>
                         </div>
-
-                        {/* Tarjeta de visualización final */}
                         <Card className="!p-5 bg-white border border-gray-200 shadow-sm flex flex-col gap-4">
                             <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-3">
@@ -421,10 +570,7 @@ const DrawerBien = ({
                                     {formData.condicion || 'Pendiente'}
                                 </span>
                             </div>
-
                             <Divider />
-
-                            {/* Códigos Principales */}
                             <div className="grid grid-cols-2 gap-x-2 gap-y-3 bg-gray-50 p-3 rounded-lg border border-gray-100">
                                 <div>
                                     <span className="text-[10px] uppercase font-bold text-gray-400 block">Cód. Patrimonial</span>
@@ -439,32 +585,24 @@ const DrawerBien = ({
                                     </span>
                                 </div>
                             </div>
-
-                            {/* Características Técnicas */}
                             <div className="grid grid-cols-2 gap-y-2 text-xs">
                                 <p className="text-gray-500">N° de Serie:</p>
                                 <p className="font-mono text-right text-gray-800 font-medium truncate">{formData.serie || '—'}</p>
-
                                 <p className="text-gray-500">Color:</p>
                                 <p className="text-right text-gray-800 font-medium">{formData.color || formData.color_toner || '—'}</p>
-
                                 {formData.tipo_equipo === 'Monitor' && (
                                     <>
                                         <p className="text-gray-500">Tamaño:</p>
                                         <p className="text-right text-gray-800 font-medium">{formData.tamano_pantalla || '—'}</p>
                                     </>
                                 )}
-
                                 <p className="text-gray-500">Año de Adquisición:</p>
                                 <p className="text-right text-gray-800 font-medium">{formData.anio_compra || '—'}</p>
-
                                 <p className="text-gray-500">Costo Unitario:</p>
                                 <p className="text-right font-semibold text-gray-900">
                                     {formData.valor_compra ? `S/ ${parseFloat(formData.valor_compra).toFixed(2)}` : 'S/ 0.00'}
                                 </p>
                             </div>
-
-                            {/* Especificaciones de Equipo de Cómputo en vista previa */}
                             {['Laptop', 'Desktop', 'CPU', 'Tablet', 'All-in-One'].includes(formData.tipo_equipo) && (
                                 <>
                                     <Divider />
@@ -483,18 +621,10 @@ const DrawerBien = ({
                                             <span className="text-right font-medium">{formData.sistema_operativo || '—'}</span>
                                             <span className="text-gray-500">Dirección MAC:</span>
                                             <span className="text-right font-medium">{formData.direccion_mac || '—'}</span>
-                                            {['All-in-One'].includes(formData.tipo_equipo) && (
-                                                <>
-                                                    <span className="text-gray-500">Tamaño Pantalla:</span>
-                                                    <span className="text-right font-medium">{formData.tamano_pantalla || '—'}</span>
-                                                </>
-                                            )}
                                         </div>
                                     </div>
                                 </>
                             )}
-
-                            {/* Datos específicos de Tóner en vista previa */}
                             {formData.tipo_equipo === 'Tóner' && (
                                 <>
                                     <Divider />
@@ -509,20 +639,11 @@ const DrawerBien = ({
                                             <span className="text-right font-medium">{formData.lote || '—'}</span>
                                             <span className="text-gray-500">Proveedor:</span>
                                             <span className="text-right font-medium">{formData.proveedor || '—'}</span>
-                                            {formData.fecha_vencimiento && (
-                                                <>
-                                                    <span className="text-gray-500">Vencimiento:</span>
-                                                    <span className="text-right font-medium">{formData.fecha_vencimiento}</span>
-                                                </>
-                                            )}
                                         </div>
                                     </div>
                                 </>
                             )}
-
                             <Divider />
-
-                            {/* Notas */}
                             <div>
                                 <span className="text-[10px] uppercase font-bold text-gray-400 block mb-1">Observaciones</span>
                                 <p className="text-xs text-gray-600 italic bg-gray-50 p-2 rounded border border-gray-100 max-h-20 overflow-y-auto">
@@ -531,12 +652,8 @@ const DrawerBien = ({
                             </div>
                         </Card>
                     </div>
-
-                    {/* Botones de Acción */}
                     <div className="flex gap-2 justify-end bg-white border-t border-gray-200 p-4 -mx-6 -mb-6 mt-4">
-                        <Button appearance="secondary" onClick={onClose}>
-                            Cancelar
-                        </Button>
+                        <Button appearance="secondary" onClick={onClose}>Cancelar</Button>
                         <Button appearance="primary" onClick={handleSubmit}>
                             {editMode ? 'Actualizar Registro' : 'Confirmar Guardado'}
                         </Button>

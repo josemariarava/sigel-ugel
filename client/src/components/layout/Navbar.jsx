@@ -17,7 +17,7 @@ const Navbar = () => {
     }
 
     return (
-        <div className="bg-white shadow-sm h-16 fixed top-0 right-0 left-64 z-10">
+        <div className="bg-white shadow-sm h-16 fixed top-0 right-0 left-72 z-10">
             <div className="flex items-center justify-between h-full px-6">
                 {/* Búsqueda */}
                 <div className="w-96">
