@@ -13,7 +13,7 @@ import {
 } from '@fluentui/react-icons'
 import { Button, Tooltip, Badge } from '@fluentui/react-components'
 
-const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse }) => {
+const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse, mobileOpen, onMobileClose }) => {
     const { user } = useAuth()
     const [hoveredItem, setHoveredItem] = useState(null)
 
@@ -37,7 +37,7 @@ const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse }) => {
         <div 
             className={`${
                 collapsed ? 'w-20' : 'w-72'
-            } bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 h-screen fixed left-0 top-0 text-white transition-all duration-300 ease-in-out z-20 shadow-2xl`}
+            } bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 h-screen fixed left-0 top-0 text-white transition-all duration-300 ease-in-out z-40 shadow-2xl md:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
             {/* Header con logo y colapso */}
             <div className={`p-5 border-b border-white/10 relative overflow-hidden group`}>
@@ -95,6 +95,7 @@ const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse }) => {
                                             toggleSubMenu(item.id)
                                         } else {
                                             onPageChange(item.id)
+                                            if (onMobileClose) onMobileClose()
                                         }
                                     }}
                                     onMouseEnter={() => setHoveredItem(item.id)}
@@ -144,7 +145,7 @@ const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse }) => {
                                             <Button
                                                 key={subItem.id}
                                                 appearance="transparent"
-                                                onClick={() => onPageChange(subItem.id)}
+                                                onClick={() => { onPageChange(subItem.id); if (onMobileClose) onMobileClose() }}
                                                 className={`
                                                     w-full !justify-start !text-sm !py-2 !px-3
                                                     transition-all duration-200

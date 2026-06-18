@@ -19,7 +19,8 @@ import {
     PhoneTabletRegular,
     ProjectionScreenRegular,
     CheckboxCheckedRegular,
-    CheckboxUncheckedRegular
+    CheckboxUncheckedRegular,
+    MoreHorizontalRegular
 } from '@fluentui/react-icons'
 import {
     Button,
@@ -34,7 +35,12 @@ import {
     Toaster,
     Badge,
     Tooltip,
-    Select
+    Select,
+    Menu,
+    MenuTrigger,
+    MenuPopover,
+    MenuList,
+    MenuItem
 } from '@fluentui/react-components'
 import ConfirmDialog from '../components/shared/ConfirmDialog'
 import useBienes from '../hooks/useBienes'
@@ -159,35 +165,7 @@ const Bienes = () => {
                     <p className="text-sm text-gray-500 mt-0.5">Administración del inventario tecnológico</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button
-                        appearance="secondary"
-                        icon={<ArrowSyncRegular />}
-                        onClick={exportarAExcel}
-                        disabled={exportando}
-                    >
-                        <span className="hidden sm:inline">{exportando ? 'Exportando...' : 'Exportar Excel'}</span>
-                    </Button>
-                    <Button
-                        appearance="secondary"
-                        icon={<CartRegular />}
-                        onClick={() => setOpenCompraDrawer(true)}
-                    >
-                        <span className="hidden sm:inline">Registrar Compra Tóneres</span>
-                    </Button>
-                    <Button
-                        appearance="secondary"
-                        icon={<DesktopRegular />}
-                        onClick={() => setOpenCompraEquipoDrawer(true)}
-                    >
-                        <span className="hidden sm:inline">Registrar Compra Equipos</span>
-                    </Button>
-                    <Button
-                        appearance="secondary"
-                        icon={<DocumentRegular />}
-                        onClick={() => setOpenImportarExcelDrawer(true)}
-                    >
-                        <span className="hidden sm:inline">Importar Excel</span>
-                    </Button>
+                    {/* Botón principal siempre visible */}
                     <Button
                         appearance="primary"
                         icon={<AddRegular />}
@@ -197,7 +175,60 @@ const Bienes = () => {
                         }}
                     >
                         <span className="hidden sm:inline">Nuevo Bien</span>
+                        <span className="sm:hidden">Nuevo</span>
                     </Button>
+
+                    {/* Botones secundarios visibles en desktop */}
+                    <div className="hidden sm:flex gap-2">
+                        <Button
+                            appearance="secondary"
+                            icon={<ArrowSyncRegular />}
+                            onClick={exportarAExcel}
+                            disabled={exportando}
+                        >
+                            {exportando ? 'Exportando...' : 'Exportar Excel'}
+                        </Button>
+                        <Button
+                            appearance="secondary"
+                            icon={<CartRegular />}
+                            onClick={() => setOpenCompraDrawer(true)}
+                        >
+                            Registrar Compra Tóneres
+                        </Button>
+                        <Button
+                            appearance="secondary"
+                            icon={<DesktopRegular />}
+                            onClick={() => setOpenCompraEquipoDrawer(true)}
+                        >
+                            Registrar Compra Equipos
+                        </Button>
+                        <Button
+                            appearance="secondary"
+                            icon={<DocumentRegular />}
+                            onClick={() => setOpenImportarExcelDrawer(true)}
+                        >
+                            Importar Excel
+                        </Button>
+                    </div>
+
+                    {/* Menú overflow en mobile */}
+                    <div className="sm:hidden">
+                        <Menu>
+                            <MenuTrigger>
+                                <Button icon={<MoreHorizontalRegular />} appearance="secondary" />
+                            </MenuTrigger>
+                            <MenuPopover>
+                                <MenuList>
+                                    <MenuItem icon={<ArrowSyncRegular />} onClick={exportarAExcel} disabled={exportando}>
+                                        Exportar Excel{exportando ? '...' : ''}
+                                    </MenuItem>
+                                    <MenuItem icon={<CartRegular />} onClick={() => setOpenCompraDrawer(true)}>Registrar Compra Tóneres</MenuItem>
+                                    <MenuItem icon={<DesktopRegular />} onClick={() => setOpenCompraEquipoDrawer(true)}>Registrar Compra Equipos</MenuItem>
+                                    <MenuItem icon={<DocumentRegular />} onClick={() => setOpenImportarExcelDrawer(true)}>Importar Excel</MenuItem>
+                                </MenuList>
+                            </MenuPopover>
+                        </Menu>
+                    </div>
                 </div>
             </div>
 
