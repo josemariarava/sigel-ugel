@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { 
   Search24Regular,
   PersonCircle24Regular,
@@ -5,26 +6,38 @@ import {
 } from '@fluentui/react-icons'
 import { Input, Button, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from '@fluentui/react-components'
 import { useAuth } from '../../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 
-const Navbar = () => {
+const Navbar = ({ collapsed }) => {
     const { user, signOut } = useAuth()
     const navigate = useNavigate()
+    const location = useLocation()
+    const [navSearch, setNavSearch] = useState('')
 
     const handleLogout = async () => {
         await signOut()
         navigate('/login')
     }
 
+    const handleNavSearchKeyDown = (e) => {
+        if (e.key === 'Enter' && navSearch.trim()) {
+            navigate(`/bienes?search=${encodeURIComponent(navSearch.trim())}`)
+            setNavSearch('')
+        }
+    }
+
     return (
-        <div className="bg-white shadow-sm h-16 fixed top-0 right-0 left-72 z-10">
-            <div className="flex items-center justify-between h-full px-6">
+        <div className={`bg-white shadow-sm h-16 fixed top-0 right-0 z-10 transition-all duration-300 ${collapsed ? 'md:left-20' : 'md:left-72'} left-0`}>
+            <div className="flex items-center justify-between h-full px-4 md:px-6">
                 {/* Búsqueda */}
-                <div className="w-96">
+                <div className="w-full max-w-xs md:max-w-md lg:w-96">
                     <Input
                         placeholder="Buscar bien, persona o código..."
                         contentBefore={<Search24Regular />}
                         className="w-full"
+                        value={navSearch}
+                        onChange={(e) => setNavSearch(e.target.value)}
+                        onKeyDown={handleNavSearchKeyDown}
                     />
                 </div>
                 

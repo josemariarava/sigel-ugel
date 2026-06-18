@@ -285,6 +285,17 @@ export default function DrawerAsignacion({
                     </div>
                 )}
 
+                <Field label="Detalle de ubicación">
+                    <input
+                        type="text"
+                        name="ubicacion_detalle"
+                        value={formData.ubicacion_detalle}
+                        onChange={handleInputChange}
+                        placeholder="Ej. Oficina 205, escritorio 3, ala norte..."
+                        className="w-full text-sm border rounded-lg px-3 py-2.5"
+                    />
+                </Field>
+
                 <div className="grid grid-cols-2 gap-4">
                     <Field label="Fecha de Asignación">
                         <input

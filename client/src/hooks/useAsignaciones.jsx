@@ -78,6 +78,7 @@ export function useAsignaciones(dispatchToast) {
         persona_origen_id: '',
         motivo: '',
         observaciones: '',
+        ubicacion_detalle: '',
         estado_asignacion: ESTADOS.ASIGNACION.ACTIVO
     })
 
@@ -193,7 +194,7 @@ export function useAsignaciones(dispatchToast) {
         try {
             setLoading(true)
             const [asignacionesResult, personasResult, pisosResult, ambientesResult, areasResult, tiposMovResult] = await Promise.all([
-                supabase.from('asignaciones').select(`*, bien:bienes(*), persona:personas(*), ambiente:ambientes(*, piso:pisos(*))`).order('fecha_asignacion', { ascending: false }),
+               supabase.from('asignaciones').select(`*, bien:bienes!fk_asignaciones_bien(*), persona:personas!fk_asignaciones_persona(*), ambiente:ambientes!fk_asignaciones_ambiente(*, piso:pisos(*))`).order('fecha_asignacion', { ascending: false }),
                 supabase.from('personas').select('*, area:areas(*)').order('apellidos'),
                 supabase.from('pisos').select('*').order('numero'),
                 supabase.from('ambientes').select('*, piso:pisos(*), area:areas(*)').order('nombre'),
@@ -647,7 +648,14 @@ export function useAsignaciones(dispatchToast) {
                 : null
 
             if (tipo === 'traslado') {
-                await actualizarBienSegunTipo(tipo, asignacionActual)
+                const { error: updateOldError } = await supabase
+                    .from('asignaciones')
+                    .update({
+                        estado_asignacion: ESTADOS.ASIGNACION.TRASLADADO,
+                        fecha_actualizacion: trasladoData.fecha
+                    })
+                    .eq('id', asignacionActual.id)
+                if (updateOldError) throw updateOldError
 
                 const { data: newAsignacion, error: insertError } = await supabase
                     .from('asignaciones')
@@ -663,18 +671,15 @@ export function useAsignaciones(dispatchToast) {
                     })
                     .select()
                     .single()
-                if (insertError) throw insertError
-
-                const { error: updateError } = await supabase
-                    .from('asignaciones')
-                    .update({
-                        estado_asignacion: ESTADOS.ASIGNACION.TRASLADADO,
-                        fecha_actualizacion: trasladoData.fecha
-                    })
-                    .eq('id', asignacionActual.id)
-                if (updateError) {
-                    await supabase.from('asignaciones').delete().eq('id', newAsignacion.id)
-                    throw updateError
+                if (insertError) {
+                    await supabase
+                        .from('asignaciones')
+                        .update({
+                            estado_asignacion: ESTADOS.ASIGNACION.ACTIVO,
+                            fecha_actualizacion: trasladoData.fecha
+                        })
+                        .eq('id', asignacionActual.id)
+                    throw insertError
                 }
             } else {
                 await actualizarBienSegunTipo(tipo, asignacionActual)
@@ -782,6 +787,7 @@ export function useAsignaciones(dispatchToast) {
                 ambiente_id: formData.ambiente_id || null,
                 fecha_asignacion: formData.fecha_asignacion,
                 observaciones: formData.observaciones,
+                ubicacion_detalle: formData.ubicacion_detalle || null,
                 estado_asignacion: formData.estado_asignacion,
                 ...(!editMode && numeroActa ? { numero_acta: numeroActa } : {})
             }
@@ -795,6 +801,12 @@ export function useAsignaciones(dispatchToast) {
                 if (error) throw error
                 mostrarToast('Asignación actualizada ✨')
             } else {
+                const { error: bienError } = await supabase
+                    .from('bienes')
+                    .update({ estado: ESTADOS.BIEN.ASIGNADO })
+                    .eq('id', formData.bien_id)
+                if (bienError) throw bienError
+
                 const { error } = await supabase.from('asignaciones').insert([payload])
                 if (error) throw error
 
@@ -809,8 +821,6 @@ export function useAsignaciones(dispatchToast) {
                     motivo: formData.motivo || null,
                     observaciones: formData.observaciones || 'Asignación inicial del bien'
                 })
-
-                await supabase.from('bienes').update({ estado: ESTADOS.BIEN.ASIGNADO }).eq('id', formData.bien_id)
 
                 mostrarToast(movOk ? 'Asignación registrada ✅' : 'Asignación registrada ⚠️ No se pudo guardar el historial', movOk ? 'success' : 'warning')
             }
@@ -844,6 +854,7 @@ export function useAsignaciones(dispatchToast) {
             persona_origen_id: '',
             motivo: '',
             observaciones: asignacion.observaciones || '',
+            ubicacion_detalle: asignacion.ubicacion_detalle || '',
             estado_asignacion: asignacion.estado_asignacion || ESTADOS.ASIGNACION.ACTIVO
         })
         if (asignacion.ambiente?.piso_id) setSelectedPiso(asignacion.ambiente.piso_id)
@@ -890,13 +901,17 @@ export function useAsignaciones(dispatchToast) {
         submittingRef.current = true
         setSubmitting(true)
         try {
-            const { error } = await supabase.from('asignaciones').delete().eq('id', deleteTarget.id)
-            if (error) throw error
-
             if (deleteTarget.estado_asignacion === ESTADOS.ASIGNACION.ACTIVO) {
                 const estadoBien = deleteTarget.bien?.tipo_equipo === 'Tóner' ? ESTADOS.BIEN.DISPONIBLE : ESTADOS.BIEN.ACTIVO
-                await supabase.from('bienes').update({ estado: estadoBien }).eq('id', deleteTarget.bien_id)
+                const { error: bienError } = await supabase
+                    .from('bienes')
+                    .update({ estado: estadoBien })
+                    .eq('id', deleteTarget.bien_id)
+                if (bienError) throw bienError
             }
+
+            const { error } = await supabase.from('asignaciones').delete().eq('id', deleteTarget.id)
+            if (error) throw error
 
             mostrarToast('Registro eliminado')
             cargarDatos()
@@ -927,6 +942,7 @@ export function useAsignaciones(dispatchToast) {
             persona_origen_id: '',
             motivo: '',
             observaciones: '',
+            ubicacion_detalle: '',
             estado_asignacion: ESTADOS.ASIGNACION.ACTIVO
         })
     }
@@ -980,9 +996,11 @@ export function useAsignaciones(dispatchToast) {
     const actualizarBienSegunTipo = async (tipo, asignacionActual) => {
         if (tipo === 'devolucion') {
             const estadoBien = asignacionActual.bien?.tipo_equipo === 'Tóner' ? ESTADOS.BIEN.DISPONIBLE : ESTADOS.BIEN.ACTIVO
-            await supabase.from('bienes').update({ estado: estadoBien }).eq('id', asignacionActual.bien_id)
+            const { error } = await supabase.from('bienes').update({ estado: estadoBien }).eq('id', asignacionActual.bien_id)
+            if (error) throw error
         } else if (tipo === 'baja') {
-            await supabase.from('bienes').update({ estado: ESTADOS.BIEN.DADO_BAJA }).eq('id', asignacionActual.bien_id)
+            const { error } = await supabase.from('bienes').update({ estado: ESTADOS.BIEN.DADO_BAJA }).eq('id', asignacionActual.bien_id)
+            if (error) throw error
         }
     }
 

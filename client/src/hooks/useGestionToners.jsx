@@ -109,7 +109,7 @@ export function useGestionToners(dispatchToast) {
                     persona:personas!asignacion_toners_persona_id_fkey(*),
                     ambiente:ambientes!asignacion_toners_ambiente_id_fkey(*)
                 `).order('fecha_asignacion', { ascending: false }),
-                supabase.from('bienes').select('*').eq('tipo_equipo', 'Tóner').in('estado', ['Disponible', 'Asignado', 'Activo']).order('marca'),
+                supabase.from('bienes').select('*').eq('tipo_equipo', 'Tóner').in('estado', ['Disponible', 'Asignado', 'Activo', 'Agotado']).order('marca'),
                 supabase.from('personas').select('*').order('apellidos'),
                 supabase.from('ambientes').select('*, piso:pisos(*)').order('nombre'),
                 supabase.from('pisos').select('*').order('numero'),
@@ -340,19 +340,19 @@ export function useGestionToners(dispatchToast) {
         submittingRef.current = true
         setSubmitting(true)
         try {
-            const { error } = await supabase
-                .from('asignacion_toners')
-                .delete()
-                .eq('id', deleteTarget.id)
-
-            if (error) throw error
-
             const { error: tonerError } = await supabase
                 .from('bienes')
                 .update({ estado: 'Disponible' })
                 .eq('id', deleteTarget.toner_id)
 
             if (tonerError) throw tonerError
+
+            const { error } = await supabase
+                .from('asignacion_toners')
+                .delete()
+                .eq('id', deleteTarget.id)
+
+            if (error) throw error
 
             try {
                 await supabase
@@ -401,17 +401,12 @@ export function useGestionToners(dispatchToast) {
             const fechaTermino = new Date(terminarData.fecha_terminado)
             const duracionDias = Math.ceil((fechaTermino - fechaAsignacion) / (1000 * 60 * 60 * 24))
 
-            const { error: updateError } = await supabase
-                .from('asignacion_toners')
-                .update({
-                    fecha_terminado: terminarData.fecha_terminado,
-                    duracion_dias: duracionDias,
-                    estado: 'Terminado',
-                    observaciones: terminarData.observaciones || selectedAsignacion.observaciones
-                })
-                .eq('id', selectedAsignacion.id)
+            const { error: tonerError } = await supabase
+                .from('bienes')
+                .update({ estado: 'Agotado' })
+                .eq('id', selectedAsignacion.toner_id)
 
-            if (updateError) throw updateError
+            if (tonerError) throw tonerError
 
             const tonerActual = selectedAsignacion.toner
             const { data: tonersMismoModelo } = await supabase
@@ -426,12 +421,17 @@ export function useGestionToners(dispatchToast) {
                 mostrarToast(`⚠️ ALERTA: Es el último tóner ${tonerActual.marca} ${tonerActual.modelo}. ¡Reabastecer!`, 'warning')
             }
 
-            const { error: tonerError } = await supabase
-                .from('bienes')
-                .update({ estado: 'Agotado' })
-                .eq('id', selectedAsignacion.toner_id)
+            const { error: updateError } = await supabase
+                .from('asignacion_toners')
+                .update({
+                    fecha_terminado: terminarData.fecha_terminado,
+                    duracion_dias: duracionDias,
+                    estado: 'Terminado',
+                    observaciones: terminarData.observaciones || selectedAsignacion.observaciones
+                })
+                .eq('id', selectedAsignacion.id)
 
-            if (tonerError) throw tonerError
+            if (updateError) throw updateError
 
             try {
                 await supabase
@@ -699,6 +699,7 @@ export function useGestionToners(dispatchToast) {
     }, [searchTerm])
 
     const tonersDisponibles = toners.filter(toner =>
+        toner.estado !== 'Agotado' &&
         !asignaciones.some(asig =>
             asig.toner_id === toner.id && asig.estado === 'Activo'
         )

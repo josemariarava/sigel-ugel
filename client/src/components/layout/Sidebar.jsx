@@ -13,9 +13,8 @@ import {
 } from '@fluentui/react-icons'
 import { Button, Tooltip, Badge } from '@fluentui/react-components'
 
-const Sidebar = ({ activePage, onPageChange }) => {
+const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse }) => {
     const { user } = useAuth()
-    const [collapsed, setCollapsed] = useState(false)
     const [hoveredItem, setHoveredItem] = useState(null)
 
     const menuItems = [
@@ -65,7 +64,7 @@ const Sidebar = ({ activePage, onPageChange }) => {
                     
                     <Button
                         appearance="subtle"
-                        onClick={() => setCollapsed(!collapsed)}
+                        onClick={onToggleCollapse}
                         className={`!text-white/70 hover:!text-white !min-w-8 !w-8 !h-8 ${collapsed ? 'absolute -right-3 top-1/2 -translate-y-1/2' : ''}`}
                         icon={collapsed ? <ChevronRightRegular /> : <ChevronLeftRegular />}
                     />

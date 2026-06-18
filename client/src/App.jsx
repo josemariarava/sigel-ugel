@@ -1,6 +1,13 @@
+import { useState } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { FluentProvider, webLightTheme, Spinner } from '@fluentui/react-components'
 import { AuthProvider, useAuth } from './context/AuthContext'
+
+const customTheme = {
+    ...webLightTheme,
+    fontFamilyBase: '"Outfit", "Segoe UI", sans-serif',
+    fontFamilyMonospace: '"Outfit", "Segoe UI", monospace',
+}
 import Sidebar from './components/layout/Sidebar'
 import Navbar from './components/layout/Navbar'
 import ProtectedRoute from './components/layout/ProtectedRoute'
@@ -18,6 +25,7 @@ function AppContent() {
     const { user, loading } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
     const activePage = location.pathname.replace('/', '') || 'dashboard'
 
@@ -40,9 +48,9 @@ function AppContent() {
 
     return (
         <div className="min-h-screen bg-gray-100">
-            <Sidebar activePage={activePage} onPageChange={handlePageChange} />
-            <Navbar />
-            <main className="ml-72 pt-16">
+            <Sidebar activePage={activePage} onPageChange={handlePageChange} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
+            <Navbar collapsed={sidebarCollapsed} />
+            <main className={`${sidebarCollapsed ? 'md:ml-20' : 'md:ml-72'} ml-0 pt-16 transition-all duration-300`}>
                 <div className="p-6">
                     <Routes>
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -64,7 +72,7 @@ function AppContent() {
 
 function App() {
     return (
-        <FluentProvider theme={webLightTheme}>
+        <FluentProvider theme={customTheme}>
             <AuthProvider>
                 <AppContent />
             </AuthProvider>
