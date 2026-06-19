@@ -36,6 +36,7 @@ import DrawerBien from '../components/bienes/DrawerBien'
 import BienesTable from '../components/bienes/BienesTable'
 import BatchActionBar from '../components/bienes/BatchActionBar'
 import PaginationBar from '../components/bienes/PaginationBar'
+import WorkstationGridView from '../components/bienes/WorkstationGridView'
 import TonersPorOC from '../components/toners/TonersPorOC'
 import DetalleOCDrawer from '../components/toners/DetalleOCDrawer'
 import CompraTonersDrawer from '../components/toners/CompraTonersDrawer'
@@ -146,7 +147,8 @@ const Bienes = () => {
     }
 
     const tabsConfig = [
-        { id: 'computo', label: 'Equipos de Cómputo', icon: LaptopRegular, badge: stats.computo },
+        { id: 'estaciones', label: 'Equipos de Cómputo', icon: DesktopRegular },
+        { id: 'computo', label: 'CPU y Laptops', icon: LaptopRegular, badge: stats.computo },
         { id: 'impresoras', label: 'Impresoras y Proyectores', icon: PrintRegular, badge: stats.impresoras },
         { id: 'perifericos', label: 'Periféricos', icon: KeyboardRegular, badge: stats.perifericos },
         { id: 'consumibles', label: 'Consumibles (Tóner)', icon: CartRegular, badge: stats.consumibles },
@@ -218,7 +220,7 @@ const Bienes = () => {
                 <div className="flex gap-3 items-center">
                     <div className="flex-1">
                         <Input
-                            placeholder="Buscar por tipo, marca, modelo, código patrimonial o serie..."
+                            placeholder="Buscar por tipo, marca, modelo, código patrimonial, serie o código TI..."
                             contentBefore={<SearchRegular />}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -270,6 +272,12 @@ const Bienes = () => {
                     onCompraClick={handleCompraEquipoClick}
                     onAgregarMas={handleAddMoreToCompraEquipo}
                     onBienSinOClick={handleEdit}
+                />
+            ) : activeTab === 'estaciones' ? (
+                <WorkstationGridView
+                    bienes={filteredBienes}
+                    handleEdit={handleEdit}
+                    handleDelete={handleDelete}
                 />
             ) : (
                 <>

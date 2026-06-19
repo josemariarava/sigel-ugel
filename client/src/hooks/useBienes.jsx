@@ -59,6 +59,24 @@ const determinarEstado = (tipoEquipo, condicion) => {
 
 const AGENTITO_URLS = ['http://localhost:5899', 'http://127.0.0.1:5899']
 
+const cache = new Map()
+const TTL = 5 * 60 * 1000
+const TTL_CATALOGO = 30 * 60 * 1000
+
+function getCached(key, ttl) {
+    const entry = cache.get(key)
+    if (!entry) return null
+    if (Date.now() - entry.timestamp > ttl) {
+        cache.delete(key)
+        return null
+    }
+    return entry.data
+}
+
+function setCache(key, data) {
+    cache.set(key, { data, timestamp: Date.now() })
+}
+
 const useBienes = () => {
     const [bienes, setBienes] = useState([])
     const [loading, setLoading] = useState(true)
@@ -66,7 +84,7 @@ const useBienes = () => {
     const [openDrawer, setOpenDrawer] = useState(false)
     const [editMode, setEditMode] = useState(false)
     const [selectedBien, setSelectedBien] = useState(null)
-    const [activeTab, setActiveTab] = useState('computo')
+    const [activeTab, setActiveTab] = useState('estaciones')
 
     const [marcas, setMarcas] = useState([])
     const [modelos, setModelos] = useState([])
@@ -189,7 +207,16 @@ const useBienes = () => {
         )
     }
 
-    const cargarBienesPorCategoria = async (tab) => {
+    const cargarBienesPorCategoria = async (tab, forceRefresh = false) => {
+        const cacheKey = `bienes_${tab}`
+        if (!forceRefresh) {
+            const cached = getCached(cacheKey, TTL)
+            if (cached) {
+                setBienes(cached)
+                setLoading(false)
+                return
+            }
+        }
         try {
             setLoading(true)
             let query = supabase
@@ -210,6 +237,7 @@ const useBienes = () => {
             const { data, error } = await query.order('created_at', { ascending: false })
 
             if (error) throw error
+            setCache(cacheKey, data || [])
             setBienes(data || [])
         } catch (error) {
             mostrarToast(handleApiError(error, 'cargar bienes'), 'error')
@@ -218,7 +246,17 @@ const useBienes = () => {
         }
     }
 
-    const cargarCatalogo = async () => {
+    const cargarCatalogo = async (forceRefresh = false) => {
+        const cacheKey = 'catalogo'
+        if (!forceRefresh) {
+            const cached = getCached(cacheKey, TTL_CATALOGO)
+            if (cached) {
+                setMarcas(cached.marcas)
+                setModelos(cached.modelos)
+                setAmbientes(cached.ambientes)
+                return
+            }
+        }
         try {
             const [marcasRes, modelosRes, ambientesRes] = await Promise.all([
                 supabase.from('marcas').select('*').order('nombre'),
@@ -227,6 +265,11 @@ const useBienes = () => {
             ])
             if (marcasRes.error) throw marcasRes.error
             if (modelosRes.error) throw modelosRes.error
+            setCache(cacheKey, {
+                marcas: marcasRes.data || [],
+                modelos: modelosRes.data || [],
+                ambientes: ambientesRes.data || []
+            })
             setMarcas(marcasRes.data || [])
             setModelos(modelosRes.data || [])
             setAmbientes(ambientesRes.data || [])
@@ -235,11 +278,20 @@ const useBienes = () => {
         }
     }
 
-    const loadStats = async () => {
+    const loadStats = async (forceRefresh = false) => {
+        const cacheKey = 'stats'
+        if (!forceRefresh) {
+            const cached = getCached(cacheKey, TTL)
+            if (cached) {
+                setStatsLight(cached)
+                return
+            }
+        }
         try {
             const { data } = await supabase
                 .from('bienes')
                 .select('tipo_equipo, estado')
+            setCache(cacheKey, data || [])
             setStatsLight(data || [])
         } catch (error) {
             console.error('Error al cargar estadísticas:', error.message)
@@ -502,8 +554,8 @@ const useBienes = () => {
             }
 
             mostrarToast(`✅ ${totalCreados} equipo(s) agregados a O/C ${compraForm.orden_compra}`)
-            loadStats().catch(() => {})
-            cargarBienesPorCategoria(activeTab).catch(() => {})
+            loadStats(true).catch(() => {})
+            cargarBienesPorCategoria(activeTab, true).catch(() => {})
             cargarComprasEquipos(searchTerm).catch(() => {})
         } catch (error) {
             if (error.message === 'Validation failed') throw error
@@ -734,8 +786,8 @@ const useBienes = () => {
             }
         }
 
-        loadStats().catch(() => {})
-        cargarBienesPorCategoria(activeTab).catch(() => {})
+        loadStats(true).catch(() => {})
+        cargarBienesPorCategoria(activeTab, true).catch(() => {})
         if (activeTab === 'equipos') {
             cargarComprasEquipos(searchTerm).catch(() => {})
             cargarBienesSinOC().catch(() => {})
@@ -808,11 +860,18 @@ const useBienes = () => {
 
                 const bienesData = []
                 const now = Date.now()
-                for (let i = 0; i < recibido; i++) {
+                let seriesInput = []
+                if (detalle.series_manual?.trim()) {
+                    seriesInput = detalle.series_manual.split(/[\n,]+/).map(s => s.trim()).filter(Boolean)
+                }
+                const totalSeries = seriesInput.length > 0 ? seriesInput.length : recibido
+                for (let i = 0; i < totalSeries; i++) {
                     const numSerie = String(i + 1).padStart(3, '0')
-                    const serie = detalle.lote
-                        ? `${detalle.lote}-${numSerie}-${now}`
-                        : `${compraForm.orden_compra.replace(/[/\s]/g, '-')}-${numSerie}-${now}`
+                    const serie = seriesInput.length > 0
+                        ? seriesInput[i]
+                        : detalle.lote
+                            ? `${detalle.lote}-${numSerie}-${now}`
+                            : `${compraForm.orden_compra.replace(/[/\s]/g, '-')}-${numSerie}-${now}`
 
                     bienesData.push({
                         tipo_equipo: 'Tóner',
@@ -841,12 +900,12 @@ const useBienes = () => {
                     .insert(bienesData)
 
                 if (errBienes) throw errBienes
-                totalCreados += recibido
+                totalCreados += totalSeries
             }
 
             mostrarToast(`✅ ${totalCreados} tóner(es) agregados a O/C ${compraForm.orden_compra}`)
-            loadStats().catch(() => {})
-            cargarBienesPorCategoria(activeTab).catch(() => {})
+            loadStats(true).catch(() => {})
+            cargarBienesPorCategoria(activeTab, true).catch(() => {})
             cargarCompras(searchTerm).catch(() => {})
         } catch (error) {
             if (error.message === 'Validation failed') throw error
@@ -1270,9 +1329,9 @@ const useBienes = () => {
 
             setOpenDrawer(false)
             resetForm()
-            cargarCatalogo().catch(() => {})
-            loadStats().catch(() => {})
-            cargarBienesPorCategoria(activeTab).catch(() => {})
+            cargarCatalogo(true).catch(() => {})
+            loadStats(true).catch(() => {})
+            cargarBienesPorCategoria(activeTab, true).catch(() => {})
         } catch (error) {
             mostrarToast(handleApiError(error, 'guardar bien'), 'error')
         }
@@ -1316,9 +1375,7 @@ const useBienes = () => {
         if (bien.marca_id) {
             const filtrados = modelos.filter(m => m.marca_id === bien.marca_id)
             setModelosFiltrados(filtrados)
-            setMarcaManual(false)
         } else if (bien.marca) {
-            setMarcaManual(true)
         }
         setOpenDrawer(true)
     }
@@ -1359,8 +1416,8 @@ const useBienes = () => {
 
             if (error) throw error
             mostrarToast('Bien eliminado correctamente')
-            loadStats().catch(() => {})
-            cargarBienesPorCategoria(activeTab).catch(() => {})
+            loadStats(true).catch(() => {})
+            cargarBienesPorCategoria(activeTab, true).catch(() => {})
         } catch (error) {
             mostrarToast(handleApiError(error, 'eliminar bien'), 'error')
         } finally {
@@ -1384,11 +1441,14 @@ const useBienes = () => {
             bien.marca?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             bien.modelo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             String(bien.codigo_patrimonial ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            bien.serie?.toLowerCase().includes(searchTerm.toLowerCase())
+            bien.serie?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (bien.codigo_ti || '').toLowerCase().includes(searchTerm.toLowerCase())
 
         if (!matchesSearch) return false
 
-        if (activeTab === 'computo') {
+        if (activeTab === 'estaciones') {
+            return true
+        } else if (activeTab === 'computo') {
             return categorias.computo.includes(bien.tipo_equipo)
         } else if (activeTab === 'impresoras') {
             return categorias.impresoras.includes(bien.tipo_equipo)
