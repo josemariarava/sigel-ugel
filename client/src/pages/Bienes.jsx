@@ -21,6 +21,9 @@ import {
     Toaster,
     Badge,
     Spinner,
+    Select,
+    TabList,
+    Tab,
     Menu,
     MenuTrigger,
     MenuPopover,
@@ -164,8 +167,7 @@ const Bienes = () => {
                     </h1>
                     <p className="text-sm text-gray-500 mt-0.5">Administración del inventario tecnológico</p>
                 </div>
-                <div className="flex gap-2">
-                    {/* Botón principal siempre visible */}
+                <div className="flex gap-2 items-center">
                     <Button
                         appearance="primary"
                         icon={<AddRegular />}
@@ -174,83 +176,42 @@ const Bienes = () => {
                             setOpenDrawer(true)
                         }}
                     >
-                        <span className="hidden sm:inline">Nuevo Bien</span>
-                        <span className="sm:hidden">Nuevo</span>
+                        Nuevo Bien
                     </Button>
-
-                    {/* Botones secundarios visibles en desktop */}
-                    <div className="hidden sm:flex gap-2">
-                        <Button
-                            appearance="secondary"
-                            icon={<ArrowSyncRegular />}
-                            onClick={exportarAExcel}
-                            disabled={exportando}
-                        >
-                            {exportando ? 'Exportando...' : 'Exportar Excel'}
-                        </Button>
-                        <Button
-                            appearance="secondary"
-                            icon={<CartRegular />}
-                            onClick={() => setOpenCompraDrawer(true)}
-                        >
-                            Registrar Compra Tóneres
-                        </Button>
-                        <Button
-                            appearance="secondary"
-                            icon={<DesktopRegular />}
-                            onClick={() => setOpenCompraEquipoDrawer(true)}
-                        >
-                            Registrar Compra Equipos
-                        </Button>
-                        <Button
-                            appearance="secondary"
-                            icon={<DocumentRegular />}
-                            onClick={() => setOpenImportarExcelDrawer(true)}
-                        >
-                            Importar Excel
-                        </Button>
-                    </div>
-
-                    {/* Menú overflow en mobile */}
-                    <div className="sm:hidden">
-                        <Menu>
-                            <MenuTrigger>
-                                <Button icon={<MoreHorizontalRegular />} appearance="secondary" />
-                            </MenuTrigger>
-                            <MenuPopover>
-                                <MenuList>
-                                    <MenuItem icon={<ArrowSyncRegular />} onClick={exportarAExcel} disabled={exportando}>
-                                        Exportar Excel{exportando ? '...' : ''}
-                                    </MenuItem>
-                                    <MenuItem icon={<CartRegular />} onClick={() => setOpenCompraDrawer(true)}>Registrar Compra Tóneres</MenuItem>
-                                    <MenuItem icon={<DesktopRegular />} onClick={() => setOpenCompraEquipoDrawer(true)}>Registrar Compra Equipos</MenuItem>
-                                    <MenuItem icon={<DocumentRegular />} onClick={() => setOpenImportarExcelDrawer(true)}>Importar Excel</MenuItem>
-                                </MenuList>
-                            </MenuPopover>
-                        </Menu>
-                    </div>
+                    <Menu>
+                        <MenuTrigger>
+                            <Button icon={<MoreHorizontalRegular />} appearance="secondary">Acciones</Button>
+                        </MenuTrigger>
+                        <MenuPopover>
+                            <MenuList>
+                                <MenuItem icon={<ArrowSyncRegular />} onClick={exportarAExcel} disabled={exportando}>
+                                    Exportar Excel{exportando ? '...' : ''}
+                                </MenuItem>
+                                <MenuItem icon={<DocumentRegular />} onClick={() => setOpenImportarExcelDrawer(true)}>
+                                    Importar Excel
+                                </MenuItem>
+                                <MenuItem divider />
+                                <MenuItem icon={<CartRegular />} onClick={() => setOpenCompraDrawer(true)}>
+                                    Registrar Compra Tóneres
+                                </MenuItem>
+                                <MenuItem icon={<DesktopRegular />} onClick={() => setOpenCompraEquipoDrawer(true)}>
+                                    Registrar Compra Equipos
+                                </MenuItem>
+                            </MenuList>
+                        </MenuPopover>
+                    </Menu>
                 </div>
             </div>
 
             {/* TABS DE NAVEGACIÓN */}
-            <div className="border-b border-gray-200">
-                <nav className="flex gap-1 overflow-x-auto" role="tablist">
-                    {tabsConfig.map(({ id, label, icon: Icon, badge }) => (
-                        <button key={id} role="tab"
-                            onClick={() => setActiveTab(id)}
-                            aria-selected={activeTab === id}
-                            className={`px-3 sm:px-5 py-2.5 text-sm font-medium rounded-t-lg transition-all flex items-center gap-1 sm:gap-2 whitespace-nowrap ${activeTab === id
-                                ? 'bg-white text-blue-600 border-b-2 border-blue-600 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                            }`}
-                        >
-                            <Icon />
-                            <span className="hidden sm:inline">{label}</span>
-                            {badge !== undefined && <Badge appearance="filled" size="small">{badge}</Badge>}
-                        </button>
-                    ))}
-                </nav>
-            </div>
+            <TabList selectedValue={activeTab} onTabSelect={(_, d) => setActiveTab(d.value)}>
+                {tabsConfig.map(({ id, label, icon: Icon, badge }) => (
+                    <Tab key={id} value={id} icon={<Icon />}>
+                        {label}
+                        {badge !== undefined && <Badge appearance="filled" size="small">{badge}</Badge>}
+                    </Tab>
+                ))}
+            </TabList>
 
             {/* Barra de Búsqueda */}
             <Card className="!p-3">
@@ -283,23 +244,13 @@ const Bienes = () => {
                     </Button>
                 </div>
                 {activeTab !== 'consumibles' && activeTab !== 'equipos' && (
-                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                        <span className="text-xs text-gray-500 font-medium">O/C:</span>
-                        <div className="flex gap-1">
-                            {['todos', 'conOC', 'sinOC'].map(op => (
-                                <button
-                                    key={op}
-                                    onClick={() => setFiltroOC(op)}
-                                    className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
-                                        filtroOC === op
-                                            ? 'bg-blue-100 text-blue-700'
-                                            : 'text-gray-500 hover:bg-gray-100'
-                                    }`}
-                                >
-                                    {op === 'todos' ? 'Todos' : op === 'conOC' ? 'Con O/C' : 'Sin O/C'}
-                                </button>
-                            ))}
-                        </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500 font-medium whitespace-nowrap">OC:</span>
+                        <Select value={filtroOC} onChange={(e) => setFiltroOC(e.target.value)} size="small">
+                            <option value="todos">Todos</option>
+                            <option value="conOC">Con O/C</option>
+                            <option value="sinOC">Sin O/C</option>
+                        </Select>
                     </div>
                 )}
             </Card>

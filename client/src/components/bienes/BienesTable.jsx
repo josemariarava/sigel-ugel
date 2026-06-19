@@ -1,8 +1,6 @@
 import {
     EditRegular,
     DeleteRegular,
-    CheckboxCheckedRegular,
-    CheckboxUncheckedRegular,
     LaptopRegular,
     PrintRegular,
     TvRegular,
@@ -18,7 +16,8 @@ import {
     TableBody,
     TableCell,
     Tooltip,
-    Button
+    Button,
+    Checkbox
 } from '@fluentui/react-components'
 
 const condicionBadge = (condicion) => {
@@ -58,12 +57,11 @@ const BienesTable = ({ filteredBienes, paginatedData, selectedIds, toggleSelect,
                 <TableHeader className="sticky top-0 z-10 bg-white">
                     <TableRow>
                         <TableHeaderCell className="w-8">
-                            <button onClick={toggleSelectAll} className="cursor-pointer">
-                                {selectedIds.size === filteredBienes.length && filteredBienes.length > 0
-                                    ? <CheckboxCheckedRegular className="text-blue-600" />
-                                    : <CheckboxUncheckedRegular className="text-gray-400" />
-                                }
-                            </button>
+                            <Checkbox
+                                checked={filteredBienes.length === 0 ? false :
+                                    selectedIds.size === filteredBienes.length ? true : 'mixed'}
+                                onChange={toggleSelectAll}
+                            />
                         </TableHeaderCell>
                         <TableHeaderCell><span className="font-semibold">Tipo</span></TableHeaderCell>
                         <TableHeaderCell><span className="font-semibold">Marca / Modelo</span></TableHeaderCell>
@@ -87,12 +85,7 @@ const BienesTable = ({ filteredBienes, paginatedData, selectedIds, toggleSelect,
                         paginatedData.map((bien) => (
                             <TableRow key={bien.id} className={`hover:bg-gray-50 transition-colors ${selectedIds.has(bien.id) ? 'bg-blue-50' : ''}`}>
                                 <TableCell className="w-8">
-                                    <button onClick={() => toggleSelect(bien.id)} className="cursor-pointer">
-                                        {selectedIds.has(bien.id)
-                                            ? <CheckboxCheckedRegular className="text-blue-600" />
-                                            : <CheckboxUncheckedRegular className="text-gray-400" />
-                                        }
-                                    </button>
+                                    <Checkbox checked={selectedIds.has(bien.id)} onChange={() => toggleSelect(bien.id)} />
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-2">
