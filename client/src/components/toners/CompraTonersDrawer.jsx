@@ -17,7 +17,9 @@ import {
     Subtitle2,
     Divider,
     Badge,
-    Select
+    Select,
+    MessageBar,
+    MessageBarBody
 } from '@fluentui/react-components'
 
 const INITIAL_DETALLE = {
@@ -233,14 +235,14 @@ const CompraTonersDrawer = ({ open, onClose, marcas, modelos, prefillCompraId = 
                                     ))}
                                 </Select>
                             </Field>
-                            <div className="text-xs text-gray-500 bg-amber-50 rounded-lg p-3">
-                                <p className="font-medium text-amber-700 mb-1 flex items-center gap-1">
-                                    <ClipboardRegular className="text-sm" /> Datos de la compra seleccionada:
-                                </p>
-                                <p>O/C: <strong>{compraForm.orden_compra || '—'}</strong></p>
-                                <p>Proveedor: {compraForm.proveedor || '—'}</p>
-                                <p>Fecha: {compraForm.fecha_compra || '—'}</p>
-                            </div>
+                            <MessageBar intent="info">
+                                <MessageBarBody>
+                                    <b>Datos de la compra seleccionada:</b><br />
+                                    O/C: <strong>{compraForm.orden_compra || '—'}</strong><br />
+                                    Proveedor: {compraForm.proveedor || '—'}<br />
+                                    Fecha: {compraForm.fecha_compra || '—'}
+                                </MessageBarBody>
+                            </MessageBar>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

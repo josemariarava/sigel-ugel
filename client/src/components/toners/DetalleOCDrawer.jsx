@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { CartRegular, DismissRegular, EditRegular, SaveRegular } from '@fluentui/react-icons'
+import { CartRegular, DismissRegular, EditRegular, SaveRegular, BoxRegular } from '@fluentui/react-icons'
 import { supabase } from '../../lib/supabaseClient'
 import {
     Button,
@@ -16,7 +16,11 @@ import {
     DrawerBody,
     DrawerHeader,
     DrawerHeaderTitle,
-    Tooltip
+    Tooltip,
+    Select,
+    Spinner,
+    MessageBar,
+    MessageBarBody
 } from '@fluentui/react-components'
 
 const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onAgregarMas, onBatchUpdate }) => {
@@ -139,23 +143,27 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onAgregar
                         </div>
                     }
                 >
-                    <div>
-                        <span className="text-lg font-bold text-slate-800">
-                            📦 Detalle O/C {compra?.orden_compra || ''}
-                        </span>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                            {compra?.proveedor || ''} · {compra?.fecha_compra
-                                ? new Date(compra.fecha_compra + 'T00:00:00').toLocaleDateString('es-PE')
-                                : ''}
-                        </p>
+                    <div className="flex items-center gap-2">
+                        <CartRegular className="text-xl text-teal-600" />
+                        <div>
+                            <span className="text-lg font-bold text-slate-800">
+                                Detalle O/C {compra?.orden_compra || ''}
+                            </span>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                                {compra?.proveedor || ''} · {compra?.fecha_compra
+                                    ? new Date(compra.fecha_compra + 'T00:00:00').toLocaleDateString('es-PE')
+                                    : ''}
+                            </p>
+                        </div>
                     </div>
                 </DrawerHeaderTitle>
             </DrawerHeader>
 
             <DrawerBody className="p-4 space-y-6">
                 {toners.length === 0 ? (
-                    <div className="text-center text-gray-400 py-12">
-                        <p>Cargando tóneres...</p>
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                        <Spinner size="small" />
+                        <p className="mt-3 text-sm">Cargando tóneres...</p>
                     </div>
                 ) : (
                     toners.map((detalle) => (
@@ -184,8 +192,8 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onAgregar
                             {/* Batch edit inline form */}
                             {batchEdit.open && batchEdit.detalleId === detalle.id && (
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3 space-y-3">
-                                    <p className="text-xs font-semibold text-blue-700 uppercase">
-                                        ✏️ Editar todos los tóneres de {detalle.marca} {detalle.modelo}
+                                    <p className="text-xs font-semibold text-blue-700 uppercase flex items-center gap-1">
+                                        <EditRegular className="text-sm" /> Editar todos los tóneres de {detalle.marca} {detalle.modelo}
                                     </p>
                                     <p className="text-[10px] text-blue-500 -mt-2">
                                         Solo se actualizarán los campos que llenes
@@ -224,16 +232,15 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onAgregar
                                             />
                                         </Field>
                                         <Field label="Ubicación">
-                                            <select
+                                            <Select
                                                 value={batchForm.ubicacion}
-                                                onChange={(e) => setBatchForm(p => ({ ...p, ubicacion: e.target.value }))}
-                                                className="w-full text-sm border rounded-lg px-3 py-2.5 bg-white"
+                                                onChange={(e, data) => setBatchForm(p => ({ ...p, ubicacion: data.value }))}
                                             >
                                                 <option value="">-- Sin cambio --</option>
                                                 {ambientes.map(a => (
-                                                    <option key={a.id} value={a.nombre}>📍 {a.nombre}</option>
+                                                    <option key={a.id} value={a.nombre}>{a.nombre}</option>
                                                 ))}
-                                            </select>
+                                            </Select>
                                         </Field>
                                         <Field label="Fecha Venc.">
                                             <Input
@@ -313,17 +320,17 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onAgregar
                                                     {toner.fecha_vencimiento || '—'}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                    <Badge appearance="filled" color={
                                                         toner.estado === 'Disponible' || toner.estado === 'Activo'
-                                                            ? 'bg-emerald-100 text-emerald-800'
+                                                            ? 'success'
                                                             : toner.estado === 'Asignado'
-                                                                ? 'bg-amber-100 text-amber-800'
+                                                                ? 'warning'
                                                                 : toner.estado === 'Agotado'
-                                                                    ? 'bg-red-100 text-red-800'
-                                                                    : 'bg-gray-200 text-gray-800'
-                                                    }`}>
+                                                                    ? 'danger'
+                                                                    : 'seafoam'
+                                                    }>
                                                         {toner.estado}
-                                                    </span>
+                                                    </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-xs">
                                                     {toner.estado === 'Asignado' && asignacionesMap[toner.id] ? (
