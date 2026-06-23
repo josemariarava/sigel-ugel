@@ -42,7 +42,7 @@ const StationCard = ({ codigoTi, count, assets, onClick }) => {
 
     return (
         <Card
-            className="cursor-pointer hover:shadow-md hover:border-blue-400 transition-all border-l-4 border-l-blue-500 !p-4"
+            className="cursor-pointer hover:shadow-sm transition-all border border-gray-100 border-l-2 border-l-blue-400 !p-4 bg-blue-50/20"
             onClick={onClick}
         >
             <div className="space-y-2">
@@ -60,7 +60,7 @@ const StationCard = ({ codigoTi, count, assets, onClick }) => {
 
                 <div className="flex flex-wrap gap-1.5">
                     {tiposUnicos.map(tipo => (
-                        <span key={tipo} className="text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md font-medium">
+                        <span key={tipo} className="text-[11px] bg-blue-50/50 text-gray-500 px-2 py-0.5 rounded-md font-medium">
                             {tipoAbreviado(tipo)}
                         </span>
                     ))}

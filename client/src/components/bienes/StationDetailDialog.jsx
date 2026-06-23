@@ -45,7 +45,7 @@ const StationDetailDialog = ({ open, onClose, codigoTi, assets, onEdit }) => (
                 <DialogContent>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
                         {assets?.map((bien) => (
-                            <Card key={bien.id} className="!p-3">
+                            <Card key={bien.id} className="!p-3 border border-gray-100 hover:shadow-sm">
                                 <div className="flex items-start gap-3">
                                     <div className="mt-1">{tipoIcono(bien.tipo_equipo)}</div>
                                     <div className="flex-1 min-w-0">
