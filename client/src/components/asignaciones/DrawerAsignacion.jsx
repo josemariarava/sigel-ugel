@@ -8,6 +8,9 @@ import {
 } from '@fluentui/react-icons'
 import {
     Button,
+    Input,
+    Textarea,
+    Select,
     Drawer,
     DrawerHeader,
     DrawerHeaderTitle,
@@ -50,8 +53,8 @@ export default function DrawerAsignacion({
     submitting
 }) {
     return (
-        <Drawer position="end" open={openModal} onOpenChange={(_, data) => setOpenModal(data.open)} size='medium'>
-            <DrawerHeader className="border-b bg-gradient-to-r from-blue-50 to-white">
+        <Drawer position="end" open={openModal} onOpenChange={(_, data) => setOpenModal(data.open)} size='large'>
+            <DrawerHeader className="border-b border-gray-100 bg-blue-50/40">
                 <DrawerHeaderTitle
                     action={
                         <Button appearance="subtle" icon={<DismissRegular />} onClick={() => {
@@ -73,27 +76,24 @@ export default function DrawerAsignacion({
             <DrawerBody className="space-y-5 p-6">
                 <Field label="Bien Patrimonial *" required>
                     <div className="relative">
-                        <div className="relative">
-                            <SearchRegular className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
-                            <input
-                                type="text"
-                                placeholder="🔍 Buscar por tipo, marca, modelo, código patrimonial o serie..."
-                                value={searchTermBien}
-                                onChange={(e) => {
-                                    setSearchTermBien(e.target.value)
-                                    setShowBienDropdown(true)
-                                }}
-                                onFocus={() => setShowBienDropdown(true)}
-                                className="w-full pl-9 pr-3 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
-                        </div>
+                        <Input
+                            size="small"
+                            contentBefore={<SearchRegular className="text-gray-400" />}
+                            placeholder="🔍 Buscar por tipo, marca, modelo, código patrimonial o serie..."
+                            value={searchTermBien}
+                            onChange={(e) => {
+                                setSearchTermBien(e.target.value)
+                                setShowBienDropdown(true)
+                            }}
+                            onFocus={() => setShowBienDropdown(true)}
+                        />
 
                         {showBienDropdown && bienesFiltrados.length > 0 && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-sm max-h-64 overflow-y-auto">
                                 {bienesFiltrados.map(b => (
                                     <div
                                         key={b.id}
-                                        className="px-3 py-2.5 hover:bg-blue-50 cursor-pointer border-b last:border-0 transition-colors"
+                                        className="px-3 py-2.5 hover:bg-blue-50/50 cursor-pointer border-b last:border-0 transition-colors"
                                         onClick={() => {
                                             setFormData({ ...formData, bien_id: b.id })
                                             setSearchTermBien(`${b.tipo_equipo} - ${b.codigo_patrimonial || 'S/C'} (${b.marca || 'S/M'})`)
@@ -127,13 +127,13 @@ export default function DrawerAsignacion({
                         )}
 
                         {showBienDropdown && bienesFiltrados.length === 0 && searchTermBien && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg p-4 text-center text-gray-500 text-sm">
+                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-sm p-4 text-center text-gray-500 text-sm">
                                 No se encontraron bienes con: "{searchTermBien}"
                             </div>
                         )}
 
                         {formData.bien_id && !showBienDropdown && (
-                            <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                            <div className="mt-3 p-3 bg-blue-50/30 rounded-xl border border-blue-100">
                                 <div className="flex justify-between items-start">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 flex-wrap">
@@ -169,11 +169,11 @@ export default function DrawerAsignacion({
                 </Field>
 
                 <Field label="Servidor Público Responsable *" required>
-                    <select
+                    <Select
+                        size="small"
                         name="persona_id"
                         value={formData.persona_id}
-                        onChange={handlePersonaChange}
-                        className="w-full text-sm border rounded-lg px-3 py-2.5 bg-white focus:ring-2 focus:ring-blue-500"
+                        onChange={(e, data) => handlePersonaChange({ target: { name: 'persona_id', value: data.value } })}
                     >
                         <option value="">-- Seleccionar Responsable --</option>
                         {personas.map(p => (
@@ -181,11 +181,11 @@ export default function DrawerAsignacion({
                                 👤 {p.apellidos}, {p.nombres} - {p.cargo || 'Personal'}
                             </option>
                         ))}
-                    </select>
+                    </Select>
                 </Field>
 
                 {infoResponsable && (
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-3 border border-blue-200">
+                    <div className="bg-blue-50/30 rounded-xl p-3 border border-blue-100">
                         <div className="flex items-center gap-2 mb-2">
                             <PersonRegular className="text-blue-600 text-sm" />
                             <span className="text-xs font-semibold text-blue-800">Información del Responsable</span>
@@ -213,10 +213,10 @@ export default function DrawerAsignacion({
 
                 <div className="grid grid-cols-2 gap-4">
                     <Field label="Piso / Nivel">
-                        <select
+                        <Select
+                            size="small"
                             value={selectedPiso}
-                            onChange={(e) => setSelectedPiso(e.target.value)}
-                            className="w-full text-sm border rounded-lg px-3 py-2.5 bg-white"
+                            onChange={(e, data) => setSelectedPiso(data.value)}
                         >
                             <option value="">-- Todos los pisos --</option>
                             {pisos.map(p => (
@@ -224,15 +224,15 @@ export default function DrawerAsignacion({
                                     🏢 {p.nombre || `Piso ${p.numero}`}
                                 </option>
                             ))}
-                        </select>
+                        </Select>
                     </Field>
 
                     <Field label="Ambiente / Oficina">
-                        <select
+                        <Select
+                            size="small"
                             name="ambiente_id"
                             value={formData.ambiente_id}
-                            onChange={handleAmbienteChange}
-                            className="w-full text-sm border rounded-lg px-3 py-2.5 bg-white"
+                            onChange={(e, data) => handleAmbienteChange({ target: { name: 'ambiente_id', value: data.value } })}
                         >
                             <option value="">-- Seleccionar Ambiente --</option>
                             {(selectedPiso ? ambientesFiltrados : todosLosAmbientes).map(a => (
@@ -240,12 +240,12 @@ export default function DrawerAsignacion({
                                     📍 {a.nombre} ({a.codigo})
                                 </option>
                             ))}
-                        </select>
+                        </Select>
                     </Field>
                 </div>
 
                 {infoAmbiente && (
-                    <div className="bg-gradient-to-r from-green-50 to-teal-50 rounded-xl p-3 border border-green-200">
+                    <div className="bg-green-50/30 rounded-xl p-3 border border-green-100">
                         <div className="flex items-center gap-2 mb-2">
                             <BuildingRegular className="text-green-600 text-sm" />
                             <span className="text-xs font-semibold text-green-800">Información de la Ubicación</span>
@@ -286,45 +286,43 @@ export default function DrawerAsignacion({
                 )}
 
                 <Field label="Detalle de ubicación">
-                    <input
-                        type="text"
+                    <Input
+                        size="small"
                         name="ubicacion_detalle"
                         value={formData.ubicacion_detalle}
                         onChange={handleInputChange}
                         placeholder="Ej. Oficina 205, escritorio 3, ala norte..."
-                        className="w-full text-sm border rounded-lg px-3 py-2.5"
                     />
                 </Field>
 
                 <div className="grid grid-cols-2 gap-4">
                     <Field label="Fecha de Asignación">
-                        <input
+                        <Input
+                            size="small"
                             type="date"
                             name="fecha_asignacion"
                             value={formData.fecha_asignacion}
                             onChange={handleInputChange}
-                            className="w-full text-sm border rounded-lg px-3 py-2.5"
                         />
                     </Field>
                 </div>
 
                 <Field label="Documento de referencia">
-                    <input
-                        type="text"
+                    <Input
+                        size="small"
                         name="documento_referencia"
                         value={formData.documento_referencia}
                         onChange={handleInputChange}
                         placeholder="Ej. Memorando N° 001-2025, Resolución Directoral..."
-                        className="w-full text-sm border rounded-lg px-3 py-2.5"
                     />
                 </Field>
 
                 <Field label="Asignado por / Entregado por">
-                    <select
+                    <Select
+                        size="small"
                         name="persona_origen_id"
                         value={formData.persona_origen_id}
-                        onChange={handleInputChange}
-                        className="w-full text-sm border rounded-lg px-3 py-2.5 bg-white"
+                        onChange={(e, data) => handleInputChange({ target: { name: 'persona_origen_id', value: data.value } })}
                     >
                         <option value="">-- Seleccionar --</option>
                         {(() => {
@@ -338,15 +336,15 @@ export default function DrawerAsignacion({
                                 </option>
                             ))
                         })()}
-                    </select>
+                    </Select>
                 </Field>
 
                 <Field label="Motivo de asignación">
-                    <select
+                    <Select
+                        size="small"
                         name="motivo"
                         value={formData.motivo}
-                        onChange={handleInputChange}
-                        className="w-full text-sm border rounded-lg px-3 py-2.5 bg-white"
+                        onChange={(e, data) => handleInputChange({ target: { name: 'motivo', value: data.value } })}
                     >
                         <option value="">-- Seleccionar motivo --</option>
                         <option value="Asignación por cargo">👔 Asignación por cargo</option>
@@ -355,22 +353,21 @@ export default function DrawerAsignacion({
                         <option value="Asignación temporal">⏱️ Asignación temporal</option>
                         <option value="Inventario inicial">📋 Inventario inicial</option>
                         <option value="Otro">📝 Otro</option>
-                    </select>
+                    </Select>
                 </Field>
 
                 <Field label="Observaciones">
-                    <textarea
+                    <Textarea
+                        size="small"
                         name="observaciones"
                         value={formData.observaciones}
                         onChange={handleInputChange}
-                        rows="3"
                         placeholder="Ej. Bien asignado para uso administrativo, incluye cargador y funda..."
-                        className="w-full text-sm border rounded-lg px-3 py-2 resize-none focus:ring-2 focus:ring-blue-500"
                     />
                 </Field>
 
                 {formData.bien_id && formData.persona_id && (
-                    <div className="bg-slate-100 rounded-xl p-4 mt-2">
+                    <div className="bg-blue-50/20 rounded-xl p-4 mt-2">
                         <p className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                             <CheckmarkCircleRegular className="text-green-600" />
                             Resumen de la Asignación
@@ -386,15 +383,15 @@ export default function DrawerAsignacion({
                 )}
             </DrawerBody>
 
-            <DrawerFooter className="border-t pt-4 pb-4 bg-gray-50 flex justify-end gap-3">
-                <Button appearance="secondary" onClick={() => {
+            <DrawerFooter className="border-t border-gray-100 pt-4 pb-4 flex justify-end gap-3">
+                <Button size="small" appearance="secondary" onClick={() => {
                     setOpenModal(false)
                     resetForm()
                     setSearchTermBien('')
                 }}>
                     Cancelar
                 </Button>
-                <Button appearance="primary" icon={<CheckmarkCircleRegular />} onClick={handleSubmit} disabled={submitting}>
+                <Button size="small" appearance="primary" icon={<CheckmarkCircleRegular />} onClick={handleSubmit} disabled={submitting}>
                     {submitting ? 'Guardando...' : (editMode ? 'Actualizar Asignación' : 'Confirmar Asignación')}
                 </Button>
             </DrawerFooter>

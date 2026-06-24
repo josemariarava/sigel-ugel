@@ -158,7 +158,7 @@ const Bitacora = () => {
       {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><ClipboardRegular /> Bitácora de Atenciones</h1>
+          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><ClipboardRegular />Centro de Atenciones</h1>
           <p className="text-sm text-gray-500">Registro de soporte técnico y atenciones al personal</p>
         </div>
         <div className="flex gap-2">

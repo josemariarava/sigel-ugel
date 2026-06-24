@@ -16,7 +16,7 @@ export default function DrawerDetalle({
 }) {
     return (
         <Drawer position="end" open={openDetalleModal} onOpenChange={(_, data) => setOpenDetalleModal(data.open)} size='medium'>
-            <DrawerHeader className="border-b bg-gradient-to-r from-indigo-50 to-white">
+            <DrawerHeader className="border-b border-gray-100 bg-indigo-50/40">
                 <DrawerHeaderTitle action={<Button appearance="subtle" icon={<DismissRegular />} onClick={() => setOpenDetalleModal(false)} />}>
                     <div>
                         <span className="text-lg font-bold text-slate-800">
@@ -26,7 +26,7 @@ export default function DrawerDetalle({
                 </DrawerHeaderTitle>
             </DrawerHeader>
             <DrawerBody className="p-6 my-6">
-                <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                <div className="mb-4 p-4 bg-blue-50/30 rounded-xl border border-blue-100">
                     <p className="text-xs text-blue-600 font-medium">{selectedPersonaDetalle?.esUbicacion ? 'Ubicación' : 'Responsable'}</p>
                     <p className="text-lg font-bold text-gray-800">{selectedPersonaDetalle?.nombre}</p>
                     <div className="flex flex-wrap gap-3 mt-1 text-xs text-gray-500">
@@ -39,7 +39,7 @@ export default function DrawerDetalle({
                                     </span>
                                 )}
                                 {selectedPersonaDetalle.ambienteData.area && (
-                                    <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                                    <span className="bg-blue-50/50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
                                         {selectedPersonaDetalle.ambienteData.area.nombre}
                                     </span>
                                 )}
@@ -53,7 +53,7 @@ export default function DrawerDetalle({
                 ) : (
                     <div className="space-y-3">
                         {bienesPorPersona.map((asig) => (
-                            <div key={asig.id} className="bg-slate-50 rounded-xl p-4 border hover:shadow-md transition-all">
+                            <div key={asig.id} className="bg-blue-50/20 rounded-xl p-4 border border-gray-100 hover:shadow-sm transition-all">
                                 <div className="flex justify-between items-start">
                                     <div className="flex-1">
                                         <p className="font-semibold text-gray-800">{asig.bien?.tipo_equipo}</p>
@@ -62,7 +62,7 @@ export default function DrawerDetalle({
                                     </div>
                                     <Badge appearance="filled" color="success">{asig.estado_asignacion}</Badge>
                                 </div>
-                                <div className="mt-3 pt-2 border-t border-gray-200 text-xs text-gray-500 flex justify-between">
+                                <div className="mt-3 pt-2 border-t border-gray-100 text-xs text-gray-500 flex justify-between">
                                     <span>📍 {asig.ambiente?.nombre}</span>
                                     <span>📅 {asig.fecha_asignacion}</span>
                                 </div>
@@ -71,9 +71,9 @@ export default function DrawerDetalle({
                     </div>
                 )}
             </DrawerBody>
-            <DrawerFooter className="border-t pt-4 pb-4 bg-gray-50">
+            <DrawerFooter className="border-t border-gray-100 pt-4 pb-4">
                 {!selectedPersonaDetalle?.esUbicacion && (
-                    <Button appearance="primary" icon={<DocumentPdfRegular />} onClick={() => generarActaCargo(selectedPersonaDetalle?.id, selectedPersonaDetalle?.nombre?.split(' ')[0], selectedPersonaDetalle?.nombre?.split(' ')[1] || '', personas.find(p => p.id === selectedPersonaDetalle?.id))} disabled={bienesPorPersona.length === 0}>
+                    <Button size="small" appearance="primary" icon={<DocumentPdfRegular />} onClick={() => generarActaCargo(selectedPersonaDetalle?.id, selectedPersonaDetalle?.nombre?.split(' ')[0], selectedPersonaDetalle?.nombre?.split(' ')[1] || '', personas.find(p => p.id === selectedPersonaDetalle?.id))} disabled={bienesPorPersona.length === 0}>
                         Generar Acta de Cargo
                     </Button>
                 )}

@@ -22,6 +22,7 @@ import {
   Toaster,
   Input,
   Field,
+  Select,
   Divider,
   Subtitle2,
   Caption1,
@@ -254,7 +255,7 @@ const Personas = () => {
       </div>
 
       {/* Barra de Búsqueda Moderna */}
-      <Card className="mb-6 !p-3 shadow-sm">
+      <Card className="mb-6 !p-3 shadow-xs border border-gray-100">
         <div className="flex gap-3 items-center">
           <div className="flex-1">
             <Input
@@ -276,7 +277,7 @@ const Personas = () => {
       </Card>
 
       {/* Tabla Principal Estilo Fluent 2 */}
-      <Card className="overflow-hidden !p-0 shadow-sm border border-gray-100">
+      <Card className="overflow-hidden !p-0 border border-gray-100">
         {loading ? (
           <div className="flex items-center justify-center h-48 text-gray-400">
             Cargando registros...
@@ -284,7 +285,7 @@ const Personas = () => {
         ) : (
           <div className="overflow-x-auto">
             <Table className="w-full">
-              <TableHeader className="bg-gray-50/70">
+              <TableHeader className="bg-gray-50/30">
                 <TableRow>
                   <TableHeaderCell><span className="font-semibold text-gray-700">Apellidos y Nombres</span></TableHeaderCell>
                   <TableHeaderCell><span className="font-semibold text-gray-700">DNI</span></TableHeaderCell>
@@ -303,7 +304,7 @@ const Personas = () => {
                   </TableRow>
                 ) : (
                   filteredPersonas.map((persona) => (
-                    <TableRow key={persona.id} className="hover:bg-gray-50/50 transition-colors">
+                    <TableRow key={persona.id} className="hover:bg-gray-50/30 transition-colors">
                       <TableCell>
                         <div className="flex items-center gap-3 py-1.5">
                           <Avatar
@@ -315,14 +316,14 @@ const Personas = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="font-mono text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded border border-gray-200">
+                        <span className="font-mono text-xs bg-blue-50/50 text-gray-500 px-2 py-0.5 rounded border border-gray-100">
                           {persona.dni}
                         </span>
                       </TableCell>
                       <TableCell className="text-gray-700">{persona.cargo || <span className="text-gray-300 italic text-xs">No asignado</span>}</TableCell>
                       <TableCell>
                         {persona.area?.nombre ? (
-                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 font-medium">
+                          <span className="text-xs bg-blue-50/50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-100 font-medium">
                             {persona.area.nombre}
                           </span>
                         ) : (
@@ -391,19 +392,20 @@ const Personas = () => {
 
             {/* Bloque 1: Identidad */}
             <div className="flex flex-col gap-3">
-              <Subtitle2 className="text-blue-700 flex items-center gap-1">
+              <Subtitle2 className="text-blue-600 flex items-center gap-1">
                 <ContactCardRegular style={{ fontSize: '16px' }} /> Datos de Identidad
               </Subtitle2>
-              <Divider color="brand" />
+              <Divider />
               <div className="flex flex-col gap-3">
                 <Field label="Nombres" required>
-                  <Input name="nombres" value={formData.nombres} onChange={handleInputChange} placeholder="Ej. Juan Carlos" autoComplete="off" />
+                  <Input size="small" name="nombres" value={formData.nombres} onChange={handleInputChange} placeholder="Ej. Juan Carlos" autoComplete="off" />
                 </Field>
                 <Field label="Apellidos" required>
-                  <Input name="apellidos" value={formData.apellidos} onChange={handleInputChange} placeholder="Ej. Pérez Gonzales" autoComplete="off" />
+                  <Input size="small" name="apellidos" value={formData.apellidos} onChange={handleInputChange} placeholder="Ej. Pérez Gonzales" autoComplete="off" />
                 </Field>
                 <Field label="DNI (Documento de Identidad)" required>
                   <Input
+                    size="small"
                     name="dni"
                     value={formData.dni}
                     onChange={handleInputChange}
@@ -417,57 +419,57 @@ const Personas = () => {
 
             {/* Bloque 2: Estructura Laboral */}
             <div className="flex flex-col gap-3">
-              <Subtitle2 className="text-blue-700 flex items-center gap-1">
+              <Subtitle2 className="text-blue-600 flex items-center gap-1">
                 <BriefcaseRegular style={{ fontSize: '16px' }} /> Ubicación Institucional
               </Subtitle2>
               <Divider />
               <Field label="Cargo / Rol Funcional">
-                <Input name="cargo" value={formData.cargo} onChange={handleInputChange} placeholder="Ej. Especialista de TI, Jefe de Almacén..." />
+                <Input size="small" name="cargo" value={formData.cargo} onChange={handleInputChange} placeholder="Ej. Especialista de TI, Jefe de Almacén..." />
               </Field>
               <Field label="Área">
-                <select
+                <Select
+                  size="small"
                   name="area_id"
                   value={formData.area_id}
-                  onChange={handleInputChange}
-                  className="w-full text-sm border rounded-lg px-3 py-2.5 bg-white"
+                  onChange={(e, data) => handleInputChange({ target: { name: 'area_id', value: data.value } })}
                 >
                   <option value="">-- Seleccionar área --</option>
                   {areas.map(a => (
                     <option key={a.id} value={a.id}>{a.nombre}</option>
                   ))}
-                </select>
+                </Select>
               </Field>
             </div>
 
             {/* Bloque 3: Canales de Contacto */}
             <div className="flex flex-col gap-3">
-              <Subtitle2 className="text-blue-700 flex items-center gap-1">
+              <Subtitle2 className="text-blue-600 flex items-center gap-1">
                 <MailRegular style={{ fontSize: '16px' }} /> Datos de Comunicación
               </Subtitle2>
               <Divider />
               <div className="grid grid-cols-1 gap-3">
                 <Field label="Correo Electrónico">
-                  <Input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="ejemplo@institucion.gob.pe" />
+                  <Input size="small" type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="ejemplo@institucion.gob.pe" />
                 </Field>
                 <Field label="Teléfono Fijo / Celular">
-                  <Input type="tel" name="telefono" value={formData.telefono} onChange={handleInputChange} placeholder="Ej. 987654321" />
+                  <Input size="small" type="tel" name="telefono" value={formData.telefono} onChange={handleInputChange} placeholder="Ej. 987654321" />
                 </Field>
               </div>
             </div>
           </div>
 
           {/* VISTA PREVIA ESTILO FOTOCHECK DIGITAL (40%) */}
-          <div className="w-5/12 bg-gray-50 p-6 flex flex-col justify-between h-full border-l border-gray-100 items-center">
+          <div className="w-5/12 bg-blue-50/20 p-6 flex flex-col justify-between h-full border-l border-gray-50 items-center">
 
             <div className="w-full text-left self-start">
               <Caption1 className="uppercase tracking-widest font-semibold text-gray-400">Credencial Institucional Activa</Caption1>
             </div>
 
             {/* DISEÑO DEL FOTOCHECK ANIMADO */}
-            <div className="w-60 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden relative flex flex-col items-center my-auto transform hover:scale-105 transition-transform duration-300">
+            <div className="w-80 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden relative flex flex-col items-center my-auto transform hover:scale-105 transition-transform duration-300">
 
               {/* Encabezado del Fotocheck */}
-              <div className="w-full bg-slate-900 h-14 relative flex flex-col items-center justify-center text-center">
+              <div className="w-full bg-slate-900 h-12 relative flex flex-col items-center justify-center text-center">
                 <span className="text-[9px] text-blue-400 uppercase tracking-widest font-bold">CONTROL INTERNO</span>
                 <span className="text-[10px] text-white font-medium tracking-normal">INVENTARIO GENERAL</span>
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
@@ -505,7 +507,7 @@ const Personas = () => {
                 </div>
 
                 {/* Bloque de Identificación Técnico en la base del fotocheck */}
-                <div className="mt-5 pt-3 border-t border-dashed border-gray-200 text-[10px] text-gray-600 space-y-1 bg-gray-50/70 p-2 rounded-xl text-left font-sans">
+                <div className="mt-5 pt-3 border-t border-dashed border-gray-100 text-[10px] text-gray-600 space-y-1 bg-gray-50/40 p-2 rounded-xl text-left font-sans">
                   <div className="flex items-center gap-1.5 truncate">
                     {/* 🔄 Reemplazamos aquí usando ContactCardRegular que ya está importado arriba */}
                     <ContactCardRegular className="text-blue-600 shrink-0" style={{ fontSize: '13px' }} />
@@ -523,11 +525,11 @@ const Personas = () => {
             </div>
 
             {/* Botones de acción inferiores fijos */}
-            <div className="w-full flex gap-2 justify-end bg-white border-t border-gray-100 p-4 -mx-6 -mb-6 mt-4 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
-              <Button appearance="secondary" onClick={() => setOpenDrawer(false)}>
+            <div className="w-full flex gap-2 justify-end bg-white border-t border-gray-100 p-4 -mx-6 -mb-6 mt-4">
+              <Button appearance="secondary" onClick={() => setOpenDrawer(false)} size="small">
                 Cancelar
               </Button>
-              <Button appearance="primary" onClick={handleSubmit}>
+              <Button appearance="primary" onClick={handleSubmit} size="small">
                 {editMode ? 'Actualizar Ficha' : 'Registrar Alta'}
               </Button>
             </div>

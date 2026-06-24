@@ -27,11 +27,11 @@ export default function DrawerHistorial({
 }) {
     return (
         <Drawer position="end" open={openHistorialModal} onOpenChange={(_, data) => setOpenHistorialModal(data.open)} size='medium'>
-            <DrawerHeader className="border-b bg-gradient-to-r from-purple-50 to-white">
+            <DrawerHeader className="border-b border-gray-100 bg-purple-50/40">
                 <DrawerHeaderTitle action={<Button appearance="subtle" icon={<DismissRegular />} onClick={() => setOpenHistorialModal(false)} />}>
                     <div className="flex items-center gap-3">
                         {historialBienInfo && (
-                            <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+                            <div className="w-10 h-10 rounded-lg bg-purple-50/50 flex items-center justify-center shrink-0">
                                 <BoxRegular className="text-purple-600" style={{ fontSize: '20px' }} />
                             </div>
                         )}
@@ -90,7 +90,7 @@ export default function DrawerHistorial({
                                                     {cfg.label}
                                                 </span>
                                                 {esActual && (
-                                                    <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                                                    <span className="text-[10px] font-semibold text-blue-600 bg-blue-50/50 px-2 py-0.5 rounded-full border border-blue-100">
                                                         Actual
                                                     </span>
                                                 )}
@@ -171,8 +171,8 @@ export default function DrawerHistorial({
                     </div>
                 )}
             </DrawerBody>
-            <DrawerFooter className="border-t pt-4 pb-4 bg-gray-50">
-                <Button appearance="secondary" onClick={() => setOpenHistorialModal(false)}>Cerrar</Button>
+            <DrawerFooter className="border-t border-gray-100 pt-4 pb-4">
+                <Button size="small" appearance="secondary" onClick={() => setOpenHistorialModal(false)}>Cerrar</Button>
             </DrawerFooter>
         </Drawer>
     )

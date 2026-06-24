@@ -9,8 +9,8 @@ export default function ModalReporte({
 
     return (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-2xl">
-                <div className="p-4 border-b flex justify-between items-center bg-gradient-to-r from-blue-50 to-white">
+            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-lg">
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-blue-50/40">
                     <div>
                         <h3 className="font-bold text-lg">📊 Reporte de Movimientos</h3>
                         <p className="text-xs text-gray-500">{fechasReporte.inicio} al {fechasReporte.fin}</p>

@@ -4,6 +4,9 @@ import {
 } from '@fluentui/react-icons'
 import {
     Button,
+    Input,
+    Textarea,
+    Select,
     Drawer,
     DrawerHeader,
     DrawerHeaderTitle,
@@ -73,9 +76,9 @@ export default function DrawerTraslado({
     return (
         <Drawer position="end" open={openTrasladoModal}
             onOpenChange={(_, data) => { setOpenTrasladoModal(data.open); if (!data.open) resetTrasladoForm() }}
-            size='medium'
+            size='large'
         >
-            <DrawerHeader className="border-b bg-gradient-to-r from-amber-50 to-white">
+            <DrawerHeader className="border-b border-gray-100 bg-amber-50/40">
                 <DrawerHeaderTitle
                     action={<Button appearance="subtle" icon={<DismissRegular />}
                         onClick={() => { setOpenTrasladoModal(false); resetTrasladoForm() }} />}
@@ -88,7 +91,7 @@ export default function DrawerTraslado({
             </DrawerHeader>
 
             <DrawerBody className="space-y-5 p-6 my-6">
-                <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+                <div className="flex gap-1 bg-blue-50/30 rounded-xl p-1">
                     {ACTION_TABS.map(tab => (
                         <button
                             key={tab.value}
@@ -103,7 +106,7 @@ export default function DrawerTraslado({
                     ))}
                 </div>
 
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+                <div className="bg-blue-50/30 rounded-xl p-4 border border-blue-100">
                     <p className="text-xs font-semibold text-blue-800 mb-2 flex items-center gap-2">
                         <BoxRegular className="text-blue-600" />
                         Bien a {tipo === 'traslado' ? 'trasladar' : tipo === 'devolucion' ? 'devolver' : 'dar de baja'}
@@ -128,7 +131,7 @@ export default function DrawerTraslado({
                     </div>
                 </div>
 
-                <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                <div className="bg-amber-50/30 rounded-xl p-4 border border-amber-100">
                     <p className="text-xs font-semibold text-amber-800 mb-2">📍 Situación actual</p>
                     <p className="text-sm">Responsable: <span className="font-medium">{selectedAsignacion?.persona?.apellidos}, {selectedAsignacion?.persona?.nombres}</span></p>
                     <p className="text-sm">Ubicación: {selectedAsignacion?.ambiente?.nombre} ({selectedAsignacion?.ambiente?.piso?.nombre || `Piso ${selectedAsignacion?.ambiente?.piso?.numero}`})</p>
@@ -137,10 +140,10 @@ export default function DrawerTraslado({
                 {tipo === 'traslado' && (
                     <>
                         <Field label="Nuevo Responsable *" required>
-                            <select
+                            <Select
+                                size="small"
                                 value={trasladoData.persona_destino_id}
-                                onChange={handleNuevoResponsableChange}
-                                className="w-full text-sm border rounded-lg px-3 py-2.5 bg-white"
+                                onChange={(e, data) => handleNuevoResponsableChange({ target: { value: data.value } })}
                             >
                                 <option value="">-- Seleccionar nuevo responsable --</option>
                                 {personas.filter(p => p.id !== selectedAsignacion?.persona_id).map(p => (
@@ -148,11 +151,11 @@ export default function DrawerTraslado({
                                         👤 {p.apellidos}, {p.nombres} - {p.cargo || 'Personal'}
                                     </option>
                                 ))}
-                            </select>
+                            </Select>
                         </Field>
 
                         {infoNuevoResponsable && trasladoData.persona_destino_id && (
-                            <div className="bg-green-50 rounded-xl p-3 border border-green-200">
+                            <div className="bg-green-50/30 rounded-xl p-3 border border-green-100">
                                 <p className="text-xs font-semibold text-green-800">✅ Nuevo responsable</p>
                                 <p className="text-sm">{infoNuevoResponsable.nombres}</p>
                                 <p className="text-xs text-gray-500">DNI: {infoNuevoResponsable.dni} | {infoNuevoResponsable.cargo}</p>
@@ -160,10 +163,10 @@ export default function DrawerTraslado({
                         )}
 
                         <Field label="Nueva Ubicación *" required>
-                            <select
+                            <Select
+                                size="small"
                                 value={trasladoData.ambiente_destino_id}
-                                onChange={handleNuevoAmbienteChange}
-                                className="w-full text-sm border rounded-lg px-3 py-2.5 bg-white"
+                                onChange={(e, data) => handleNuevoAmbienteChange({ target: { value: data.value } })}
                             >
                                 <option value="">-- Seleccionar nueva ubicación --</option>
                                 {todosLosAmbientes.map(a => (
@@ -171,11 +174,11 @@ export default function DrawerTraslado({
                                         📍 {a.nombre} ({a.piso?.nombre || `Piso ${a.piso?.numero}`})
                                     </option>
                                 ))}
-                            </select>
+                            </Select>
                         </Field>
 
                         {infoNuevoAmbiente && trasladoData.ambiente_destino_id && (
-                            <div className="bg-green-50 rounded-xl p-3 border border-green-200">
+                            <div className="bg-green-50/30 rounded-xl p-3 border border-green-100">
                                 <p className="text-xs font-semibold text-green-800">✅ Nueva ubicación</p>
                                 <p className="text-sm">{infoNuevoAmbiente.nombre}</p>
                                 <p className="text-xs text-gray-500">Código: {infoNuevoAmbiente.codigo} | {infoNuevoAmbiente.piso}</p>
@@ -186,55 +189,53 @@ export default function DrawerTraslado({
 
                 <div className="grid grid-cols-2 gap-4">
                     <Field label={tipo === 'baja' ? 'Motivo de Baja *' : tipo === 'devolucion' ? 'Motivo de Devolución *' : 'Motivo del Traslado *'}>
-                        <select
+                        <Select
+                            size="small"
                             value={trasladoData.motivo}
-                            onChange={(e) => setTrasladoData({ ...trasladoData, motivo: e.target.value })}
-                            className="w-full text-sm border rounded-lg px-3 py-2.5 bg-white"
+                            onChange={(e, data) => setTrasladoData({ ...trasladoData, motivo: data.value })}
                         >
                             <option value="">-- Seleccionar motivo --</option>
                             {motivos.map(m => (
                                 <option key={m.value} value={m.value}>{m.label}</option>
                             ))}
-                        </select>
+                        </Select>
                     </Field>
 
                     <Field label="Fecha">
-                        <input
+                        <Input
+                            size="small"
                             type="date"
                             value={trasladoData.fecha}
                             onChange={(e) => setTrasladoData({ ...trasladoData, fecha: e.target.value })}
-                            className="w-full text-sm border rounded-lg px-3 py-2.5"
                         />
                     </Field>
                 </div>
 
                 {trasladoData.motivo === 'Otro' && (
                     <Field label="Especificar motivo">
-                        <input
-                            type="text"
+                        <Input
+                            size="small"
                             placeholder="Describa el motivo..."
                             value={trasladoData.motivo_especifico}
                             onChange={(e) => setTrasladoData({ ...trasladoData, motivo_especifico: e.target.value })}
-                            className="w-full text-sm border rounded-lg px-3 py-2.5"
                         />
                     </Field>
                 )}
 
                 <Field label="Documento de referencia">
-                    <input
-                        type="text"
+                    <Input
+                        size="small"
                         placeholder="Ej. Memorando N° 001-2024, Resolución..."
                         value={trasladoData.documento_referencia}
                         onChange={(e) => setTrasladoData({ ...trasladoData, documento_referencia: e.target.value })}
-                        className="w-full text-sm border rounded-lg px-3 py-2.5"
                     />
                 </Field>
 
                 <Field label="Registrado por">
-                    <select
+                    <Select
+                        size="small"
                         value={trasladoData.usuario_registro}
-                        onChange={(e) => setTrasladoData({ ...trasladoData, usuario_registro: e.target.value })}
-                        className="w-full text-sm border rounded-lg px-3 py-2.5 bg-white"
+                        onChange={(e, data) => setTrasladoData({ ...trasladoData, usuario_registro: data.value })}
                     >
                         <option value="">-- Seleccionar responsable del registro --</option>
                         {personas.map(p => (
@@ -242,28 +243,27 @@ export default function DrawerTraslado({
                                 👤 {p.apellidos}, {p.nombres} - {p.cargo || 'Personal'}
                             </option>
                         ))}
-                    </select>
+                    </Select>
                 </Field>
 
                 <Field label="Observaciones">
-                    <textarea
-                        rows="3"
+                    <Textarea
+                        size="small"
                         placeholder={tipo === 'traslado' ? "Notas adicionales sobre el traslado..."
                             : tipo === 'devolucion' ? "Notas adicionales sobre la devolución..."
                             : "Notas adicionales sobre la baja..."}
                         value={trasladoData.observaciones}
-                        onChange={(e) => setTrasladoData({ ...trasladoData, observaciones: e.target.value })}
-                        className="w-full text-sm border rounded-lg px-3 py-2.5 resize-none"
+                        onChange={(e, data) => setTrasladoData({ ...trasladoData, observaciones: data.value })}
                     />
                 </Field>
             </DrawerBody>
 
-            <DrawerFooter className="border-t pt-4 pb-4 bg-gray-50 flex justify-end gap-3">
-                <Button appearance="secondary"
+            <DrawerFooter className="border-t border-gray-100 pt-4 pb-4 flex justify-end gap-3">
+                <Button size="small" appearance="secondary"
                     onClick={() => { setOpenTrasladoModal(false); resetTrasladoForm() }}>
                     Cancelar
                 </Button>
-                <Button appearance="primary" onClick={handleTraslado} disabled={submitting}>
+                <Button size="small" appearance="primary" onClick={handleTraslado} disabled={submitting}>
                     {submitting ? 'Guardando...' : (tipo === 'traslado' ? 'Confirmar Traslado' : tipo === 'devolucion' ? 'Confirmar Devolución' : 'Confirmar Baja')}
                 </Button>
             </DrawerFooter>
