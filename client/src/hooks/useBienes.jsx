@@ -31,7 +31,7 @@ const emptyForm = {
     orden_compra: '',
     condicion: 'Bueno',
     valor_compra: '',
-    estado: 'Activo',
+    estado: '',
     color_toner: '',
     rendimiento: '',
     lote: '',
@@ -994,7 +994,7 @@ const useBienes = () => {
                 }
             }
             if (name === 'condicion' && prev.tipo_equipo !== 'Tóner') {
-                if (value === 'Malo' && prev.estado === 'Activo') {
+                if (value === 'Malo' && prev.estado !== 'Inactivo') {
                     next.estado = 'Inactivo'
                 } else if (value === 'Chatarra') {
                     next.estado = 'Dado de Baja'
@@ -1328,8 +1328,10 @@ const useBienes = () => {
                 if (sanitized[f] === '') sanitized[f] = null
             })
 
-            if (sanitized.tipo_equipo !== 'Tóner') {
-                if (sanitized.condicion === 'Malo' && sanitized.estado === 'Activo') {
+            if (!sanitized.estado) {
+                sanitized.estado = determinarEstado(sanitized.tipo_equipo, sanitized.condicion)
+            } else if (sanitized.tipo_equipo !== 'Tóner') {
+                if (sanitized.condicion === 'Malo' && sanitized.estado !== 'Inactivo') {
                     sanitized.estado = 'Inactivo'
                 } else if (sanitized.condicion === 'Chatarra') {
                     sanitized.estado = 'Dado de Baja'
@@ -1341,6 +1343,26 @@ const useBienes = () => {
                     mostrarToast('Error: bien no encontrado para editar', 'error')
                     return
                 }
+
+                const estadoFinal = sanitized.condicion === 'Chatarra' ? 'Dado de Baja'
+                    : sanitized.condicion === 'Malo' && sanitized.estado === 'Activo' ? 'Inactivo'
+                    : sanitized.estado
+
+                if (estadoFinal === 'Dado de Baja' || estadoFinal === 'Inactivo') {
+                    const { data: asignacionActiva } = await supabase
+                        .from('asignaciones')
+                        .select('id')
+                        .eq('bien_id', selectedBien.id)
+                        .eq('estado_asignacion', 'Activo')
+                        .limit(1)
+                    if (asignacionActiva?.length > 0) {
+                        mostrarToast('⚠️ Este bien tiene una asignación activa. Debe realizar la devolución o baja desde Asignaciones primero.', 'error')
+                        setSubmitting(false)
+                        submittingRef.current = false
+                        return
+                    }
+                }
+
                 const { error } = await supabase
                     .from('bienes')
                     .update(sanitized)
@@ -1348,6 +1370,15 @@ const useBienes = () => {
 
                 if (error) throw error
                 mostrarToast('Bien actualizado correctamente')
+
+                if (selectedBien?.estado !== sanitized.estado) {
+                    supabase.from('historial_movimientos').insert([{
+                        bien_id: selectedBien.id,
+                        tipo_movimiento_id: null,
+                        fecha_movimiento: new Date().toISOString().split('T')[0],
+                        observaciones: `Estado cambiado de "${selectedBien.estado}" a "${sanitized.estado}" manualmente desde Bienes`
+                    }]).then(() => {}).catch(() => {})
+                }
             } else {
                 const { error } = await supabase
                     .from('bienes')

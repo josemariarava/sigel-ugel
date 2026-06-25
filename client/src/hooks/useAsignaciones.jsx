@@ -159,6 +159,7 @@ export function useAsignaciones(dispatchToast) {
     const tipoMovimientoId = (nombre) => tiposMovimiento.find(t => t.nombre === nombre)?.id || null
 
     const bienesDisponibles = bienes.filter(bien =>
+        bien.condicion !== 'Chatarra' &&
         !asignaciones.some(asig =>
             asig.bien_id === bien.id && asig.estado_asignacion === ESTADOS.ASIGNACION.ACTIVO
         )
@@ -757,6 +758,22 @@ export function useAsignaciones(dispatchToast) {
                     submittingRef.current = false
                     setSubmitting(false)
                     return
+                }
+
+                const { data: bien } = await supabase
+                    .from('bienes')
+                    .select('condicion')
+                    .eq('id', formData.bien_id)
+                    .single()
+
+                if (bien?.condicion === 'Chatarra') {
+                    mostrarToast('⚠️ No se puede asignar un bien marcado como Chatarra. Cambie su condición en Bienes primero.', 'error')
+                    submittingRef.current = false
+                    setSubmitting(false)
+                    return
+                }
+                if (bien?.condicion === 'Malo') {
+                    mostrarToast('⚠️ Este bien está en condición "Malo". Verifique antes de asignar.', 'warning')
                 }
             }
 

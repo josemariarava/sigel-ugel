@@ -126,9 +126,15 @@ const Bienes = () => {
         if (!batchCondicion || selectedIds.size === 0) return
         setBatchUpdating(true)
         try {
+            const batchUpdate = { condicion: batchCondicion }
+            if (batchCondicion === 'Chatarra') {
+                batchUpdate.estado = 'Dado de Baja'
+            } else if (batchCondicion === 'Malo') {
+                batchUpdate.estado = 'Inactivo'
+            }
             const { error } = await supabase
                 .from('bienes')
-                .update({ condicion: batchCondicion })
+                .update(batchUpdate)
                 .in('id', [...selectedIds])
             if (error) throw error
             await cargarBienes(activeTab)
