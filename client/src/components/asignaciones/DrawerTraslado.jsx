@@ -52,7 +52,8 @@ export default function DrawerTraslado({
     handleNuevoResponsableChange, handleNuevoAmbienteChange,
     handleTraslado, resetTrasladoForm,
     personas, todosLosAmbientes,
-    submitting
+    submitting,
+    requestCloseTrasladoDrawer
 }) {
     const tipo = trasladoData.tipo || 'traslado'
 
@@ -75,13 +76,13 @@ export default function DrawerTraslado({
 
     return (
         <Drawer position="end" open={openTrasladoModal}
-            onOpenChange={(_, data) => { setOpenTrasladoModal(data.open); if (!data.open) resetTrasladoForm() }}
+            onOpenChange={(_, data) => { if (!data.open) requestCloseTrasladoDrawer(); else setOpenTrasladoModal(true) }}
             size='large'
         >
             <DrawerHeader className="border-b border-gray-100 bg-amber-50/40">
                 <DrawerHeaderTitle
                     action={<Button appearance="subtle" icon={<DismissRegular />}
-                        onClick={() => { setOpenTrasladoModal(false); resetTrasladoForm() }} />}
+                        onClick={requestCloseTrasladoDrawer} />}
                 >
                     <div>
                         <span className="text-lg font-bold text-slate-800">{headerInfo?.label} Bien</span>
@@ -90,14 +91,16 @@ export default function DrawerTraslado({
                 </DrawerHeaderTitle>
             </DrawerHeader>
 
-            <DrawerBody className="space-y-5 p-6 my-6">
-                <div className="flex gap-1 bg-blue-50/30 rounded-xl p-1">
+            <DrawerBody className="space-y-4 p-5 my-5">
+                <div className="flex gap-1 bg-blue-50/30 rounded-lg p-0.5">
                     {ACTION_TABS.map(tab => (
                         <button
                             key={tab.value}
                             onClick={() => handleTabChange(tab.value)}
-                            className={`flex-1 px-3 py-2.5 text-sm font-medium rounded-lg transition-all ${tipo === tab.value
-                                ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
+                            className={`flex-1 px-3 py-2 text-xs font-medium rounded-md transition-all ${tipo === tab.value
+                                ? tab.value === 'baja'
+                                    ? 'bg-red-50 text-red-600 border border-red-200'
+                                    : 'bg-white text-blue-600 border border-gray-100'
                                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                             }`}
                         >
@@ -106,35 +109,35 @@ export default function DrawerTraslado({
                     ))}
                 </div>
 
-                <div className="bg-blue-50/30 rounded-xl p-4 border border-blue-100">
-                    <p className="text-xs font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                <div className="bg-blue-50/30 rounded-lg p-3 border border-blue-100">
+                    <p className="text-[11px] font-semibold text-blue-800 mb-1 flex items-center gap-2">
                         <BoxRegular className="text-blue-600" />
                         Bien a {tipo === 'traslado' ? 'trasladar' : tipo === 'devolucion' ? 'devolver' : 'dar de baja'}
                     </p>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
-                            <p className="text-xs text-gray-500">Tipo de Equipo</p>
-                            <p className="font-semibold text-gray-800">{selectedAsignacion?.bien?.tipo_equipo}</p>
+                            <p className="text-[11px] text-gray-500">Tipo de Equipo</p>
+                            <p className="font-medium text-gray-800">{selectedAsignacion?.bien?.tipo_equipo}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-500">Código Patrimonial</p>
-                            <p className="font-mono text-sm font-medium text-blue-700">{selectedAsignacion?.bien?.codigo_patrimonial || 'N/A'}</p>
+                            <p className="text-[11px] text-gray-500">Código Patrimonial</p>
+                            <p className="font-mono text-xs font-medium text-blue-700">{selectedAsignacion?.bien?.codigo_patrimonial || 'N/A'}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-500">Marca / Modelo</p>
-                            <p className="text-sm">{selectedAsignacion?.bien?.marca} {selectedAsignacion?.bien?.modelo}</p>
+                            <p className="text-[11px] text-gray-500">Marca / Modelo</p>
+                            <p className="text-xs">{selectedAsignacion?.bien?.marca} {selectedAsignacion?.bien?.modelo}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-500">Número de Serie</p>
-                            <p className="text-xs font-mono">{selectedAsignacion?.bien?.serie || 'N/A'}</p>
+                            <p className="text-[11px] text-gray-500">Número de Serie</p>
+                            <p className="text-[11px] font-mono">{selectedAsignacion?.bien?.serie || 'N/A'}</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-amber-50/30 rounded-xl p-4 border border-amber-100">
-                    <p className="text-xs font-semibold text-amber-800 mb-2">📍 Situación actual</p>
-                    <p className="text-sm">Responsable: <span className="font-medium">{selectedAsignacion?.persona?.apellidos}, {selectedAsignacion?.persona?.nombres}</span></p>
-                    <p className="text-sm">Ubicación: {selectedAsignacion?.ambiente?.nombre} ({selectedAsignacion?.ambiente?.piso?.nombre || `Piso ${selectedAsignacion?.ambiente?.piso?.numero}`})</p>
+                <div className="bg-amber-50/30 rounded-lg p-3 border border-amber-100">
+                    <p className="text-[11px] font-semibold text-amber-800 mb-1">📍 Situación actual</p>
+                    <p className="text-xs">Responsable: <span className="font-medium">{selectedAsignacion?.persona?.apellidos}, {selectedAsignacion?.persona?.nombres}</span></p>
+                    <p className="text-xs">Ubicación: {selectedAsignacion?.ambiente?.nombre} ({selectedAsignacion?.ambiente?.piso?.nombre || `Piso ${selectedAsignacion?.ambiente?.piso?.numero}`})</p>
                 </div>
 
                 {tipo === 'traslado' && (
@@ -259,8 +262,7 @@ export default function DrawerTraslado({
             </DrawerBody>
 
             <DrawerFooter className="border-t border-gray-100 pt-4 pb-4 flex justify-end gap-3">
-                <Button size="small" appearance="secondary"
-                    onClick={() => { setOpenTrasladoModal(false); resetTrasladoForm() }}>
+                <Button size="small" appearance="secondary" onClick={requestCloseTrasladoDrawer}>
                     Cancelar
                 </Button>
                 <Button size="small" appearance="primary" onClick={handleTraslado} disabled={submitting}>

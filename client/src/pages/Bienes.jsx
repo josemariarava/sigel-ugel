@@ -86,7 +86,8 @@ const Bienes = () => {
         monitoresDetectados, monitorSeleccionadoIndex, seleccionarMonitor,
         resetForm,
         exportando, exportarAExcel,
-        mostrarToast
+        mostrarToast,
+        handleSerieBlur, serieError
     } = useBienes()
 
     const [selectedIds, setSelectedIds] = useState(new Set())
@@ -334,6 +335,8 @@ const Bienes = () => {
                 seleccionarMonitor={seleccionarMonitor}
                 ambientes={ambientes}
                 resetForm={resetForm}
+                handleSerieBlur={handleSerieBlur}
+                serieError={serieError}
             />
 
             <CompraTonersDrawer

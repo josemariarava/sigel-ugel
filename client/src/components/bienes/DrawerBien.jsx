@@ -62,7 +62,9 @@ const DrawerBien = ({
     monitorSeleccionadoIndex,
     seleccionarMonitor,
     ambientes,
-    resetForm
+    resetForm,
+    handleSerieBlur,
+    serieError
 }) => {
     const [detectandoMonitores, setDetectandoMonitores] = useState(false)
     const [formDirty, setFormDirty] = useState(false)
@@ -186,8 +188,12 @@ const DrawerBien = ({
                                         </Select>
                                     </Field>
 
-                                    <Field label={<InfoLabel info="Si se deja vacío, se auto-generará una serie (SIN-SERIE-...)">Número de Serie</InfoLabel>}>
-                                        <Input name="serie" value={formData.serie || ''} onChange={handleInputChange} placeholder="SN-12345XYZ" style={{ width: '100%' }} />
+                                    <Field
+                                        label={<InfoLabel info="Si se deja vacío, se auto-generará una serie (SIN-SERIE-...)">Número de Serie</InfoLabel>}
+                                        validationMessage={serieError || undefined}
+                                        validationState={serieError ? 'error' : undefined}
+                                    >
+                                        <Input name="serie" value={formData.serie || ''} onChange={handleInputChange} onBlur={handleSerieBlur} placeholder="SN-12345XYZ" style={{ width: '100%' }} />
                                     </Field>
 
                                     <Field label="Marca" hint="Escribe para buscar en el catálogo o ingresa una nueva">

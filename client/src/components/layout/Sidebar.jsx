@@ -9,7 +9,8 @@ import {
   ChevronLeftRegular,
   ChevronRightRegular,
   DocumentRegular,
-  ArchiveRegular
+  ArchiveRegular,
+  LocationRegular
 } from '@fluentui/react-icons'
 import { Button, Tooltip, Badge } from '@fluentui/react-components'
 
@@ -23,6 +24,7 @@ const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse, mobile
         { id: 'personas', label: 'Personas', icon: PeopleRegular, description: 'Usuarios y personal' },
         { id: 'bitacora', label: 'Bitácora', icon: DocumentRegular, description: 'Registro de incidencias' },
         { id: 'asignaciones', label: 'Asignaciones', icon: ClipboardTaskRegular, description: 'Asignaciones y préstamos' },
+        { id: 'ambientes', label: 'Ambientes', icon: LocationRegular, description: 'Gestión de ambientes' },
         { id: 'stock-toners', label: 'Stock Toners', icon: ArchiveRegular, description: 'Control de stock' },
         { id: 'configuracion', label: 'Configuración', icon: SettingsRegular, description: 'Ajustes del sistema' },
     ]

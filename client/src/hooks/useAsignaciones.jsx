@@ -127,6 +127,7 @@ export function useAsignaciones(dispatchToast) {
         asig.bien?.codigo_patrimonial?.includes(searchTerm) ||
         asig.persona?.nombres?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         asig.persona?.apellidos?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        asig.persona?.dni?.includes(searchTerm) ||
         asig.ambiente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
@@ -682,8 +683,6 @@ export function useAsignaciones(dispatchToast) {
                     throw insertError
                 }
             } else {
-                await actualizarBienSegunTipo(tipo, asignacionActual)
-
                 const updateData = buildUpdateAsignacion(tipo, asignacionActual, almacen)
                 const { error: updateError } = await supabase
                     .from('asignaciones')
@@ -801,12 +800,6 @@ export function useAsignaciones(dispatchToast) {
                 if (error) throw error
                 mostrarToast('Asignación actualizada ✨')
             } else {
-                const { error: bienError } = await supabase
-                    .from('bienes')
-                    .update({ estado: ESTADOS.BIEN.ASIGNADO })
-                    .eq('id', formData.bien_id)
-                if (bienError) throw bienError
-
                 const { error } = await supabase.from('asignaciones').insert([payload])
                 if (error) throw error
 
@@ -901,15 +894,6 @@ export function useAsignaciones(dispatchToast) {
         submittingRef.current = true
         setSubmitting(true)
         try {
-            if (deleteTarget.estado_asignacion === ESTADOS.ASIGNACION.ACTIVO) {
-                const estadoBien = deleteTarget.bien?.tipo_equipo === 'Tóner' ? ESTADOS.BIEN.DISPONIBLE : ESTADOS.BIEN.ACTIVO
-                const { error: bienError } = await supabase
-                    .from('bienes')
-                    .update({ estado: estadoBien })
-                    .eq('id', deleteTarget.bien_id)
-                if (bienError) throw bienError
-            }
-
             const { error } = await supabase.from('asignaciones').delete().eq('id', deleteTarget.id)
             if (error) throw error
 
@@ -993,17 +977,6 @@ export function useAsignaciones(dispatchToast) {
         return payload
     }
 
-    const actualizarBienSegunTipo = async (tipo, asignacionActual) => {
-        if (tipo === 'devolucion') {
-            const estadoBien = asignacionActual.bien?.tipo_equipo === 'Tóner' ? ESTADOS.BIEN.DISPONIBLE : ESTADOS.BIEN.ACTIVO
-            const { error } = await supabase.from('bienes').update({ estado: estadoBien }).eq('id', asignacionActual.bien_id)
-            if (error) throw error
-        } else if (tipo === 'baja') {
-            const { error } = await supabase.from('bienes').update({ estado: ESTADOS.BIEN.DADO_BAJA }).eq('id', asignacionActual.bien_id)
-            if (error) throw error
-        }
-    }
-
     const getMovimiento = (tipo, asignacionActual, tipoMovId, motivoFinal, usuarioRegistroNombre) => ({
         bien_id: asignacionActual.bien_id,
         tipo_movimiento_id: tipoMovId,
@@ -1017,6 +990,53 @@ export function useAsignaciones(dispatchToast) {
         observaciones: trasladoData.observaciones,
         usuario_registro: usuarioRegistroNombre
     })
+
+    const [showCloseConfirm, setShowCloseConfirm] = useState(false)
+    const [showTrasladoCloseConfirm, setShowTrasladoCloseConfirm] = useState(false)
+
+    const formHasData = formData.bien_id || formData.persona_id || formData.observaciones || formData.ubicacion_detalle || formData.documento_referencia
+
+    const requestCloseDrawer = () => {
+        if (formHasData) {
+            setShowCloseConfirm(true)
+        } else {
+            setOpenModal(false)
+            resetForm()
+            setSearchTermBien('')
+        }
+    }
+
+    const confirmCloseDrawer = () => {
+        setShowCloseConfirm(false)
+        setOpenModal(false)
+        setSearchTermBien('')
+        resetForm()
+    }
+
+    const cancelCloseDrawer = () => {
+        setShowCloseConfirm(false)
+    }
+
+    const trasladoHasData = trasladoData.persona_destino_id || trasladoData.ambiente_destino_id || trasladoData.motivo || trasladoData.observaciones || trasladoData.documento_referencia
+
+    const requestCloseTrasladoDrawer = () => {
+        if (trasladoHasData) {
+            setShowTrasladoCloseConfirm(true)
+        } else {
+            setOpenTrasladoModal(false)
+            resetTrasladoForm()
+        }
+    }
+
+    const confirmCloseTrasladoDrawer = () => {
+        setShowTrasladoCloseConfirm(false)
+        setOpenTrasladoModal(false)
+        resetTrasladoForm()
+    }
+
+    const cancelCloseTrasladoDrawer = () => {
+        setShowTrasladoCloseConfirm(false)
+    }
 
     const getEstadoColor = (estado) => {
         switch (estado) {
@@ -1075,5 +1095,8 @@ export function useAsignaciones(dispatchToast) {
         submitting,
         obtenerPisosMapa, obtenerAreasMapa,
         getEstadoColor,
+        showCloseConfirm, showTrasladoCloseConfirm,
+        requestCloseDrawer, confirmCloseDrawer, cancelCloseDrawer,
+        requestCloseTrasladoDrawer, confirmCloseTrasladoDrawer, cancelCloseTrasladoDrawer,
     }
 }

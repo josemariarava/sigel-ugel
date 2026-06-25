@@ -73,7 +73,7 @@ export default function DrawerDetalle({
             </DrawerBody>
             <DrawerFooter className="border-t border-gray-100 pt-4 pb-4">
                 {!selectedPersonaDetalle?.esUbicacion && (
-                    <Button size="small" appearance="primary" icon={<DocumentPdfRegular />} onClick={() => generarActaCargo(selectedPersonaDetalle?.id, selectedPersonaDetalle?.nombre?.split(' ')[0], selectedPersonaDetalle?.nombre?.split(' ')[1] || '', personas.find(p => p.id === selectedPersonaDetalle?.id))} disabled={bienesPorPersona.length === 0}>
+                    <Button size="small" appearance="primary" icon={<DocumentPdfRegular />} onClick={() => { const p = personas.find(p => p.id === selectedPersonaDetalle?.id); generarActaCargo(selectedPersonaDetalle?.id, p?.nombres, p?.apellidos, p) }} disabled={bienesPorPersona.length === 0}>
                         Generar Acta de Cargo
                     </Button>
                 )}

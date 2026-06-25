@@ -117,6 +117,18 @@ const Personas = () => {
 
     try {
       if (editMode) {
+        if (formData.dni !== selectedPersona.dni) {
+          const { data: existing } = await supabase
+            .from('personas')
+            .select('dni')
+            .eq('dni', formData.dni)
+
+          if (existing && existing.length > 0) {
+            mostrarToast('Ya existe otra persona con ese DNI', 'error')
+            return
+          }
+        }
+
         const { error } = await supabase
           .from('personas')
           .update({

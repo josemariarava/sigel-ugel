@@ -19,6 +19,7 @@ import {
     Field,
     Badge
 } from '@fluentui/react-components'
+import { useEffect, useRef } from 'react'
 
 const getCondicionBadge = (condicion) => {
     switch (condicion) {
@@ -50,18 +51,27 @@ export default function DrawerAsignacion({
     areas,
     handlePersonaChange, handleAmbienteChange, handleInputChange,
     handleSubmit, resetForm,
-    submitting
+    submitting,
+    requestCloseDrawer
 }) {
+    const dropdownRef = useRef(null)
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setShowBienDropdown(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
     return (
-        <Drawer position="end" open={openModal} onOpenChange={(_, data) => setOpenModal(data.open)} size='large'>
+        <Drawer position="end" open={openModal} onOpenChange={(_, data) => { if (!data.open) requestCloseDrawer(); else setOpenModal(true) }} size='large'>
             <DrawerHeader className="border-b border-gray-100 bg-blue-50/40">
                 <DrawerHeaderTitle
                     action={
-                        <Button appearance="subtle" icon={<DismissRegular />} onClick={() => {
-                            setOpenModal(false)
-                            resetForm()
-                            setSearchTermBien('')
-                        }} />
+                        <Button appearance="subtle" icon={<DismissRegular />} onClick={requestCloseDrawer} />
                     }
                 >
                     <div>
@@ -89,7 +99,7 @@ export default function DrawerAsignacion({
                         />
 
                         {showBienDropdown && bienesFiltrados.length > 0 && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-sm max-h-64 overflow-y-auto">
+                            <div ref={dropdownRef} className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-sm max-h-64 overflow-y-auto">
                                 {bienesFiltrados.map(b => (
                                     <div
                                         key={b.id}
@@ -292,6 +302,7 @@ export default function DrawerAsignacion({
                         value={formData.ubicacion_detalle}
                         onChange={handleInputChange}
                         placeholder="Ej. Oficina 205, escritorio 3, ala norte..."
+                        maxLength={500}
                     />
                 </Field>
 
@@ -314,6 +325,7 @@ export default function DrawerAsignacion({
                         value={formData.documento_referencia}
                         onChange={handleInputChange}
                         placeholder="Ej. Memorando N° 001-2025, Resolución Directoral..."
+                        maxLength={200}
                     />
                 </Field>
 
@@ -363,6 +375,7 @@ export default function DrawerAsignacion({
                         value={formData.observaciones}
                         onChange={handleInputChange}
                         placeholder="Ej. Bien asignado para uso administrativo, incluye cargador y funda..."
+                        maxLength={1000}
                     />
                 </Field>
 
@@ -384,11 +397,7 @@ export default function DrawerAsignacion({
             </DrawerBody>
 
             <DrawerFooter className="border-t border-gray-100 pt-4 pb-4 flex justify-end gap-3">
-                <Button size="small" appearance="secondary" onClick={() => {
-                    setOpenModal(false)
-                    resetForm()
-                    setSearchTermBien('')
-                }}>
+                <Button size="small" appearance="secondary" onClick={requestCloseDrawer}>
                     Cancelar
                 </Button>
                 <Button size="small" appearance="primary" icon={<CheckmarkCircleRegular />} onClick={handleSubmit} disabled={submitting}>

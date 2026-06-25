@@ -52,7 +52,7 @@ const Dashboard = () => {
       ] = await Promise.all([
         supabase.from('bienes').select('*', { count: 'exact', head: true }),
         supabase.from('personas').select('*', { count: 'exact', head: true }),
-        supabase.from('asignaciones').select('*', { count: 'exact', head: true }).eq('estado', 'Activo'),
+        supabase.from('asignaciones').select('*', { count: 'exact', head: true }).eq('estado_asignacion', 'Activo'),
         supabase.from('bitacora').select('*', { count: 'exact', head: true }).in('estado', ['Pendiente', 'En proceso']),
         supabase.from('bitacora').select('*', { count: 'exact', head: true }).gte('created_at', hoy),
         supabase.from('bienes').select('valor_compra'),

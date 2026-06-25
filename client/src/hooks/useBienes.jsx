@@ -121,6 +121,7 @@ const useBienes = () => {
     const [diagnostico, setDiagnostico] = useState(null)
     const [monitoresDetectados, setMonitoresDetectados] = useState([])
     const [monitorSeleccionadoIndex, setMonitorSeleccionadoIndex] = useState(null)
+    const [serieError, setSerieError] = useState('')
 
     async function fetchAgentito(path) {
       const controller = new AbortController()
@@ -1232,6 +1233,23 @@ const useBienes = () => {
       return created.id
     }
 
+    const handleSerieBlur = async (e) => {
+        const value = e.target.value?.trim()
+        if (!value) { setSerieError(''); return }
+
+        if (/^SIN-SERIE-/i.test(value) && !(editMode && selectedBien?.serie === value)) {
+            setSerieError('Este patrón está reservado para auto-generación. Deje el campo vacío.')
+            return
+        }
+
+        try {
+            let query = supabase.from('bienes').select('id', { count: 'exact', head: true }).eq('serie', value)
+            if (editMode && selectedBien?.id) query = query.neq('id', selectedBien.id)
+            const { count } = await query
+            setSerieError(count > 0 ? 'Este número de serie ya existe en otro bien' : '')
+        } catch { setSerieError('Error al validar la serie') }
+    }
+
     const handleSubmit = async () => {
         if (!formData.tipo_equipo) {
             mostrarToast('El tipo de equipo es obligatorio', 'error')
@@ -1252,6 +1270,18 @@ const useBienes = () => {
                     mostrarToast('El código patrimonial ya está registrado para otro bien', 'error')
                     return
                 }
+            }
+
+            if (formData.serie?.trim()) {
+                const serieTrim = formData.serie.trim()
+                if (/^SIN-SERIE-/i.test(serieTrim) && !(editMode && selectedBien?.serie === serieTrim)) {
+                    mostrarToast('El patrón "SIN-SERIE-*" está reservado para auto-generación. Deje el campo vacío.', 'error')
+                    return
+                }
+                let query = supabase.from('bienes').select('id', { count: 'exact', head: true }).eq('serie', serieTrim)
+                if (editMode && selectedBien?.id) query = query.neq('id', selectedBien.id)
+                const { count } = await query
+                if (count > 0) { mostrarToast('El número de serie ya está registrado para otro bien', 'error'); return }
             }
 
             let marcaId = formData.marca_id
@@ -1431,6 +1461,7 @@ const useBienes = () => {
         setModelosFiltrados([])
         setMonitoresDetectados([])
         setMonitorSeleccionadoIndex(null)
+        setSerieError('')
         setFormData({ ...emptyForm })
     }
 
@@ -1583,7 +1614,8 @@ const useBienes = () => {
         monitoresDetectados, monitorSeleccionadoIndex, seleccionarMonitor,
         resetForm,
         exportando, exportarAExcel,
-        mostrarToast
+        mostrarToast,
+        handleSerieBlur, serieError, setSerieError
     }
 }
 

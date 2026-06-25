@@ -143,7 +143,9 @@ const Asignaciones = () => {
                             <Button size="small" icon={<DocumentPdfRegular />} onClick={h.exportarAPdf} disabled={h.exportando}>PDF</Button>
                             <Button size="small" icon={<ArrowSyncRegular />} onClick={h.exportarAExcel} disabled={h.exportando}>Excel</Button>
                             <Button size="small" icon={<HistoryRegular />} onClick={h.generarReportePorPeriodo}>Reporte</Button>
-                            <Button size="small" icon={<ArrowSyncRegular />} onClick={h.cargarDatos}>Sync</Button>
+                            <Tooltip content="Sincronizar datos con el servidor" relationship="label">
+                                <Button size="small" icon={<ArrowSyncRegular />} onClick={h.cargarDatos}>Sync</Button>
+                            </Tooltip>
                         </div>
                     </div>
 
@@ -416,6 +418,7 @@ const Asignaciones = () => {
                 handleInputChange={h.handleInputChange}
                 handleSubmit={h.handleSubmit} resetForm={h.resetForm}
                 submitting={h.submitting}
+                requestCloseDrawer={h.requestCloseDrawer}
             />
 
             <DrawerDetalle
@@ -435,6 +438,7 @@ const Asignaciones = () => {
                 handleTraslado={h.handleTraslado} resetTrasladoForm={h.resetTrasladoForm}
                 personas={h.personas} todosLosAmbientes={h.todosLosAmbientes}
                 submitting={h.submitting}
+                requestCloseTrasladoDrawer={h.requestCloseTrasladoDrawer}
             />
 
             <DrawerHistorial
@@ -478,6 +482,26 @@ const Asignaciones = () => {
                     </div>
                 )}
             </ConfirmDialog>
+
+            <ConfirmDialog
+                title="Descartar cambios"
+                open={h.showCloseConfirm}
+                message="Hay cambios sin guardar en el formulario de asignación. ¿Desea descartarlos?"
+                confirmText="Descartar"
+                cancelText="Seguir editando"
+                onConfirm={h.confirmCloseDrawer}
+                onCancel={h.cancelCloseDrawer}
+            />
+
+            <ConfirmDialog
+                title="Descartar cambios"
+                open={h.showTrasladoCloseConfirm}
+                message="Hay cambios sin guardar en el formulario de traslado. ¿Desea descartarlos?"
+                confirmText="Descartar"
+                cancelText="Seguir editando"
+                onConfirm={h.confirmCloseTrasladoDrawer}
+                onCancel={h.cancelCloseTrasladoDrawer}
+            />
         </div>
     )
 }
