@@ -306,19 +306,17 @@ const DrawerBien = ({
                                         actions={{
                                             children: (
                                                 <Button appearance="transparent" onClick={() => {
-                                                    handleInputChange({ target: { name: 'estado', value: 'Activo' } })
+                                                    handleInputChange({ target: { name: 'estado', value: formData.condicion === 'Malo' ? 'Inactivo' : 'Activo' } })
                                                     setShowEstadoWarning(false)
                                                 }}>
-                                                    Cambiar a Activo
+                                                    Cambiar a {formData.condicion === 'Malo' ? 'Inactivo' : 'Activo'}
                                                 </Button>
                                             )
                                         }}
                                     >
                                         <MessageBarBody>
-                                            {prevCondicion.current === 'Chatarra'
-                                                ? <>La condición física mejoró, pero el estado sigue como <strong>Dado de Baja</strong>. ¿Deseas cambiarlo a <strong>Activo</strong>?</>
-                                                : <>La condición física mejoró, pero el estado sigue como <strong>Inactivo</strong>. ¿Deseas cambiarlo a <strong>Activo</strong>?</>
-                                            }
+                                            La condición física mejoró, pero el estado sigue como <strong>{formData.estado}</strong>.
+                                            ¿Deseas cambiarlo a <strong>{formData.condicion === 'Malo' ? 'Inactivo' : 'Activo'}</strong>?
                                         </MessageBarBody>
                                     </MessageBar>
                                 )}
