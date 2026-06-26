@@ -173,6 +173,7 @@ export function useGestionToners(dispatchToast) {
             setPersonas(personasResult.data || [])
             setAmbientes(ambientesResult.data || [])
             setPisos(pisosResult.data || [])
+            setImpresoras(impresorasResult.data || [])
 
         } catch (error) {
             mostrarToast(handleApiError(error, 'cargar datos'), 'error')
