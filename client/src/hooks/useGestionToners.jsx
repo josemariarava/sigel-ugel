@@ -536,8 +536,9 @@ export function useGestionToners(dispatchToast) {
                 console.warn('No se pudo subir el acta al storage:', storageError)
             }
 
-            mostrarToast('Acta generada correctamente 📄', 'success')
-            return true
+                cargarDatos()
+                mostrarToast('Acta generada correctamente 📄', 'success')
+                return true
         } catch (error) {
             mostrarToast(handleApiError(error, 'generar acta'), 'error')
             return false
