@@ -196,23 +196,22 @@ const GestionToners = () => {
                                                             onClick={() => h.verHistorial(asig.toner_id)}
                                                         />
                                                     </Tooltip>
-                                                    {asig.acta_url ? (
+                                                    {asig.acta_url && (
                                                         <Tooltip content="Ver Acta">
                                                             <a href={asig.acta_url} target="_blank" rel="noopener noreferrer">
                                                                 <Button size="small" appearance="subtle" icon={<EyeRegular />} className="text-blue-600" />
                                                             </a>
                                                         </Tooltip>
-                                                    ) : (
-                                                        <Tooltip content="Generar Acta">
-                                                            <Button
-                                                                size="small"
-                                                                appearance="subtle"
-                                                                icon={<DocumentPdfRegular />}
-                                                                className="text-red-600"
-                                                                onClick={() => h.generarActaManual(asig)}
-                                                            />
-                                                        </Tooltip>
                                                     )}
+                                                    <Tooltip content="Generar Acta">
+                                                        <Button
+                                                            size="small"
+                                                            appearance="subtle"
+                                                            icon={<DocumentPdfRegular />}
+                                                            className="text-red-600"
+                                                            onClick={() => h.generarActaManual(asig)}
+                                                        />
+                                                    </Tooltip>
                                                     <Tooltip content="Editar">
                                                         <Button
                                                             size="small"
