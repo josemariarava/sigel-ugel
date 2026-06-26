@@ -184,7 +184,7 @@ const GestionToners = () => {
                                                                 appearance="subtle"
                                                                 icon={<ArrowUndoRegular />}
                                                                 className="text-amber-600"
-                                                                onClick={() => h.devolverToner(asig)}
+                                                                onClick={() => h.setDevolverTarget(asig)}
                                                             />
                                                         </Tooltip>
                                                     )}
@@ -332,6 +332,37 @@ const GestionToners = () => {
                             )}
                             {h.deleteTarget.fecha_asignacion && (
                                 <><span className="text-gray-500">Fecha:</span><span className="font-medium">{h.deleteTarget.fecha_asignacion}</span></>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </ConfirmDialog>
+
+            <ConfirmDialog
+                title="Devolver tóner a stock"
+                open={!!h.devolverTarget}
+                message="¿Estás seguro de devolver este tóner? Quedará disponible para otra asignación."
+                confirmText="Sí, devolver"
+                cancelText="Cancelar"
+                onConfirm={() => { h.devolverToner(h.devolverTarget); h.setDevolverTarget(null) }}
+                onCancel={() => h.setDevolverTarget(null)}
+                disabled={h.submitting}
+            >
+                {h.devolverTarget && (
+                    <div className="border border-amber-200 bg-amber-50 rounded-lg p-3 text-sm space-y-1">
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                            {h.devolverTarget.toner && (
+                                <><span className="text-gray-500">Tóner:</span><span className="font-medium">{h.devolverTarget.toner.marca} {h.devolverTarget.toner.modelo} ({h.devolverTarget.toner.color_toner})</span></>
+                            )}
+                            {h.devolverTarget.toner?.serie && <><span className="text-gray-500">Serie:</span><span className="font-medium">{h.devolverTarget.toner.serie}</span></>}
+                            {h.devolverTarget.persona && (
+                                <><span className="text-gray-500">Responsable:</span><span className="font-medium">{h.devolverTarget.persona.apellidos} {h.devolverTarget.persona.nombres}</span></>
+                            )}
+                            {h.devolverTarget.impresora && (
+                                <><span className="text-gray-500">Impresora:</span><span className="font-medium">{h.devolverTarget.impresora.marca} {h.devolverTarget.impresora.modelo}</span></>
+                            )}
+                            {h.devolverTarget.fecha_asignacion && (
+                                <><span className="text-gray-500">Fecha:</span><span className="font-medium">{h.devolverTarget.fecha_asignacion}</span></>
                             )}
                         </div>
                     </div>
