@@ -214,15 +214,17 @@ const GestionToners = () => {
                                                             </a>
                                                         </Tooltip>
                                                     )}
-                                                    <Tooltip content="Generar Acta">
-                                                        <Button
-                                                            size="small"
-                                                            appearance="subtle"
-                                                            icon={<DocumentPdfRegular />}
-                                                            className="text-red-600"
-                                                            onClick={() => h.generarActaManual(asig)}
-                                                        />
-                                                    </Tooltip>
+                                                    {!asig.acta_url && (
+                                                        <Tooltip content="Generar Acta">
+                                                            <Button
+                                                                size="small"
+                                                                appearance="subtle"
+                                                                icon={<DocumentPdfRegular />}
+                                                                className="text-red-600"
+                                                                onClick={() => h.generarActaManual(asig)}
+                                                            />
+                                                        </Tooltip>
+                                                    )}
                                                     <Tooltip content="Editar">
                                                         <Button
                                                             size="small"
