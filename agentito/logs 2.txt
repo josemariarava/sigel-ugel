@@ -1,0 +1,50 @@
+[11:04:53] [OK] [server] Agentito corriendo en http://localhost:5899
+[11:04:53] [INFO] [server]   CPU:  http://localhost:5899/api/info
+[11:04:53] [INFO] [server]   Mon:  http://localhost:5899/api/monitor
+[11:04:53] [INFO] [server]   Ping: http://localhost:5899/api/ping
+[11:04:53] [INFO] [server] Presiona Ctrl+C para detener
+[11:05:36] [INFO] [HTTP] GET /api/info
+[11:05:36] [INFO] [detect] Starting auto-detection...
+[11:05:36] [INFO] [psExec] Trying -EncodedCommand (3360 chars) (detect)
+[11:05:41] [INFO] [HTTP] GET /api/info
+[11:05:41] [INFO] [detect] Starting auto-detection...
+[11:05:41] [INFO] [psExec] Trying -EncodedCommand (3360 chars) (detect)
+[11:05:46] [INFO] [HTTP] GET /api/diagnose
+[11:05:46] [OK] [HTTP] GET /api/diagnose → 200 (765ms)
+[11:05:47] [INFO] [HTTP] GET /api/diagnose
+[11:05:47] [OK] [HTTP] GET /api/diagnose → 200 (3ms)
+[11:05:47] [INFO] [HTTP] GET /api/diagnose
+[11:05:47] [OK] [HTTP] GET /api/diagnose → 200 (3ms)
+[11:05:47] [INFO] [HTTP] GET /api/diagnose
+[11:05:47] [OK] [HTTP] GET /api/diagnose → 200 (3ms)
+[11:05:49] [INFO] [HTTP] GET /api/info
+[11:05:49] [INFO] [detect] Starting auto-detection...
+[11:05:49] [INFO] [psExec] Trying -EncodedCommand (3360 chars) (detect)
+[11:05:49] [INFO] [HTTP] GET /api/info
+[11:05:49] [INFO] [detect] Starting auto-detection...
+[11:05:49] [INFO] [psExec] Trying -EncodedCommand (3360 chars) (detect)
+[11:05:59] [INFO] [HTTP] GET /api/monitor
+[11:05:59] [INFO] [detectMonitor] Starting monitor detection...
+[11:05:59] [INFO] [HTTP] GET /api/monitor
+[11:05:59] [INFO] [detectMonitor] Starting monitor detection...
+[11:05:59] [OK] [detectMonitor] Script loaded (2705 bytes)
+[11:05:59] [INFO] [psExec] Trying -EncodedCommand (7216 chars) (monitor)
+[11:06:04] [OK] [detectMonitor] Script loaded (2705 bytes)
+[11:06:04] [INFO] [psExec] Trying -EncodedCommand (7216 chars) (monitor)
+[11:06:07] [INFO] [HTTP] GET /api/info
+[11:06:07] [INFO] [detect] Starting auto-detection...
+[11:06:07] [INFO] [psExec] Trying -EncodedCommand (3360 chars) (detect)
+[11:06:07] [INFO] [HTTP] GET /api/info
+[11:06:07] [INFO] [detect] Starting auto-detection...
+[11:06:07] [INFO] [psExec] Trying -EncodedCommand (3360 chars) (detect)
+[11:06:11] [WARN] [psExec] -EncodedCommand timed out ((detect))
+[11:06:12] [WARN] [psExec] -EncodedCommand timed out ((detect))
+[11:06:19] [WARN] [psExec] -EncodedCommand timed out ((detect))
+[11:06:20] [WARN] [psExec] -EncodedCommand timed out ((detect))
+[11:06:34] [WARN] [psExec] -EncodedCommand timed out ((monitor))
+[11:06:35] [WARN] [psExec] -EncodedCommand timed out ((monitor))
+[11:06:37] [WARN] [psExec] -EncodedCommand timed out ((detect))
+[11:06:38] [WARN] [psExec] -EncodedCommand timed out ((detect))
+[11:06:42] [ERROR] [psExec] -File fallback also failed on timeout in C:\Users\UGELAD~1\AppData\Local\Temp (detect) Command failed: powershell -ExecutionPolicy Bypass -File "C:\Users\UGELAD~1\AppData\Local\Temp\ps_264983b9.ps1"
+
+[11:06:42] [ERROR] [psExec] -File fallback also failed on timeout in C:\Users\UGELAD~1\AppData\Local\Temp (detect) Command failed: powershell -ExecutionPolicy Bypass -File "C:\Users\UGELAD~1\AppData\Local\Temp\ps_c262c340.ps1"

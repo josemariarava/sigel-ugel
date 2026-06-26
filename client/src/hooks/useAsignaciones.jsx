@@ -373,7 +373,7 @@ export function useAsignaciones(dispatchToast) {
         try {
             setExportando(true)
 
-            const doc = createActaAsignacionPdf({ asignacion })
+            const doc = await createActaAsignacionPdf({ asignacion })
 
             doc.save(`Acta_Equipo_${asignacion.numero_acta || 'NUEVA'}.pdf`)
 

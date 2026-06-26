@@ -1,0 +1,13 @@
+[7:49:22] [OK] [HTTP] GET /api/info → 200 (17913ms)
+[7:49:27] [INFO] [HTTP] GET /api/info
+[7:49:27] [INFO] [detect] Starting auto-detection...
+[7:49:27] [INFO] [psExec] Trying -EncodedCommand (3392 chars) (detect)
+[7:49:27] [INFO] [HTTP] GET /api/info
+[7:49:27] [INFO] [detect] Starting auto-detection...
+[7:49:27] [INFO] [psExec] Trying -EncodedCommand (3392 chars) (detect)
+[7:49:33] [OK] [psExec] -EncodedCommand succeeded (detect)
+[7:49:33] [OK] [detect] 8/8 campos detectados marca="Hewlett-Packard" modelo="HP Compaq 8200 Elite SFF PC" serie="MXL2280TZM"
+[7:49:33] [OK] [HTTP] GET /api/info → 200 (6204ms)
+[7:49:33] [OK] [psExec] -EncodedCommand succeeded (detect)
+[7:49:33] [OK] [detect] 8/8 campos detectados marca="Hewlett-Packard" modelo="HP Compaq 8200 Elite SFF PC" serie="MXL2280TZM"
+[7:49:33] [OK] [HTTP] GET /api/info → 200 (6411ms)

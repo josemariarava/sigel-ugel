@@ -82,45 +82,42 @@ export function createActaCargoPdf({ personaNombre, personaApellidos, personaDat
     return doc
 }
 
-export function createActaAsignacionPdf({ asignacion }) {
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+export async function createActaAsignacionPdf({ asignacion }) {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const pageW = doc.internal.pageSize.width
+    const pageH = doc.internal.pageSize.height
+
+    const loadFonts = async () => {
+        try {
+            const [regResp, boldResp] = await Promise.all([
+                fetch('/fonts/Outfit-Regular.ttf'),
+                fetch('/fonts/Outfit-Bold.ttf')
+            ])
+            const [regBuf, boldBuf] = await Promise.all([
+                regResp.arrayBuffer(),
+                boldResp.arrayBuffer()
+            ])
+            const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)))
+            doc.addFileToVFS('Outfit-Regular.ttf', toB64(regBuf))
+            doc.addFont('Outfit-Regular.ttf', 'Outfit', 'normal')
+            doc.addFileToVFS('Outfit-Bold.ttf', toB64(boldBuf))
+            doc.addFont('Outfit-Bold.ttf', 'Outfit', 'bold')
+        } catch {
+            console.warn('No se pudo cargar Outfit, usando Helvetica')
+        }
+    }
+    await loadFonts()
+
+    const FONT = (doc.getFontList()['Outfit']) ? 'Outfit' : 'Helvetica'
 
     const fechaActual = new Date().toLocaleDateString('es-PE', {
         year: 'numeric', month: 'long', day: 'numeric'
     })
 
-    doc.setFillColor(0, 120, 212)
-    doc.rect(0, 0, doc.internal.pageSize.width, 3, 'F')
-    doc.setFont('Helvetica', 'bold')
-    doc.setFontSize(16)
-    doc.setTextColor(32, 31, 30)
-    doc.text('ACTA DE ASIGNACIÓN DE BIEN PATRIMONIAL', 105, 20, { align: 'center' })
-    doc.setFontSize(10)
-    doc.setFont('Helvetica', 'normal')
-    doc.setTextColor(96, 94, 92)
-    doc.text(`Acta N°: ${asignacion.numero_acta || 'PENDIENTE'}`, 105, 30, { align: 'center' })
-
-    doc.setFont('Helvetica', 'bold')
-    doc.setFontSize(12)
-    doc.setTextColor(0, 120, 212)
-    doc.text('SERVIDOR PÚBLICO RESPONSABLE', 20, 45)
-    doc.setFont('Helvetica', 'normal')
-    doc.setFontSize(10)
-    doc.setTextColor(50, 49, 48)
-    doc.text(`Nombres: ${asignacion.persona?.nombres || ''} ${asignacion.persona?.apellidos || ''}`, 20, 55)
-    doc.text(`DNI: ${asignacion.persona?.dni || '-'}`, 20, 62)
-    doc.text(`Cargo: ${asignacion.persona?.cargo || '-'}`, 20, 69)
-
-    doc.setFont('Helvetica', 'bold')
-    doc.setFontSize(12)
-    doc.setTextColor(0, 120, 212)
-    doc.text('BIEN ASIGNADO', 20, 85)
-    doc.setFont('Helvetica', 'normal')
-    doc.setFontSize(10)
-    doc.setTextColor(50, 49, 48)
-
     const bien = asignacion.bien || {}
-    const dataBien = [
+    const persona = asignacion.persona || {}
+
+    const bienData = [
         ['Tipo', bien.tipo_equipo || '-'],
         ['Marca / Modelo', `${bien.marca || 'S/M'} ${bien.modelo || 'S/M'}`],
         ['Código Patrimonial', bien.codigo_patrimonial || '-'],
@@ -133,27 +130,107 @@ export function createActaAsignacionPdf({ asignacion }) {
         ['Observaciones', asignacion.observaciones || 'Ninguna']
     ]
 
-    autoTable(doc, {
-        body: dataBien,
-        startY: 92,
-        theme: 'grid',
-        headStyles: { fillColor: [0, 120, 212], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
-        bodyStyles: { fontSize: 8 },
-        columnStyles: { 0: { cellWidth: 45, fontStyle: 'bold' }, 1: { cellWidth: 'auto' } }
-    })
+    const renderCopy = (x0, label, title) => {
+        const margin = 5
+        const col1X = x0 + margin
+        const copyW = 130
+        const rightEdge = x0 + copyW - margin
 
-    const finalY = doc.lastAutoTable.finalY + 25
-    doc.setFontSize(10)
-    doc.setTextColor(50, 49, 48)
-    doc.line(20, finalY, 80, finalY)
-    doc.setFontSize(9)
-    doc.setTextColor(96, 94, 92)
-    doc.text('Firma del Responsable', 30, finalY + 5)
-    doc.line(130, finalY, 190, finalY)
-    doc.text('Constancia de Recepción', 142, finalY + 5)
-    doc.setFontSize(8)
-    doc.setTextColor(150, 150, 150)
-    doc.text(`Fecha de emisión: ${fechaActual}  |  Documento de control patrimonial`, 20, finalY + 15)
+        doc.setFillColor(0, 120, 212)
+        doc.rect(x0, 0, copyW, 3, 'F')
+
+        let y = 6
+        doc.setFont(FONT, 'bold')
+        doc.setFontSize(9)
+        doc.setTextColor(0, 120, 212)
+        doc.text(label, col1X, y)
+
+        y += 9
+        doc.setFont(FONT, 'bold')
+        doc.setFontSize(13)
+        doc.setTextColor(32, 31, 30)
+        doc.text(title, col1X, y)
+
+        y += 7
+        doc.setFont(FONT, 'normal')
+        doc.setFontSize(9)
+        doc.setTextColor(96, 94, 92)
+        doc.text(`Acta N°: ${asignacion.numero_acta || 'PENDIENTE'}`, col1X, y)
+
+        y += 6
+        doc.setDrawColor(200, 200, 200)
+        doc.line(col1X, y, rightEdge, y)
+        y += 5
+
+        doc.setFont(FONT, 'bold')
+        doc.setFontSize(9)
+        doc.setTextColor(0, 120, 212)
+        doc.text('DATOS DEL RESPONSABLE', col1X, y)
+
+        y += 5.5
+        doc.setFont(FONT, 'normal')
+        doc.setFontSize(8)
+        doc.setTextColor(50, 49, 48)
+        doc.text(`Nombres: ${persona.nombres || ''} ${persona.apellidos || ''}`, col1X, y)
+        y += 4.5
+        doc.text(`DNI: ${persona.dni || '-'}`, col1X, y)
+        y += 4.5
+        doc.text(`Cargo: ${persona.cargo || '-'}`, col1X, y)
+
+        y += 10
+        doc.setFont(FONT, 'bold')
+        doc.setFontSize(9)
+        doc.setTextColor(0, 120, 212)
+        doc.text('BIEN ASIGNADO', col1X, y)
+
+        y += 2
+        autoTable(doc, {
+            body: bienData.map(([label, value]) => [label, value]),
+            startY: y,
+            theme: 'plain',
+            styles: { font: FONT },
+            bodyStyles: { fontSize: 8, cellPadding: { top: 1.8, bottom: 1.8, left: 0, right: 0 } },
+            columnStyles: {
+                0: { cellWidth: 42, fontStyle: 'bold', fontSize: 8 },
+                1: { cellWidth: copyW - margin * 2 - 42, fontSize: 8 }
+            },
+            margin: { left: col1X, right: pageW - rightEdge },
+            tableLineColor: 200,
+            tableLineWidth: 0
+        })
+
+        y = doc.lastAutoTable.finalY + 5
+        doc.setDrawColor(200, 200, 200)
+        doc.line(col1X, y, rightEdge, y)
+        y += 18
+
+        doc.setFont(FONT, 'normal')
+        doc.setFontSize(8)
+        doc.setTextColor(50, 49, 48)
+        doc.line(col1X, y, col1X + 42, y)
+        doc.setFont(FONT, 'normal')
+        doc.setFontSize(7)
+        doc.setTextColor(96, 94, 92)
+        doc.text('Firma del Responsable', col1X, y + 4)
+
+        doc.line(rightEdge - 42, y, rightEdge, y)
+        doc.text('Recibí Conforme', rightEdge - 42, y + 4)
+
+        y += 10
+        doc.setFont(FONT, 'normal')
+        doc.setFontSize(7)
+        doc.setTextColor(150, 150, 150)
+        doc.text(`Fecha de emisión: ${fechaActual}`, col1X, y)
+    }
+
+    renderCopy(10, 'ORIGINAL - Área de Informática', 'ACTA DE ASIGNACIÓN DE BIEN PATRIMONIAL')
+
+    doc.setDrawColor(180, 180, 180)
+    doc.setLineDashPattern([3, 3], 0)
+    doc.line(pageW / 2, 0, pageW / 2, pageH)
+    doc.setLineDashPattern([], 0)
+
+    renderCopy(157, 'CARGO - Servidor Público', 'CARGO DE ASIGNACIÓN')
 
     return doc
 }
