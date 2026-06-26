@@ -198,7 +198,7 @@ const GestionToners = () => {
                                                     </Tooltip>
                                                     {asig.acta_url && (
                                                         <Tooltip content="Ver Acta">
-                                                            <a href={asig.acta_url} target="_blank" rel="noopener noreferrer">
+                                                            <a href={`${asig.acta_url}?t=${Date.now()}`} target="_blank" rel="noopener noreferrer">
                                                                 <Button size="small" appearance="subtle" icon={<EyeRegular />} className="text-blue-600" />
                                                             </a>
                                                         </Tooltip>

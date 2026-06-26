@@ -501,6 +501,7 @@ export function useGestionToners(dispatchToast) {
 
             doc.save(`Acta_Toner_${asignacion.numero_acta || 'NUEVA'}.pdf`)
 
+            let uploadedUrl = null
             try {
                 const blob = doc.output('blob')
                 const fileName = `toners/Acta_Toner_${asignacion.numero_acta || 'NUEVA'}.pdf`
@@ -522,9 +523,10 @@ export function useGestionToners(dispatchToast) {
                         .getPublicUrl(fileName)
 
                     if (urlData?.publicUrl) {
+                        uploadedUrl = urlData.publicUrl
                         const { error: updateError } = await supabase
                             .from('asignacion_toners')
-                            .update({ acta_url: urlData.publicUrl })
+                            .update({ acta_url: uploadedUrl })
                             .eq('id', asignacion.id)
 
                         if (updateError) {
@@ -536,9 +538,9 @@ export function useGestionToners(dispatchToast) {
                 console.warn('No se pudo subir el acta al storage:', storageError)
             }
 
-                cargarDatos()
-                mostrarToast('Acta generada correctamente 📄', 'success')
-                return true
+            await cargarDatos()
+            mostrarToast('Acta generada correctamente 📄', 'success')
+            return uploadedUrl
         } catch (error) {
             mostrarToast(handleApiError(error, 'generar acta'), 'error')
             return false
@@ -546,7 +548,10 @@ export function useGestionToners(dispatchToast) {
     }
 
     const generarActaManual = async (asignacion) => {
-        await generarActa(asignacion)
+        const url = await generarActa(asignacion)
+        if (url) {
+            window.open(`${url}?t=${Date.now()}`, '_blank')
+        }
     }
 
     const verHistorial = async (tonerId) => {
