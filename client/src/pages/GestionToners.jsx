@@ -9,6 +9,7 @@ import {
     HistoryRegular,
     EyeRegular,
     DocumentPdfRegular,
+    InfoRegular,
     EditRegular,
     DeleteRegular,
 } from '@fluentui/react-icons'
@@ -25,6 +26,7 @@ import {
 import { useGestionToners } from '../hooks/useGestionToners'
 import DrawerAsignacionToners from '../components/gestionToners/DrawerAsignacionToners'
 import ModalTerminar from '../components/gestionToners/ModalTerminar'
+import DrawerDetallesToners from '../components/gestionToners/DrawerDetallesToners'
 import ModalHistorialToners from '../components/gestionToners/ModalHistorialToners'
 import ConfirmDialog from '../components/shared/ConfirmDialog'
 
@@ -177,6 +179,15 @@ const GestionToners = () => {
                                                             />
                                                         </Tooltip>
                                                     )}
+                                                    <Tooltip content="Ver Detalles">
+                                                        <Button
+                                                            size="small"
+                                                            appearance="subtle"
+                                                            icon={<InfoRegular />}
+                                                            className="text-gray-600"
+                                                            onClick={() => h.setDetallesTarget(asig)}
+                                                        />
+                                                    </Tooltip>
                                                     {asig.estado === 'Activo' && (
                                                         <Tooltip content="Devolver a stock">
                                                             <Button
@@ -291,6 +302,13 @@ const GestionToners = () => {
                 pisos={h.pisos}
                 handleSubmit={h.handleSubmit} resetForm={h.resetForm}
                 submitting={h.submitting}
+            />
+
+            <DrawerDetallesToners
+                open={!!h.detallesTarget}
+                onClose={() => h.setDetallesTarget(null)}
+                data={h.detallesTarget}
+                personas={h.personas}
             />
 
             <ModalTerminar

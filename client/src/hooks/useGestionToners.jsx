@@ -29,6 +29,7 @@ export function useGestionToners(dispatchToast) {
     const [historialAsignaciones, setHistorialAsignaciones] = useState([])
     const [deleteTarget, setDeleteTarget] = useState(null)
     const [devolverTarget, setDevolverTarget] = useState(null)
+    const [detallesTarget, setDetallesTarget] = useState(null)
     const [submitting, setSubmitting] = useState(false)
     const submittingRef = useRef(false)
     const [currentPage, setCurrentPage] = useState(1)
@@ -790,6 +791,7 @@ export function useGestionToners(dispatchToast) {
         handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete, devolverToner,
         deleteTarget, setDeleteTarget,
         devolverTarget, setDevolverTarget,
+        detallesTarget, setDetallesTarget,
         submitting,
         handleTerminar, generarActaManual, verHistorial, resetForm,
     }
