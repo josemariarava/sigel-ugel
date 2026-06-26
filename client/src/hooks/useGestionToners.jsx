@@ -499,7 +499,7 @@ export function useGestionToners(dispatchToast) {
             const entregaPersonaId = asignacion.entregado_por || entregadoPor
             const entregador = personas.find(p => p.id === entregaPersonaId)
             const toner = toners.find(t => t.id === asignacion.toner_id)
-            const impresora = impresoras.find(i => i.id === asignacion.impresora_id)
+            const impresora = asignacion.impresora || impresoras.find(i => i.id === asignacion.impresora_id)
             const ambiente = ambientes.find(a => a.id === asignacion.ambiente_id)
 
             const doc = await createActaTonerPdf({ asignacion, personaRecibe, entregador, toner, impresora, ambiente })

@@ -1355,8 +1355,23 @@ const useBienes = () => {
                         .eq('bien_id', selectedBien.id)
                         .eq('estado_asignacion', 'Activo')
                         .limit(1)
-                    if (asignacionActiva?.length > 0) {
-                        mostrarToast('⚠️ Este bien tiene una asignación activa. Debe realizar la devolución o baja desde Asignaciones primero.', 'error')
+
+                    let tonerActivo = null
+                    if (['Impresora', 'Multifuncional'].includes(selectedBien.tipo_equipo)) {
+                        const res = await supabase
+                            .from('asignacion_toners')
+                            .select('id')
+                            .eq('impresora_id', selectedBien.id)
+                            .eq('estado', 'Activo')
+                            .limit(1)
+                        tonerActivo = res.data
+                    }
+
+                    if (asignacionActiva?.length > 0 || tonerActivo?.length > 0) {
+                        const msg = tonerActivo?.length > 0
+                            ? '⚠️ Esta impresora tiene una asignación de tóner activa. Debe finalizarla desde Gestión de Toners primero.'
+                            : '⚠️ Este bien tiene una asignación activa. Debe realizar la devolución o baja desde Asignaciones primero.'
+                        mostrarToast(msg, 'error')
                         setSubmitting(false)
                         submittingRef.current = false
                         return

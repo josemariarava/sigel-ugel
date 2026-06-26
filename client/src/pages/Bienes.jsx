@@ -124,6 +124,37 @@ const Bienes = () => {
 
     const handleBatchCondicion = async () => {
         if (!batchCondicion || selectedIds.size === 0) return
+
+        if (batchCondicion === 'Chatarra' || batchCondicion === 'Malo') {
+            const idsImpresora = [...selectedIds].filter(id => {
+                const bien = filteredBienes.find(b => b.id === id)
+                return bien && ['Impresora', 'Multifuncional'].includes(bien.tipo_equipo)
+            })
+
+            if (idsImpresora.length > 0) {
+                const { data: tonersActivos, error: tonerError } = await supabase
+                    .from('asignacion_toners')
+                    .select('impresora_id, toner_id')
+                    .in('impresora_id', idsImpresora)
+                    .eq('estado', 'Activo')
+
+                if (tonerError) throw tonerError
+
+                if (tonersActivos && tonersActivos.length > 0) {
+                    const impresorasBloqueadas = tonersActivos.map(t => {
+                        const bien = filteredBienes.find(b => b.id === t.impresora_id)
+                        return bien ? `${b.marca} ${b.modelo} (${b.serie || 'sin serie'})` : t.impresora_id
+                    })
+                    mostrarToast(
+                        `⚠️ No se puede cambiar condición. ${tonersActivos.length} impresora(s) tienen tóner activo: ${impresorasBloqueadas.join(', ')}`,
+                        'error'
+                    )
+                    setBatchUpdating(false)
+                    return
+                }
+            }
+        }
+
         setBatchUpdating(true)
         try {
             const batchUpdate = { condicion: batchCondicion }
