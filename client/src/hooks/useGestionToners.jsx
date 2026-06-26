@@ -101,6 +101,7 @@ export function useGestionToners(dispatchToast) {
                 ambientesResult,
                 pisosResult,
                 comprasDetalleResult,
+                impresorasResult,
             ] = await Promise.all([
                 supabase.from('asignacion_toners').select(`
                     *,
@@ -114,6 +115,7 @@ export function useGestionToners(dispatchToast) {
                 supabase.from('ambientes').select('*, piso:pisos(*)').order('nombre'),
                 supabase.from('pisos').select('*').order('numero'),
                 supabase.from('compra_detalles').select('*, compra:compras_toners!compra_detalles_compra_id_fkey(*)'),
+                supabase.from('bienes').select('*').in('tipo_equipo', ['Impresora', 'Multifuncional']).eq('estado', 'Activo').order('marca'),
             ])
 
             let asignacionesData = asignacionesResult.data
