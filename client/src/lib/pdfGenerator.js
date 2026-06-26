@@ -117,7 +117,7 @@ export async function createActaAsignacionPdf({ asignacion }) {
         console.warn('No se pudo cargar el logo')
     }
 
-    const LOGO_SIZE = 18
+    const LOGO_SIZE = 22
     const FONT = (doc.getFontList()['Outfit']) ? 'Outfit' : 'Helvetica'
 
     const fechaActual = new Date().toLocaleDateString('es-PE', {

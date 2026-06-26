@@ -22,7 +22,7 @@ const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse, mobile
         { id: 'dashboard', label: 'Dashboard', icon: HomeRegular, description: 'Panel principal' },
         { id: 'bienes', label: 'Bienes', icon: DesktopRegular, description: 'Gestión de bienes' },
         { id: 'personas', label: 'Personas', icon: PeopleRegular, description: 'Usuarios y personal' },
-        { id: 'bitacora', label: 'Bitácora', icon: DocumentRegular, description: 'Registro de incidencias' },
+        { id: 'bitacora', label: 'Incidencias y Actividades', icon: DocumentRegular, description: 'Registro de incidencias' },
         { id: 'asignaciones', label: 'Asignaciones', icon: ClipboardTaskRegular, description: 'Asignaciones y préstamos' },
         { id: 'ambientes', label: 'Ambientes', icon: LocationRegular, description: 'Gestión de ambientes' },
         { id: 'stock-toners', label: 'Stock Toners', icon: ArchiveRegular, description: 'Control de stock' },
