@@ -108,6 +108,16 @@ export async function createActaAsignacionPdf({ asignacion }) {
     }
     await loadFonts()
 
+    let bannerImg = null
+    try {
+        bannerImg = new Image()
+        bannerImg.src = '/images/encabezado-ugel.png'
+        await bannerImg.decode()
+    } catch {
+        console.warn('No se pudo cargar el banner')
+    }
+
+    const BANNER_H = 22
     const FONT = (doc.getFontList()['Outfit']) ? 'Outfit' : 'Helvetica'
 
     const fechaActual = new Date().toLocaleDateString('es-PE', {
@@ -135,11 +145,16 @@ export async function createActaAsignacionPdf({ asignacion }) {
         const col1X = x0 + margin
         const copyW = 130
         const rightEdge = x0 + copyW - margin
+        const barY = bannerImg ? BANNER_H + 1 : 0
+
+        if (bannerImg) {
+            doc.addImage(bannerImg, 'PNG', x0, 0, copyW, BANNER_H)
+        }
 
         doc.setFillColor(0, 120, 212)
-        doc.rect(x0, 0, copyW, 3, 'F')
+        doc.rect(x0, barY, copyW, 3, 'F')
 
-        let y = 6
+        let y = barY + 3 + 3
         doc.setFont(FONT, 'bold')
         doc.setFontSize(9)
         doc.setTextColor(0, 120, 212)
