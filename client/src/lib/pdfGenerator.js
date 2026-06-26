@@ -117,7 +117,7 @@ export async function createActaAsignacionPdf({ asignacion }) {
         console.warn('No se pudo cargar el logo')
     }
 
-    const LOGO_SIZE = 12
+    const LOGO_SIZE = 18
     const FONT = (doc.getFontList()['Outfit']) ? 'Outfit' : 'Helvetica'
 
     const fechaActual = new Date().toLocaleDateString('es-PE', {
@@ -153,8 +153,7 @@ export async function createActaAsignacionPdf({ asignacion }) {
         let labelX = col1X
 
         if (logoImg) {
-            doc.addImage(logoImg, 'PNG', col1X, 4, LOGO_SIZE, LOGO_SIZE)
-            labelX = col1X + LOGO_SIZE + 3
+            doc.addImage(logoImg, 'PNG', rightEdge - LOGO_SIZE, 4, LOGO_SIZE, LOGO_SIZE)
         }
 
         doc.setFont(FONT, 'bold')
@@ -240,7 +239,7 @@ export async function createActaAsignacionPdf({ asignacion }) {
         doc.text(`Fecha de emisión: ${fechaActual}`, col1X, y)
     }
 
-    renderCopy(10, 'ORIGINAL - Área de Informática', 'ACTA DE ASIGNACIÓN DE BIEN PATRIMONIAL')
+    renderCopy(10, 'ORIGINAL - Área de Informática', 'ACTA DE ASIGNACIÓN DE BIEN')
 
     doc.setDrawColor(180, 180, 180)
     doc.setLineDashPattern([3, 3], 0)

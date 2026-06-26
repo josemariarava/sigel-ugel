@@ -51,7 +51,7 @@ const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse, mobile
                         <div className="relative">
                             <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg blur-md opacity-50 animate-pulse" />
                             <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-lg">
-                                <HomeRegular className="w-6 h-6 text-white" />
+                                <img src="/images/logo-ugel.png" alt="UGEL" className="w-8 h-8 object-contain" />
                             </div>
                         </div>
                         {!collapsed && (
