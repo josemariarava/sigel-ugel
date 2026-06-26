@@ -241,32 +241,45 @@ export function useGestionToners(dispatchToast) {
                 if (error) throw error
                 mostrarToast('Asignación actualizada correctamente')
             } else {
-                const anio = new Date().getFullYear()
-                const { data: maxActaData } = await supabase
-                    .from('asignacion_toners')
-                    .select('numero_acta')
-                    .like('numero_acta', `%-${anio}`)
-                    .order('numero_acta', { ascending: false })
-                    .limit(1)
-
-                let nextNum = 1
-                if (maxActaData && maxActaData.length > 0) {
-                    const parts = maxActaData[0].numero_acta.split('-')
-                    nextNum = parseInt(parts[0], 10) + 1
-                }
-                const numeroActa = `${String(nextNum).padStart(4, '0')}-${anio}`
-
-                const { data, error } = await supabase
-                    .from('asignacion_toners')
-                    .insert([{ ...payload, numero_acta: numeroActa }])
-                    .select()
-
-                if (error) throw error
-
-                await supabase
+                const { error: reserveError } = await supabase
                     .from('bienes')
                     .update({ estado: 'Asignado' })
                     .eq('id', formData.toner_id)
+                if (reserveError) throw reserveError
+
+                const anio = new Date().getFullYear()
+                let data
+                let numeroActa
+
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    const { data: maxActaData } = await supabase
+                        .from('asignacion_toners')
+                        .select('numero_acta')
+                        .like('numero_acta', `%-${anio}`)
+                        .order('numero_acta', { ascending: false })
+                        .limit(1)
+
+                    let nextNum = 1
+                    if (maxActaData && maxActaData.length > 0) {
+                        const parts = maxActaData[0].numero_acta.split('-')
+                        const lastNum = parseInt(parts[0], 10)
+                        nextNum = !isNaN(lastNum) ? lastNum + 1 : 1
+                    }
+                    numeroActa = `${String(nextNum).padStart(4, '0')}-${anio}`
+
+                    const { data: inserted, error } = await supabase
+                        .from('asignacion_toners')
+                        .insert([{ ...payload, numero_acta: numeroActa }])
+                        .select()
+
+                    if (error) {
+                        if (error.code === '23505' && attempt < 2) continue
+                        await supabase.from('bienes').update({ estado: 'Disponible' }).eq('id', formData.toner_id)
+                        throw error
+                    }
+                    data = inserted
+                    break
+                }
 
                 if (data && data[0]) {
                     await generarActa(data[0])
@@ -335,60 +348,8 @@ export function useGestionToners(dispatchToast) {
         setDeleteTarget(asignacion)
     }
 
-    const confirmDelete = async () => {
-        if (submittingRef.current || !deleteTarget) return
-        submittingRef.current = true
-        setSubmitting(true)
-        try {
-            const { error: tonerError } = await supabase
-                .from('bienes')
-                .update({ estado: 'Disponible' })
-                .eq('id', deleteTarget.toner_id)
-
-            if (tonerError) throw tonerError
-
-            const { error } = await supabase
-                .from('asignacion_toners')
-                .delete()
-                .eq('id', deleteTarget.id)
-
-            if (error) throw error
-
-            try {
-                await supabase
-                    .from('toner_movimientos')
-                    .insert([{
-                        toner_id: deleteTarget.toner_id,
-                        tipo: 'liberado',
-                        fecha: new Date().toISOString().split('T')[0],
-                        descripcion: 'Asignación eliminada, tóner liberado',
-                        metadata: {
-                            asignacion_id: deleteTarget.id,
-                            persona: deleteTarget.persona_id || null,
-                            ambiente: deleteTarget.ambiente_id || null,
-                            impresora: deleteTarget.impresora_id || null,
-                            numero_acta: deleteTarget.numero_acta,
-                            documento_referencia: deleteTarget.documento_referencia || null,
-                            observaciones: deleteTarget.observaciones || null
-                        }
-                    }])
-            } catch (movError) {
-                console.warn('Tabla toner_movimientos no disponible:', movError)
-            }
-
-            mostrarToast('Asignación eliminada y tóner liberado')
-            cargarDatos()
-        } catch (error) {
-            mostrarToast(handleApiError(error, 'eliminar asignación de tóner'), 'error')
-        } finally {
-            submittingRef.current = false
-            setSubmitting(false)
-            setDeleteTarget(null)
-        }
-    }
-
-    const devolverToner = async (asignacion) => {
-        if (submittingRef.current) return
+    const ejecutarLiberacion = async (asignacion, tipo, descripcion) => {
+        if (submittingRef.current) return false
         submittingRef.current = true
         setSubmitting(true)
         try {
@@ -396,14 +357,12 @@ export function useGestionToners(dispatchToast) {
                 .from('bienes')
                 .update({ estado: 'Disponible' })
                 .eq('id', asignacion.toner_id)
-
             if (tonerError) throw tonerError
 
             const { error } = await supabase
                 .from('asignacion_toners')
                 .delete()
                 .eq('id', asignacion.id)
-
             if (error) throw error
 
             try {
@@ -411,9 +370,9 @@ export function useGestionToners(dispatchToast) {
                     .from('toner_movimientos')
                     .insert([{
                         toner_id: asignacion.toner_id,
-                        tipo: 'devolucion',
+                        tipo,
                         fecha: new Date().toISOString().split('T')[0],
-                        descripcion: `Devuelto a stock por ${asignacion.persona?.apellidos || ''}, ${asignacion.persona?.nombres || ''}`,
+                        descripcion,
                         metadata: {
                             asignacion_id: asignacion.id,
                             persona: asignacion.persona_id || null,
@@ -428,13 +387,33 @@ export function useGestionToners(dispatchToast) {
                 console.warn('Tabla toner_movimientos no disponible:', movError)
             }
 
-            mostrarToast('✅ Tóner devuelto a stock correctamente')
             cargarDatos()
+            return true
         } catch (error) {
-            mostrarToast(handleApiError(error, 'devolver tóner'), 'error')
+            mostrarToast(handleApiError(error, tipo === 'devolucion' ? 'devolver tóner' : 'eliminar asignación de tóner'), 'error')
+            return false
         } finally {
             submittingRef.current = false
             setSubmitting(false)
+        }
+    }
+
+    const confirmDelete = async () => {
+        if (!deleteTarget) return
+        const ok = await ejecutarLiberacion(deleteTarget, 'liberado', 'Asignación eliminada, tóner liberado')
+        if (ok) {
+            mostrarToast('Asignación eliminada y tóner liberado')
+            setDeleteTarget(null)
+        }
+    }
+
+    const devolverToner = async (asignacion) => {
+        const ok = await ejecutarLiberacion(
+            asignacion, 'devolucion',
+            `Devuelto a stock por ${asignacion.persona?.apellidos || ''}, ${asignacion.persona?.nombres || ''}`
+        )
+        if (ok) {
+            mostrarToast('✅ Tóner devuelto a stock correctamente')
         }
     }
 
@@ -468,7 +447,7 @@ export function useGestionToners(dispatchToast) {
                 .eq('modelo', tonerActual.modelo)
                 .in('estado', ['Activo', 'Disponible'])
 
-            if (tonersMismoModelo.length === 1) {
+            if (tonersMismoModelo.length === 0) {
                 mostrarToast(`⚠️ ALERTA: Es el último tóner ${tonerActual.marca} ${tonerActual.modelo}. ¡Reabastecer!`, 'warning')
             }
 
