@@ -36,14 +36,12 @@ export async function createActaTonerPdf({ asignacion, personaRecibe, entregador
         console.warn('No se pudo cargar el logo')
     }
 
-    const LOGO_SIZE = 18
+    const LOGO_SIZE = 22
     const FONT = (doc.getFontList()['Outfit']) ? 'Outfit' : 'Helvetica'
 
     const fechaActual = new Date().toLocaleDateString('es-PE', {
         year: 'numeric', month: 'long', day: 'numeric'
     })
-
-    const fechaAsignacion = new Date(asignacion.fecha_asignacion)
 
     const renderCopy = (x0, copyW, label, subtitle) => {
         const margin = 5
@@ -84,9 +82,11 @@ export async function createActaTonerPdf({ asignacion, personaRecibe, entregador
         doc.setFont(FONT, 'normal')
         doc.setFontSize(7)
         doc.setTextColor(100, 100, 100)
-        const dia = fechaAsignacion.getDate()
-        const mes = fechaAsignacion.toLocaleString('es-PE', { month: 'long' })
-        const anio = fechaAsignacion.getFullYear()
+        const [anioStr, mesStr, diaStr] = asignacion.fecha_asignacion.split('-')
+        const dia = parseInt(diaStr, 10)
+        const anio = parseInt(anioStr, 10)
+        const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre']
+        const mes = meses[parseInt(mesStr, 10) - 1]
         doc.text(`En la ciudad de Cajamarca, a los ${dia} días del mes de ${mes} de ${anio},`, col1X, y)
         y += 4
         doc.text('reunidos en el local de la Unidad de Gestión Educativa Local de Cajamarca, sito en el Jr. Pisagua N° 466,', col1X, y)
@@ -171,7 +171,7 @@ export async function createActaTonerPdf({ asignacion, personaRecibe, entregador
         doc.text('NOTA: El presente tóner será utilizado única y exclusivamente en las funciones propias del cargo', col1X, y)
         y += 3.5
         doc.text('dentro de la sede institucional de la UGEL Cajamarca.', col1X, y)
-        y += 12
+        y += 20
 
         const sigLeft = col1X
         const sigRight = rightEdge - 45
@@ -198,11 +198,11 @@ export async function createActaTonerPdf({ asignacion, personaRecibe, entregador
         doc.text(personaRecibe?.cargo || '', sigRight, y + 16)
         if (personaRecibe?.dni) doc.text(`DNI: ${personaRecibe.dni}`, sigRight, y + 21)
 
-        y += 18
+        y += 34
         doc.setFont(FONT, 'normal')
         doc.setFontSize(6)
         doc.setTextColor(150, 150, 150)
-        doc.text(`Fecha de emisión: ${fechaActual}`, col1X, y)
+        // doc.text(`Fecha de emisión: ${fechaActual}`, col1X, y)
     }
 
     renderCopy(10, 130, 'ORIGINAL - Área de Informática', 'ACTA DE ENTREGA - RECEPCIÓN DE TÓNER')
