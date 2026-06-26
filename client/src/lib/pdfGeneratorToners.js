@@ -1,19 +1,43 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
-export function createActaTonerPdf({ asignacion, personaRecibe, entregador, toner, impresora, ambiente }) {
+export async function createActaTonerPdf({ asignacion, personaRecibe, entregador, toner, impresora, ambiente }) {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
+    const loadFonts = async () => {
+        try {
+            const [regResp, boldResp] = await Promise.all([
+                fetch('/fonts/Outfit-Regular.ttf'),
+                fetch('/fonts/Outfit-Bold.ttf')
+            ])
+            const [regBuf, boldBuf] = await Promise.all([
+                regResp.arrayBuffer(),
+                boldResp.arrayBuffer()
+            ])
+            const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)))
+            doc.addFileToVFS('Outfit-Regular.ttf', toB64(regBuf))
+            doc.addFont('Outfit-Regular.ttf', 'Outfit', 'normal')
+            doc.addFileToVFS('Outfit-Bold.ttf', toB64(boldBuf))
+            doc.addFont('Outfit-Bold.ttf', 'Outfit', 'bold')
+        } catch {
+            console.warn('No se pudo cargar Outfit, usando Helvetica')
+        }
+    }
+    await loadFonts()
+
+    const FONT = (doc.getFontList()['Outfit']) ? 'Outfit' : 'Helvetica'
+
     const fechaActual = new Date().toLocaleDateString('es-PE', {
         year: 'numeric', month: 'long', day: 'numeric'
     })
 
-    doc.setFont('Helvetica', 'bold')
+    doc.setFont(FONT, 'bold')
     doc.setFontSize(16)
     doc.setTextColor(0, 0, 0)
     doc.text('ACTA DE ENTREGA - RECEPCIÓN DE TÓNER', 105, 25, { align: 'center' })
 
     doc.setFontSize(10)
-    doc.setFont('Helvetica', 'normal')
+    doc.setFont(FONT, 'normal')
     doc.text(`Acta N°: ${asignacion.numero_acta || 'PENDIENTE'}`, 105, 35, { align: 'center' })
 
     doc.setFontSize(10)
@@ -54,9 +78,9 @@ export function createActaTonerPdf({ asignacion, personaRecibe, entregador, tone
     y = doc.lastAutoTable.finalY + 10
 
     if (impresora) {
-        doc.setFont('Helvetica', 'bold')
+        doc.setFont(FONT, 'bold')
         doc.text('Impresora Destino:', 20, y)
-        doc.setFont('Helvetica', 'normal')
+        doc.setFont(FONT, 'normal')
         doc.text(`${impresora.marca} ${impresora.modelo} - Serie: ${impresora.serie || 'N/A'}`, 20, y + 7)
         y += 20
     }
@@ -67,9 +91,9 @@ export function createActaTonerPdf({ asignacion, personaRecibe, entregador, tone
         y += 10
     }
 
-    doc.setFont('Helvetica', 'bold')
+    doc.setFont(FONT, 'bold')
     doc.text('Responsable que Recibe:', 20, y)
-    doc.setFont('Helvetica', 'normal')
+    doc.setFont(FONT, 'normal')
     doc.text(`${personaRecibe?.apellidos || ''}, ${personaRecibe?.nombres || ''} - DNI: ${personaRecibe?.dni || '-'}`, 20, y + 7)
     doc.text(`Cargo: ${personaRecibe?.cargo || '-'}`, 20, y + 14)
     y += 30

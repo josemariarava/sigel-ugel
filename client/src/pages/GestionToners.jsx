@@ -3,6 +3,7 @@ import {
     AddRegular,
     SearchRegular,
     ArrowSyncRegular,
+    ArrowUndoRegular,
     PrintRegular,
     CheckmarkCircleRegular,
     HistoryRegular,
@@ -173,6 +174,17 @@ const GestionToners = () => {
                                                                     h.setSelectedAsignacion(asig)
                                                                     h.setOpenTerminarModal(true)
                                                                 }}
+                                                            />
+                                                        </Tooltip>
+                                                    )}
+                                                    {asig.estado === 'Activo' && (
+                                                        <Tooltip content="Devolver a stock">
+                                                            <Button
+                                                                size="small"
+                                                                appearance="subtle"
+                                                                icon={<ArrowUndoRegular />}
+                                                                className="text-amber-600"
+                                                                onClick={() => h.devolverToner(asig)}
                                                             />
                                                         </Tooltip>
                                                     )}

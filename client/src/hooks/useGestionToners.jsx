@@ -387,6 +387,57 @@ export function useGestionToners(dispatchToast) {
         }
     }
 
+    const devolverToner = async (asignacion) => {
+        if (submittingRef.current) return
+        submittingRef.current = true
+        setSubmitting(true)
+        try {
+            const { error: tonerError } = await supabase
+                .from('bienes')
+                .update({ estado: 'Disponible' })
+                .eq('id', asignacion.toner_id)
+
+            if (tonerError) throw tonerError
+
+            const { error } = await supabase
+                .from('asignacion_toners')
+                .delete()
+                .eq('id', asignacion.id)
+
+            if (error) throw error
+
+            try {
+                await supabase
+                    .from('toner_movimientos')
+                    .insert([{
+                        toner_id: asignacion.toner_id,
+                        tipo: 'devolucion',
+                        fecha: new Date().toISOString().split('T')[0],
+                        descripcion: `Devuelto a stock por ${asignacion.persona?.apellidos || ''}, ${asignacion.persona?.nombres || ''}`,
+                        metadata: {
+                            asignacion_id: asignacion.id,
+                            persona: asignacion.persona_id || null,
+                            ambiente: asignacion.ambiente_id || null,
+                            impresora: asignacion.impresora_id || null,
+                            numero_acta: asignacion.numero_acta,
+                            documento_referencia: asignacion.documento_referencia || null,
+                            observaciones: asignacion.observaciones || null
+                        }
+                    }])
+            } catch (movError) {
+                console.warn('Tabla toner_movimientos no disponible:', movError)
+            }
+
+            mostrarToast('✅ Tóner devuelto a stock correctamente')
+            cargarDatos()
+        } catch (error) {
+            mostrarToast(handleApiError(error, 'devolver tóner'), 'error')
+        } finally {
+            submittingRef.current = false
+            setSubmitting(false)
+        }
+    }
+
     const handleTerminar = async () => {
         if (submittingRef.current) return
         if (!terminarData.fecha_terminado) {
@@ -467,7 +518,7 @@ export function useGestionToners(dispatchToast) {
             const impresora = impresoras.find(i => i.id === asignacion.impresora_id)
             const ambiente = ambientes.find(a => a.id === asignacion.ambiente_id)
 
-            const doc = createActaTonerPdf({ asignacion, personaRecibe, entregador, toner, impresora, ambiente })
+            const doc = await createActaTonerPdf({ asignacion, personaRecibe, entregador, toner, impresora, ambiente })
 
             doc.save(`Acta_Toner_${asignacion.numero_acta || 'NUEVA'}.pdf`)
 
@@ -747,7 +798,7 @@ export function useGestionToners(dispatchToast) {
         filteredAsignaciones, paginatedData, currentPage, setCurrentPage, totalPages, PAGE_SIZE, tonersDisponibles,
         getEstadoColor, calcularDuracion,
         cargarDatos, cargarImpresoras, mostrarToast,
-        handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete,
+        handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete, devolverToner,
         deleteTarget, setDeleteTarget,
         submitting,
         handleTerminar, generarActaManual, verHistorial, resetForm,
