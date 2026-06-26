@@ -42,8 +42,8 @@ const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse, mobile
             } bg-white h-screen fixed left-0 top-0 text-gray-800 transition-all duration-300 ease-in-out z-40 shadow-md md:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
             {/* Header con logo y colapso */}
-            <div className="p-5 border-b border-gray-200">
-                <div className="flex items-center justify-between">
+            <div className="relative p-5 border-b border-gray-200">
+                <div className="relative flex items-center justify-between">
                     <div className={`flex items-center gap-3 ${collapsed ? 'justify-center w-full' : ''}`}>
                         <img src="/images/logo-ugel.png" alt="UGEL" className="w-9 h-9 object-contain" />
                         {!collapsed && (
