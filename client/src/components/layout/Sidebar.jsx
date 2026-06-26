@@ -39,27 +39,17 @@ const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse, mobile
         <div 
             className={`${
                 collapsed ? 'w-20' : 'w-72'
-            } bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 h-screen fixed left-0 top-0 text-white transition-all duration-300 ease-in-out z-40 shadow-2xl md:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
+            } bg-white h-screen fixed left-0 top-0 text-gray-800 transition-all duration-300 ease-in-out z-40 shadow-md md:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
             {/* Header con logo y colapso */}
-            <div className={`p-5 border-b border-white/10 relative overflow-hidden group`}>
-                {/* Gradient overlay en header */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                
-                <div className="relative flex items-center justify-between">
+            <div className="p-5 border-b border-gray-200">
+                <div className="flex items-center justify-between">
                     <div className={`flex items-center gap-3 ${collapsed ? 'justify-center w-full' : ''}`}>
-                        <div className="relative">
-                            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg blur-md opacity-50 animate-pulse" />
-                            <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-lg">
-                                <img src="/images/logo-ugel.png" alt="UGEL" className="w-8 h-8 object-contain" />
-                            </div>
-                        </div>
+                        <img src="/images/logo-ugel.png" alt="UGEL" className="w-9 h-9 object-contain" />
                         {!collapsed && (
                             <div className="flex-1">
-                                <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-                                    SIGEL
-                                </h1>
-                                <p className="text-xs text-blue-300/70 mt-0.5">Sistema de Gestión UGEL</p>
+                                <h1 className="text-lg font-bold text-gray-800">SIGEL</h1>
+                                <p className="text-xs text-gray-400 mt-0.5">Sistema de Gestión UGEL</p>
                             </div>
                         )}
                     </div>
@@ -67,7 +57,7 @@ const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse, mobile
                     <Button
                         appearance="subtle"
                         onClick={onToggleCollapse}
-                        className={`!text-white/70 hover:!text-white !min-w-8 !w-8 !h-8 ${collapsed ? 'absolute -right-3 top-1/2 -translate-y-1/2' : ''}`}
+                        className={`!text-gray-400 hover:!text-gray-600 !min-w-8 !w-8 !h-8 ${collapsed ? 'absolute -right-3 top-1/2 -translate-y-1/2' : ''}`}
                         icon={collapsed ? <ChevronRightRegular /> : <ChevronLeftRegular />}
                     />
                 </div>
@@ -103,15 +93,15 @@ const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse, mobile
                                     onMouseEnter={() => setHoveredItem(item.id)}
                                     onMouseLeave={() => setHoveredItem(null)}
                                     className={`
-                                        w-full !justify-start !text-sm !font-medium mb-1 relative overflow-hidden
-                                        transition-all duration-300 group
+                                        w-full !justify-start !text-sm !font-medium mb-1
+                                        transition-all duration-200
                                         ${isActive 
-                                            ? '!bg-gradient-to-r !from-blue-600 !to-purple-600 !text-white shadow-lg shadow-blue-500/25' 
-                                            : '!text-white/80 hover:!text-white hover:!bg-white/10'
+                                            ? '!bg-blue-50 !text-blue-700 border-l-2 border-blue-600 rounded-none !rounded-r-lg' 
+                                            : '!text-gray-600 hover:!text-gray-800 hover:!bg-gray-50 rounded-lg'
                                         }
                                         ${collapsed ? '!justify-center !px-2' : '!px-3'}
                                     `}
-                                    icon={<Icon className={`${isActive ? 'text-white' : 'text-white/70 group-hover:text-white'} transition-colors duration-200`} />}
+                                    icon={<Icon className={`${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'} transition-colors duration-200`} />}
                                 >
                                     {!collapsed && (
                                         <span className="ml-3 flex-1 text-left">{item.label}</span>
@@ -120,7 +110,7 @@ const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse, mobile
                                     {!collapsed && item.badge && (
                                         <Badge 
                                             appearance={isActive ? "filled" : "tint"}
-                                            className={`ml-2 ${isActive ? 'bg-white/20 text-white' : 'bg-blue-500/20 text-blue-300'}`}
+                                            className={`ml-2 ${isActive ? 'bg-blue-100 text-blue-700' : 'bg-blue-500/10 text-blue-600'}`}
                                         >
                                             {item.badge}
                                         </Badge>
@@ -152,8 +142,8 @@ const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse, mobile
                                                     w-full !justify-start !text-sm !py-2 !px-3
                                                     transition-all duration-200
                                                     ${isSubActive
-                                                        ? '!bg-white/10 !text-white border-l-2 border-blue-500'
-                                                        : '!text-white/60 hover:!text-white hover:!bg-white/5'
+                                                        ? '!bg-blue-50 !text-blue-700 border-l-2 border-blue-600'
+                                                        : '!text-gray-500 hover:!text-gray-700 hover:!bg-gray-50'
                                                     }
                                                 `}
                                                 icon={<SubIcon className="w-4 h-4" />}
@@ -170,37 +160,37 @@ const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse, mobile
             </nav>
 
             {/* Footer con información de usuario */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 bg-black/20 backdrop-blur-sm">
+            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-gray-50">
                 {!collapsed ? (
                     <div className="flex items-center gap-3">
                         <div className="relative">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                                        <span className="text-white font-bold text-sm">
-                                            {user?.user_metadata?.nombre
-                                                ? user.user_metadata.nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-                                                : user?.email?.slice(0, 2).toUpperCase() || '??'}
-                                        </span>
-                                    </div>
-                                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900"></div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-white truncate">
-                                        {user?.user_metadata?.nombre || user?.email?.split('@')[0] || 'Usuario'}
-                                    </p>
-                                    <p className="text-xs text-blue-300/70 truncate">{user?.email || ''}</p>
-                                </div>
-                    </div>
-                ) : (
-                    <div className="flex justify-center">
-                        <div className="relative">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                                 <span className="text-white font-bold text-sm">
                                     {user?.user_metadata?.nombre
                                         ? user.user_metadata.nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
                                         : user?.email?.slice(0, 2).toUpperCase() || '??'}
                                 </span>
                             </div>
-                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900"></div>
+                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-800 truncate">
+                                {user?.user_metadata?.nombre || user?.email?.split('@')[0] || 'Usuario'}
+                            </p>
+                            <p className="text-xs text-gray-400 truncate">{user?.email || ''}</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex justify-center">
+                        <div className="relative">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                                <span className="text-white font-bold text-sm">
+                                    {user?.user_metadata?.nombre
+                                        ? user.user_metadata.nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+                                        : user?.email?.slice(0, 2).toUpperCase() || '??'}
+                                </span>
+                            </div>
+                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                         </div>
                     </div>
                 )}
