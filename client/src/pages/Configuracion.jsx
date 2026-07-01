@@ -32,6 +32,12 @@ import {
     DrawerBody,
     DrawerHeader,
     DrawerHeaderTitle,
+    Dialog,
+    DialogSurface,
+    DialogBody,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
     Badge,
     Tooltip,
     Subtitle2,
@@ -44,6 +50,7 @@ import ConfirmDialog from '../components/shared/ConfirmDialog'
 const Configuracion = () => {
     const [marcas, setMarcas] = useState([])
     const [deleteTarget, setDeleteTarget] = useState(null)
+    const [bloqueoInfo, setBloqueoInfo] = useState(null)
     const [modelos, setModelos] = useState([])
     const [selectedMarca, setSelectedMarca] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -285,6 +292,32 @@ const Configuracion = () => {
     const confirmEliminarMarca = async () => {
         if (!deleteTarget) return
         try {
+            const [bienesRes, comprasRes] = await Promise.all([
+                supabase.from('bienes').select('id, tipo_equipo, marca, modelo, serie, estado').eq('marca_id', deleteTarget.id),
+                supabase.from('compra_detalles').select('id, marca, modelo, cantidad_pedida').eq('marca_id', deleteTarget.id)
+            ])
+
+            const items = [
+                ...(bienesRes.data || []).map(b => ({
+                    tipo: b.tipo_equipo,
+                    descripcion: [b.marca, b.modelo].filter(Boolean).join(' ') || '—',
+                    serie: b.serie || '—',
+                    estado: b.estado || '—'
+                })),
+                ...(comprasRes.data || []).map(c => ({
+                    tipo: 'Compra',
+                    descripcion: [c.marca, c.modelo].filter(Boolean).join(' ') || '—',
+                    serie: `${c.cantidad_pedida} unidad(es)`,
+                    estado: '—'
+                }))
+            ]
+
+            if (items.length > 0) {
+                setBloqueoInfo({ tipo: 'marca', nombre: deleteTarget.nombre, items })
+                setDeleteTarget(null)
+                return
+            }
+
             const { error } = await supabase
                 .from('marcas')
                 .delete()
@@ -360,6 +393,28 @@ const Configuracion = () => {
     const confirmEliminarModelo = async () => {
         if (!deleteTarget) return
         try {
+            const { data: bienes, error: errB } = await supabase
+                .from('bienes')
+                .select('id, tipo_equipo, marca, modelo, serie, estado')
+                .eq('modelo_id', deleteTarget.id)
+
+            if (errB) throw errB
+
+            if (bienes && bienes.length > 0) {
+                setBloqueoInfo({
+                    tipo: 'modelo',
+                    nombre: deleteTarget.nombre,
+                    items: bienes.map(b => ({
+                        tipo: b.tipo_equipo,
+                        descripcion: [b.marca, b.modelo].filter(Boolean).join(' ') || '—',
+                        serie: b.serie || '—',
+                        estado: b.estado || '—'
+                    }))
+                })
+                setDeleteTarget(null)
+                return
+            }
+
             const { error } = await supabase
                 .from('modelos')
                 .delete()
@@ -391,152 +446,143 @@ const Configuracion = () => {
             </TabList>
 
             {selectedTab === 'catalogo' ? (
-                <>
-                <div className="flex gap-2">
-                    <Button
-                        appearance="subtle"
-                        icon={<ArrowSyncRegular />}
-                        onClick={cargarDatosPorDefecto}
-                    >
-                        Cargar datos por defecto
-                    </Button>
-                    <Button
-                        appearance="primary"
-                        icon={<AddRegular />}
-                        onClick={abrirNuevaMarca}
-                    >
-                        Nueva Marca
-                    </Button>
-                </div>
-                <Card className="!p-0 overflow-hidden">
-                <div className="px-4 py-3 border-b bg-gray-50 flex justify-between items-center">
-                    <Subtitle2>Marcas registradas</Subtitle2>
-                    <Badge appearance="filled" color="brand" size="small">{marcas.length}</Badge>
-                </div>
-                {loading ? (
-                    <div className="flex items-center justify-center h-32 text-gray-500">
-                        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
-                        Cargando...
-                    </div>
-                ) : (
-                    <Table className="w-full">
-                        <TableHeader>
-                            <TableRow>
-                                <TableHeaderCell><span className="font-semibold">Marca</span></TableHeaderCell>
-                                <TableHeaderCell><span className="font-semibold">Acciones</span></TableHeaderCell>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {marcas.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={2} className="text-center py-8 text-gray-500">
-                                        No hay marcas registradas. Crea una o carga datos por defecto.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                marcas.map((marca) => (
-                                    <TableRow
-                                        key={marca.id}
-                                        className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedMarca?.id === marca.id ? 'bg-blue-50' : ''}`}
-                                        onClick={() => seleccionarMarca(marca)}
-                                    >
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <BuildingRegular className="text-gray-400" />
-                                                <span className="font-medium">{marca.nombre}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                                                <Tooltip content="Editar marca" relationship="label">
-                                                    <Button
-                                                        appearance="subtle"
-                                                        icon={<EditRegular />}
-                                                        onClick={() => abrirEditarMarca(marca)}
-                                                        size="small"
-                                                    />
-                                                </Tooltip>
-                                                <Tooltip content="Eliminar marca" relationship="label">
-                                                    <Button
-                                                        appearance="subtle"
-                                                        icon={<DeleteRegular />}
-                                                        onClick={() => eliminarMarca(marca.id, marca.nombre)}
-                                                        size="small"
-                                                    />
-                                                </Tooltip>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                )}
-            </Card>
-
-            {/* Modelos */}
-            {selectedMarca && (
-                <Card className="!p-0 overflow-hidden">
-                    <div className="px-4 py-3 border-b bg-gray-50 flex justify-between items-center">
-                        <Subtitle2>Modelos de <span className="text-blue-600">{selectedMarca.nombre}</span></Subtitle2>
-                        <div className="flex gap-2 items-center">
-                            <Badge appearance="filled" color="brand" size="small">{modelos.length}</Badge>
+                <div className="flex flex-col lg:flex-row gap-4">
+                    {/* Panel izquierdo: Marcas */}
+                    <div className="w-full lg:w-1/2 xl:w-2/5">
+                        <div className="flex gap-2 mb-3">
+                            <Button
+                                appearance="subtle"
+                                icon={<ArrowSyncRegular />}
+                                onClick={cargarDatosPorDefecto}
+                                size="small"
+                            >
+                                Cargar datos por defecto
+                            </Button>
                             <Button
                                 appearance="primary"
                                 icon={<AddRegular />}
-                                onClick={abrirNuevoModelo}
+                                onClick={abrirNuevaMarca}
                                 size="small"
                             >
-                                Nuevo Modelo
+                                Nueva Marca
                             </Button>
                         </div>
-                    </div>
-                    <Table className="w-full">
-                        <TableHeader>
-                            <TableRow>
-                                <TableHeaderCell><span className="font-semibold">Modelo</span></TableHeaderCell>
-                                <TableHeaderCell><span className="font-semibold">Acciones</span></TableHeaderCell>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {modelos.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={2} className="text-center py-8 text-gray-500">
-                                        No hay modelos para esta marca.
-                                    </TableCell>
-                                </TableRow>
+
+                        <Card className="!p-0 overflow-hidden">
+                            <div className="px-4 py-3 border-b bg-gray-50 flex justify-between items-center">
+                                <Subtitle2>Marcas</Subtitle2>
+                                <Badge appearance="filled" color="brand" size="small">{marcas.length}</Badge>
+                            </div>
+
+                            {loading ? (
+                                <div className="flex items-center justify-center h-32 text-gray-500">
+                                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                                    Cargando...
+                                </div>
+                            ) : marcas.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+                                    <BuildingRegular className="mb-2" style={{ fontSize: 32 }} />
+                                    <p className="text-sm">No hay marcas registradas</p>
+                                    <p className="text-xs mt-1">Crea una o carga datos por defecto</p>
+                                </div>
                             ) : (
-                                modelos.map((modelo) => (
-                                    <TableRow key={modelo.id} className="hover:bg-gray-50 transition-colors">
-                                        <TableCell>{modelo.nombre}</TableCell>
-                                        <TableCell>
-                                            <div className="flex gap-1">
-                                                <Tooltip content="Editar modelo" relationship="label">
-                                                    <Button
-                                                        appearance="subtle"
-                                                        icon={<EditRegular />}
-                                                        onClick={() => abrirEditarModelo(modelo)}
-                                                        size="small"
-                                                    />
-                                                </Tooltip>
-                                                <Tooltip content="Eliminar modelo" relationship="label">
-                                                    <Button
-                                                        appearance="subtle"
-                                                        icon={<DeleteRegular />}
-                                                        onClick={() => eliminarModelo(modelo.id, modelo.nombre)}
-                                                        size="small"
-                                                    />
-                                                </Tooltip>
+                                <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
+                                    {marcas.map(marca => {
+                                        const initial = marca.nombre.charAt(0).toUpperCase()
+                                        const hue = [...marca.nombre].reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360
+                                        return (
+                                            <div
+                                                key={marca.id}
+                                                className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-all duration-200 hover:bg-blue-50/50 ${
+                                                    selectedMarca?.id === marca.id
+                                                        ? 'bg-blue-50 border-l-4 border-l-blue-500 shadow-sm'
+                                                        : 'border-l-4 border-l-transparent'
+                                                }`}
+                                                onClick={() => seleccionarMarca(marca)}
+                                            >
+                                                <div
+                                                    className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+                                                    style={{ backgroundColor: `hsl(${hue}, 55%, 55%)` }}
+                                                >
+                                                    {initial}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-gray-800 truncate">{marca.nombre}</p>
+                                                </div>
+                                                <div className="flex gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                    <Tooltip content="Editar marca" relationship="label">
+                                                        <Button appearance="subtle" icon={<EditRegular />} onClick={() => abrirEditarMarca(marca)} size="small" />
+                                                    </Tooltip>
+                                                    <Tooltip content="Eliminar marca" relationship="label">
+                                                        <Button appearance="subtle" icon={<DeleteRegular />} onClick={() => eliminarMarca(marca.id, marca.nombre)} size="small" />
+                                                    </Tooltip>
+                                                </div>
                                             </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+                                        )
+                                    })}
+                                </div>
                             )}
-                        </TableBody>
-                    </Table>
-                </Card>
-            )}
-                </>
+                        </Card>
+                    </div>
+
+                    {/* Panel derecho: Modelos */}
+                    <div className={`w-full lg:w-1/2 xl:w-3/5 transition-all duration-300 ${selectedMarca ? 'opacity-100' : 'lg:opacity-40'}`}>
+                        <Card className="!p-0 overflow-hidden h-full">
+                            {selectedMarca ? (
+                                <>
+                                    <div className="px-4 py-3 border-b bg-gradient-to-r from-blue-50 to-white flex justify-between items-center">
+                                        <div className="flex items-center gap-2">
+                                            <div
+                                                className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                                                style={{ backgroundColor: `hsl(${[...selectedMarca.nombre].reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 55%, 55%)` }}
+                                            >
+                                                {selectedMarca.nombre.charAt(0).toUpperCase()}
+                                            </div>
+                                            <Subtitle2>
+                                                Modelos de <span className="text-blue-600">{selectedMarca.nombre}</span>
+                                            </Subtitle2>
+                                            <Badge appearance="filled" color="brand" size="small">{modelos.length}</Badge>
+                                        </div>
+                                        <Button appearance="primary" icon={<AddRegular />} onClick={abrirNuevoModelo} size="small">
+                                            Nuevo Modelo
+                                        </Button>
+                                    </div>
+
+                                    {modelos.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+                                            <p className="text-sm">No hay modelos para esta marca</p>
+                                            <Button appearance="subtle" icon={<AddRegular />} onClick={abrirNuevoModelo} size="small" className="mt-2">
+                                                Crear primer modelo
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
+                                            {modelos.map(modelo => (
+                                                <div key={modelo.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+                                                    <span className="text-sm font-mono text-gray-700">{modelo.nombre}</span>
+                                                    <div className="flex gap-0.5 shrink-0">
+                                                        <Tooltip content="Editar modelo" relationship="label">
+                                                            <Button appearance="subtle" icon={<EditRegular />} onClick={() => abrirEditarModelo(modelo)} size="small" />
+                                                        </Tooltip>
+                                                        <Tooltip content="Eliminar modelo" relationship="label">
+                                                            <Button appearance="subtle" icon={<DeleteRegular />} onClick={() => eliminarModelo(modelo.id, modelo.nombre)} size="small" />
+                                                        </Tooltip>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                                    <BuildingRegular className="mb-3" style={{ fontSize: 40 }} />
+                                    <p className="text-sm font-medium">Selecciona una marca</p>
+                                    <p className="text-xs mt-1">Para ver y gestionar sus modelos</p>
+                                </div>
+                            )}
+                        </Card>
+                    </div>
+                </div>
             ) : (
                 <div className="space-y-6">
                     {/* Perfil */}
@@ -673,6 +719,44 @@ const Configuracion = () => {
                 onConfirm={deleteTarget?.type === 'marca' ? confirmEliminarMarca : confirmEliminarModelo}
                 onCancel={() => setDeleteTarget(null)}
             />
+
+            <Dialog open={!!bloqueoInfo} onOpenChange={(_, d) => setBloqueoInfo(d.open ? bloqueoInfo : null)}>
+                <DialogSurface>
+                    <DialogBody>
+                        <DialogTitle>
+                            No se puede eliminar {bloqueoInfo?.tipo === 'marca' ? 'la marca' : 'el modelo'}
+                        </DialogTitle>
+                        <DialogContent>
+                            <p className="text-sm text-gray-600 mb-3">
+                                {bloqueoInfo?.tipo === 'marca' ? 'La marca' : 'El modelo'} <strong>"{bloqueoInfo?.nombre}"</strong> está asignado a:
+                            </p>
+                            <Table className="w-full text-xs">
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHeaderCell>Tipo</TableHeaderCell>
+                                        <TableHeaderCell>Descripción</TableHeaderCell>
+                                        <TableHeaderCell>Serie / Cant.</TableHeaderCell>
+                                        <TableHeaderCell>Estado</TableHeaderCell>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {bloqueoInfo?.items.map((item, i) => (
+                                        <TableRow key={i}>
+                                            <TableCell>{item.tipo}</TableCell>
+                                            <TableCell>{item.descripcion}</TableCell>
+                                            <TableCell>{item.serie}</TableCell>
+                                            <TableCell>{item.estado}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </DialogContent>
+                        <DialogActions>
+                            <Button appearance="primary" onClick={() => setBloqueoInfo(null)}>Cerrar</Button>
+                        </DialogActions>
+                    </DialogBody>
+                </DialogSurface>
+            </Dialog>
         </div>
     )
 }

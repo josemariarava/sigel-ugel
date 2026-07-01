@@ -61,7 +61,7 @@ const Bienes = () => {
         prefillCompraId, setPrefillCompraId,
         ambientes,
         formData,
-        tonerCountsByDetalle, categorias,
+        tonerCountsByDetalle, tonersSinOC, categorias,
         filteredBienes, paginatedData, stats, filtroOC, setFiltroOC,
         currentPage, setCurrentPage, totalPages, PAGE_SIZE,
         cargarBienes,
@@ -295,12 +295,69 @@ const Bienes = () => {
 
             {/* VISTA POR TAB */}
             {activeTab === 'consumibles' ? (
-                <TonersPorOC
-                    compras={comprasAgrupadas}
-                    tonerCountsByDetalle={tonerCountsByDetalle}
-                    onCompraClick={handleCompraClick}
-                    onAgregarMas={handleAddMoreToCompra}
-                />
+                <>
+                    <TonersPorOC
+                        compras={comprasAgrupadas}
+                        tonerCountsByDetalle={tonerCountsByDetalle}
+                        onCompraClick={handleCompraClick}
+                        onAgregarMas={handleAddMoreToCompra}
+                    />
+                    {tonersSinOC.length > 0 && (
+                        <div className="mt-6">
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className="text-sm font-semibold text-gray-700">Toners sin orden de compra</span>
+                                <Badge appearance="filled" color="brand" size="small">{tonersSinOC.length}</Badge>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                                {tonersSinOC.map(t => {
+                                    const estadoLabel = t.estado === 'Activo' || t.estado === 'Disponible' ? 'Disponible' : t.estado
+                                    const estadoColor = t.estado === 'Activo' || t.estado === 'Disponible' ? 'success'
+                                        : t.estado === 'Asignado' ? 'brand'
+                                        : 'danger'
+                                    return (
+                                        <Card key={t.id} appearance="outline" className="border-gray-200 !shadow-sm hover:!shadow-md transition-shadow cursor-pointer" onClick={() => handleEdit(t)}>
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-medium text-sm text-gray-800 truncate">
+                                                        {t.color_toner || '—'}
+                                                    </span>
+                                                    <Badge appearance="filled" color={estadoColor} size="extra-small">
+                                                        {estadoLabel}
+                                                    </Badge>
+                                                </div>
+                                                {t.marca || t.modelo ? (
+                                                    <p className="text-xs text-gray-500 truncate">
+                                                        {[t.marca, t.modelo].filter(Boolean).join(' ')}
+                                                    </p>
+                                                ) : null}
+                                                {t.serie && (
+                                                    <p className="text-xs text-gray-400 truncate">
+                                                        Serie: {t.serie}
+                                                    </p>
+                                                )}
+                                                {t.lote && (
+                                                    <p className="text-xs text-gray-400 truncate">
+                                                        Lote: {t.lote}
+                                                    </p>
+                                                )}
+                                                {t.ubicacion_almacen && (
+                                                    <p className="text-xs text-gray-400 truncate">
+                                                        Ubicación: {t.ubicacion_almacen}
+                                                    </p>
+                                                )}
+                                                {t.fecha_vencimiento && (
+                                                    <p className={`text-xs ${new Date(t.fecha_vencimiento) < new Date() ? 'text-red-500' : 'text-gray-400'}`}>
+                                                        Vence: {t.fecha_vencimiento}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </Card>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </>
             ) : activeTab === 'equipos' ? (
                 <EquiposPorOC
                     compras={comprasEquipos}

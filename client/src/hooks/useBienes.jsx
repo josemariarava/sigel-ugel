@@ -118,6 +118,7 @@ const useBienes = () => {
     const submittingRef = useRef(false)
 
     const [tonerCountsByDetalle, setTonerCountsByDetalle] = useState({})
+    const [tonersSinOC, setTonersSinOC] = useState([])
     const [deleteTarget, setDeleteTarget] = useState(null)
     const [diagnostico, setDiagnostico] = useState(null)
     const [monitoresDetectados, setMonitoresDetectados] = useState([])
@@ -293,7 +294,7 @@ const useBienes = () => {
 
     const cargarCompras = async (term = '') => {
         try {
-            const [comprasRes, tonersRes] = await Promise.all([
+            const [comprasRes, tonersRes, tonersSinOCRes] = await Promise.all([
                 (() => {
                     let query = supabase
                         .from('compras_toners')
@@ -310,7 +311,13 @@ const useBienes = () => {
                     .from('bienes')
                     .select('compra_detalle_id, estado')
                     .eq('tipo_equipo', 'Tóner')
-                    .not('compra_detalle_id', 'is', null)
+                    .not('compra_detalle_id', 'is', null),
+                supabase
+                    .from('bienes')
+                    .select('*')
+                    .eq('tipo_equipo', 'Tóner')
+                    .is('compra_detalle_id', null)
+                    .order('created_at', { ascending: false })
             ])
             if (comprasRes.error) throw comprasRes.error
             setComprasAgrupadas(comprasRes.data || [])
@@ -326,6 +333,7 @@ const useBienes = () => {
                 counts[t.compra_detalle_id].total++
             })
             setTonerCountsByDetalle(counts)
+            setTonersSinOC(tonersSinOCRes.data || [])
         } catch (error) {
             console.error('Error al cargar compras:', error.message)
         }
@@ -1641,7 +1649,7 @@ const useBienes = () => {
         prefillCompraId, setPrefillCompraId,
         ambientes,
         formData, setFormData,
-        tonerCountsByDetalle, categorias,
+        tonerCountsByDetalle, tonersSinOC, categorias,
         filteredBienes, paginatedData, stats, filtroOC, setFiltroOC,
         currentPage, setCurrentPage, totalPages, PAGE_SIZE,
         cargarBienes: cargarBienesPorCategoria, cargarCompras, cargarComprasEquipos, cargarBienesSinOC, cargarCatalogo, loadStats,
