@@ -1,4 +1,4 @@
-import { useToastController, Toaster } from '@fluentui/react-components'
+import { useToastController } from '@fluentui/react-components'
 import {
     AddRegular,
     EditRegular,
@@ -37,8 +37,6 @@ const Asignaciones = () => {
 
     return (
         <div className="p-1 space-y-6 max-w-[1600px] mx-auto font-sans antialiased text-slate-900">
-            <Toaster />
-
             {/* ENCABEZADO */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-5 rounded-2xl border border-gray-100 shadow-sm gap-4">
                 <div>

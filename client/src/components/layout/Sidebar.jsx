@@ -100,6 +100,7 @@ const Sidebar = ({ activePage, onPageChange, collapsed, onToggleCollapse, mobile
                                             : '!text-gray-600 hover:!text-gray-800 hover:!bg-gray-50 rounded-lg'
                                         }
                                         ${collapsed ? '!justify-center !px-2' : '!px-3'}
+                                        ${collapsed && isActive ? '!border-l-4 !border-l-blue-600' : ''}
                                     `}
                                     icon={<Icon className={`${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'} transition-colors duration-200`} />}
                                 >

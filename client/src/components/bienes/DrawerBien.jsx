@@ -67,6 +67,7 @@ const DrawerBien = ({
     serieError
 }) => {
     const [detectandoMonitores, setDetectandoMonitores] = useState(false)
+    const [diagnosticando, setDiagnosticando] = useState(false)
     const [formDirty, setFormDirty] = useState(false)
     const [confirmClose, setConfirmClose] = useState(false)
     const [showConfirmSave, setShowConfirmSave] = useState(false)
@@ -323,9 +324,22 @@ const DrawerBien = ({
 
                                 {formData.tipo_equipo !== 'Monitor' && (
                                     <div className="mt-1">
-                                        <button type="button" onClick={diagnosticar} className="text-xs text-gray-500 hover:text-blue-600 underline flex items-center gap-1">
-                                            <ScanRegular style={{ fontSize: 12 }} />
-                                            Diagnosticar agentito
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                setDiagnosticando(true)
+                                                await diagnosticar()
+                                                setDiagnosticando(false)
+                                            }}
+                                            disabled={diagnosticando}
+                                            className="text-xs text-gray-500 hover:text-blue-600 underline flex items-center gap-1 disabled:opacity-50"
+                                        >
+                                            {diagnosticando ? (
+                                                <Spinner size="tiny" />
+                                            ) : (
+                                                <ScanRegular style={{ fontSize: 12 }} />
+                                            )}
+                                            {diagnosticando ? 'Diagnosticando...' : 'Diagnosticar agentito'}
                                         </button>
                                         {diagnostico && !diagnostico.error && (
                                             <div className="mt-1 p-2 rounded text-xs border border-green-200 bg-green-50 text-green-800">

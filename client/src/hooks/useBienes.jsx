@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
 import {
@@ -115,6 +115,7 @@ const useBienes = () => {
     const [formData, setFormData] = useState({ ...emptyForm })
 
     const { dispatchToast } = useToastController()
+    const submittingRef = useRef(false)
 
     const [tonerCountsByDetalle, setTonerCountsByDetalle] = useState({})
     const [deleteTarget, setDeleteTarget] = useState(null)
@@ -169,19 +170,6 @@ const useBienes = () => {
         loadStats()
     }, [])
 
-    useEffect(() => {
-        if (activeTab === 'consumibles') {
-            setBienes([])
-            cargarCompras(searchTerm)
-        } else if (activeTab === 'equipos') {
-            setBienes([])
-            cargarComprasEquipos(searchTerm)
-            cargarBienesSinOC()
-        } else {
-            cargarBienesPorCategoria(activeTab)
-        }
-    }, [activeTab])
-
     const [debouncedSearch, setDebouncedSearch] = useState(searchTerm)
 
     useEffect(() => {
@@ -191,12 +179,16 @@ const useBienes = () => {
 
     useEffect(() => {
         if (activeTab === 'consumibles') {
+            setBienes([])
             cargarCompras(debouncedSearch)
         } else if (activeTab === 'equipos') {
+            setBienes([])
             cargarComprasEquipos(debouncedSearch)
             cargarBienesSinOC()
+        } else {
+            cargarBienesPorCategoria(activeTab)
         }
-    }, [debouncedSearch])
+    }, [activeTab, debouncedSearch])
 
     const mostrarToast = (mensaje, tipo = 'success') => {
         dispatchToast(
@@ -232,7 +224,7 @@ const useBienes = () => {
             } else {
                 // 'otros': excluir todas las categorías conocidas
                 const excluir = [...categorias.computo, ...categorias.impresoras, ...categorias.perifericos, ...categorias.consumibles]
-                query = query.not('tipo_equipo', 'in', `("${excluir.join('","')}")`)
+                query = query.not('tipo_equipo', 'in', excluir)
             }
 
             const { data, error } = await query.order('created_at', { ascending: false })
@@ -555,9 +547,9 @@ const useBienes = () => {
             }
 
             mostrarToast(`✅ ${totalCreados} equipo(s) agregados a O/C ${compraForm.orden_compra}`)
-            loadStats(true).catch(() => {})
-            cargarBienesPorCategoria(activeTab, true).catch(() => {})
-            cargarComprasEquipos(searchTerm).catch(() => {})
+            loadStats(true).catch(err => console.warn('[useBienes]', err))
+            cargarBienesPorCategoria(activeTab, true).catch(err => console.warn('[useBienes]', err))
+            cargarComprasEquipos(searchTerm).catch(err => console.warn('[useBienes]', err))
         } catch (error) {
             if (error.message === 'Validation failed') throw error
             mostrarToast(handleApiError(error, 'registrar compra de equipos'), 'error')
@@ -787,11 +779,11 @@ const useBienes = () => {
             }
         }
 
-        loadStats(true).catch(() => {})
-        cargarBienesPorCategoria(activeTab, true).catch(() => {})
+        loadStats(true).catch(err => console.warn('[useBienes]', err))
+        cargarBienesPorCategoria(activeTab, true).catch(err => console.warn('[useBienes]', err))
         if (activeTab === 'equipos') {
-            cargarComprasEquipos(searchTerm).catch(() => {})
-            cargarBienesSinOC().catch(() => {})
+            cargarComprasEquipos(searchTerm).catch(err => console.warn('[useBienes]', err))
+            cargarBienesSinOC().catch(err => console.warn('[useBienes]', err))
         }
 
         return { success: errors.length === 0, count: totalCreados, conOC, sinOC, codigosDuplicados, errors }
@@ -905,9 +897,9 @@ const useBienes = () => {
             }
 
             mostrarToast(`✅ ${totalCreados} tóner(es) agregados a O/C ${compraForm.orden_compra}`)
-            loadStats(true).catch(() => {})
-            cargarBienesPorCategoria(activeTab, true).catch(() => {})
-            cargarCompras(searchTerm).catch(() => {})
+            loadStats(true).catch(err => console.warn('[useBienes]', err))
+            cargarBienesPorCategoria(activeTab, true).catch(err => console.warn('[useBienes]', err))
+            cargarCompras(searchTerm).catch(err => console.warn('[useBienes]', err))
         } catch (error) {
             if (error.message === 'Validation failed') throw error
             mostrarToast(handleApiError(error, 'registrar compra'), 'error')
@@ -1251,11 +1243,13 @@ const useBienes = () => {
     }
 
     const handleSubmit = async () => {
+        if (submittingRef.current) return
         if (!formData.tipo_equipo) {
             mostrarToast('El tipo de equipo es obligatorio', 'error')
             return
         }
 
+        submittingRef.current = true
         try {
             if (formData.codigo_patrimonial) {
                 let query = supabase
@@ -1372,7 +1366,6 @@ const useBienes = () => {
                             ? '⚠️ Esta impresora tiene una asignación de tóner activa. Debe finalizarla desde Gestión de Toners primero.'
                             : '⚠️ Este bien tiene una asignación activa. Debe realizar la devolución o baja desde Asignaciones primero.'
                         mostrarToast(msg, 'error')
-                        setSubmitting(false)
                         submittingRef.current = false
                         return
                     }
@@ -1387,12 +1380,22 @@ const useBienes = () => {
                 mostrarToast('Bien actualizado correctamente')
 
                 if (selectedBien?.estado !== sanitized.estado) {
-                    supabase.from('historial_movimientos').insert([{
-                        bien_id: selectedBien.id,
-                        tipo_movimiento_id: null,
-                        fecha_movimiento: new Date().toISOString().split('T')[0],
-                        observaciones: `Estado cambiado de "${selectedBien.estado}" a "${sanitized.estado}" manualmente desde Bienes`
-                    }]).then(() => {}).catch(() => {})
+                    const { data: tipoMov } = await supabase
+                        .from('tipos_movimiento')
+                        .select('id')
+                        .ilike('nombre', 'Cambio de Estado')
+                        .maybeSingle()
+                    const tipoMovId = tipoMov?.id
+                    if (tipoMovId) {
+                        await supabase.from('historial_movimientos').insert([{
+                            bien_id: selectedBien.id,
+                            tipo_movimiento_id: tipoMovId,
+                            fecha_movimiento: new Date().toISOString().split('T')[0],
+                            observaciones: `Estado cambiado de "${selectedBien.estado}" a "${sanitized.estado}" manualmente desde Bienes`
+                        }]).catch(err => console.warn('[useBienes] Error registrando historial:', err))
+                    } else {
+                        console.warn('[useBienes] No se encontró tipo_movimiento "Cambio de Estado" — historial omitido')
+                    }
                 }
             } else {
                 const { error } = await supabase
@@ -1405,11 +1408,13 @@ const useBienes = () => {
 
             setOpenDrawer(false)
             resetForm()
-            cargarCatalogo(true).catch(() => {})
-            loadStats(true).catch(() => {})
-            cargarBienesPorCategoria(activeTab, true).catch(() => {})
+            cargarCatalogo(true).catch(err => console.warn('[useBienes]', err))
+            loadStats(true).catch(err => console.warn('[useBienes]', err))
+            cargarBienesPorCategoria(activeTab, true).catch(err => console.warn('[useBienes]', err))
         } catch (error) {
             mostrarToast(handleApiError(error, 'guardar bien'), 'error')
+        } finally {
+            submittingRef.current = false
         }
     }
 
@@ -1492,8 +1497,8 @@ const useBienes = () => {
 
             if (error) throw error
             mostrarToast('Bien eliminado correctamente')
-            loadStats(true).catch(() => {})
-            cargarBienesPorCategoria(activeTab, true).catch(() => {})
+            loadStats(true).catch(err => console.warn('[useBienes]', err))
+            cargarBienesPorCategoria(activeTab, true).catch(err => console.warn('[useBienes]', err))
         } catch (error) {
             mostrarToast(handleApiError(error, 'eliminar bien'), 'error')
         } finally {

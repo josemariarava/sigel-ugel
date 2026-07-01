@@ -16,7 +16,7 @@ import {
 import {
     Button,
     useToastController,
-    Toaster,
+
     Input,
     Badge,
     Tooltip,
@@ -36,8 +36,6 @@ const GestionToners = () => {
 
     return (
         <div className="p-1 space-y-6">
-            <Toaster />
-
             {/* HEADER */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
-import { FluentProvider, webLightTheme, Spinner } from '@fluentui/react-components'
+import { FluentProvider, webLightTheme, Spinner, Toaster } from '@fluentui/react-components'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
 const customTheme = {
@@ -80,6 +80,7 @@ function AppContent() {
 function App() {
     return (
         <FluentProvider theme={customTheme}>
+            <Toaster />
             <AuthProvider>
                 <AppContent />
             </AuthProvider>

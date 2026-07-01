@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
 import { createActaCargoPdf, createActaAsignacionPdf } from '../lib/pdfGenerator'
+import { getEstadoColorAsignacion } from '../lib/utils'
 import { Toast, ToastTitle, ToastBody } from '@fluentui/react-components'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -1055,16 +1056,6 @@ export function useAsignaciones(dispatchToast) {
         setShowTrasladoCloseConfirm(false)
     }
 
-    const getEstadoColor = (estado) => {
-        switch (estado) {
-            case ESTADOS.ASIGNACION.ACTIVO: return 'bg-green-50 text-green-700 border-green-200'
-            case ESTADOS.ASIGNACION.TRASLADADO: return 'bg-amber-50 text-amber-700 border-amber-200'
-            case ESTADOS.ASIGNACION.DEVUELTO: return 'bg-blue-50 text-blue-700 border-blue-200'
-            case ESTADOS.ASIGNACION.BAJA: return 'bg-red-50 text-red-700 border-red-200'
-            default: return 'bg-slate-100 text-slate-600'
-        }
-    }
-
     return {
         activeTab, setActiveTab,
         distribucionVista, setDistribucionVista,
@@ -1111,7 +1102,7 @@ export function useAsignaciones(dispatchToast) {
         deleteTarget, setDeleteTarget, resetForm,
         submitting,
         obtenerPisosMapa, obtenerAreasMapa,
-        getEstadoColor,
+        getEstadoColor: getEstadoColorAsignacion,
         showCloseConfirm, showTrasladoCloseConfirm,
         requestCloseDrawer, confirmCloseDrawer, cancelCloseDrawer,
         requestCloseTrasladoDrawer, confirmCloseTrasladoDrawer, cancelCloseTrasladoDrawer,

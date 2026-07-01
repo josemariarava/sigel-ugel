@@ -54,7 +54,7 @@ const Dashboard = () => {
         supabase.from('personas').select('*', { count: 'exact', head: true }),
         supabase.from('asignaciones').select('*', { count: 'exact', head: true }).eq('estado_asignacion', 'Activo'),
         supabase.from('bitacora').select('*', { count: 'exact', head: true }).in('estado', ['Pendiente', 'En proceso']),
-        supabase.from('bitacora').select('*', { count: 'exact', head: true }).gte('created_at', hoy),
+        supabase.from('bitacora').select('*', { count: 'exact', head: true }).gte('fecha_atencion', hoy),
         supabase.from('bienes').select('valor_compra'),
         supabase.from('bitacora').select('*, persona:personas(nombres, apellidos)').order('created_at', { ascending: false }).limit(5),
         supabase.from('bienes').select('estado')
@@ -78,9 +78,9 @@ const Dashboard = () => {
       })
       setBienesPorEstado(Object.entries(estadoMap).sort((a, b) => b[1] - a[1]))
     } catch (error) {
-      console.error('[Dashboard] Error:', error)
+        console.error('[Dashboard] Error al cargar datos:', error)
     } finally {
-      setLoading(false)
+        setLoading(false)
     }
   }
 

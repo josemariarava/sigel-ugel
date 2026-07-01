@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
 import { createActaTonerPdf } from '../lib/pdfGeneratorToners'
+import { getEstadoColorToner } from '../lib/utils'
 import { Toast, ToastTitle, ToastBody } from '@fluentui/react-components'
 
 export function useGestionToners(dispatchToast) {
@@ -32,6 +33,7 @@ export function useGestionToners(dispatchToast) {
     const [detallesTarget, setDetallesTarget] = useState(null)
     const [submitting, setSubmitting] = useState(false)
     const submittingRef = useRef(false)
+    const impresorasCache = useRef(null)
     const [currentPage, setCurrentPage] = useState(1)
     const PAGE_SIZE = 25
 
@@ -178,6 +180,7 @@ export function useGestionToners(dispatchToast) {
             setAmbientes(ambientesResult.data || [])
             setPisos(pisosResult.data || [])
             setImpresoras(impresorasResult.data || [])
+            impresorasCache.current = impresorasResult.data || []
 
         } catch (error) {
             mostrarToast(handleApiError(error, 'cargar datos'), 'error')
@@ -187,6 +190,10 @@ export function useGestionToners(dispatchToast) {
     }
 
     const cargarImpresoras = async () => {
+        if (impresorasCache.current) {
+            setImpresoras(impresorasCache.current)
+            return
+        }
         try {
             const { data, error } = await supabase
                 .from('bienes')
@@ -195,6 +202,7 @@ export function useGestionToners(dispatchToast) {
                 .eq('estado', 'Activo')
                 .order('marca')
             if (error) throw error
+            impresorasCache.current = data || []
             setImpresoras(data || [])
         } catch (error) {
             console.error('Error al cargar impresoras:', error.message)
@@ -726,10 +734,10 @@ export function useGestionToners(dispatchToast) {
     )
 
     const totalPages = Math.max(1, Math.ceil(filteredAsignaciones.length / PAGE_SIZE))
-    const paginatedData = useMemo(() => {
-        const start = (currentPage - 1) * PAGE_SIZE
-        return filteredAsignaciones.slice(start, start + PAGE_SIZE)
-    }, [filteredAsignaciones, currentPage])
+    const paginatedData = filteredAsignaciones.slice(
+        (currentPage - 1) * PAGE_SIZE,
+        currentPage * PAGE_SIZE
+    )
 
     useEffect(() => {
         if (currentPage > totalPages) setCurrentPage(totalPages)
@@ -745,16 +753,6 @@ export function useGestionToners(dispatchToast) {
             asig.toner_id === toner.id && asig.estado === 'Activo'
         )
     )
-
-    const getEstadoColor = (estado) => {
-        switch (estado) {
-            case 'Activo': return 'bg-green-50 text-green-700 border-green-200'
-            case 'Terminado': return 'bg-blue-50 text-blue-700 border-blue-200'
-            case 'Caducado': return 'bg-yellow-50 text-yellow-700 border-yellow-200'
-            case 'Dado de Baja': return 'bg-red-50 text-red-700 border-red-200'
-            default: return 'bg-slate-100 text-slate-600'
-        }
-    }
 
     const calcularDuracion = (asignacion) => {
         if (asignacion.duracion_dias) {
@@ -786,7 +784,7 @@ export function useGestionToners(dispatchToast) {
         selectedTonerPreview, stockMismoModelo,
         entregadoPor, setEntregadoPor,
         filteredAsignaciones, paginatedData, currentPage, setCurrentPage, totalPages, PAGE_SIZE, tonersDisponibles,
-        getEstadoColor, calcularDuracion,
+        getEstadoColor: getEstadoColorToner, calcularDuracion,
         cargarDatos, cargarImpresoras, mostrarToast,
         handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete, devolverToner,
         deleteTarget, setDeleteTarget,
