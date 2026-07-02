@@ -119,6 +119,7 @@ export function useAsignaciones(dispatchToast) {
     const [deleteTarget, setDeleteTarget] = useState(null)
     const [submitting, setSubmitting] = useState(false)
     const submittingRef = useRef(false)
+    const autoPopulatedRef = useRef(false)
     const [tiposMovimiento, setTiposMovimiento] = useState([])
     const [currentPage, setCurrentPage] = useState(1)
     const PAGE_SIZE = 25
@@ -192,6 +193,24 @@ export function useAsignaciones(dispatchToast) {
             mostrarToast('⚠️ No se encontró "Almacén General" en el sistema. Las devoluciones fallarán. Cree un ambiente con nombre "Almacén General" en algún piso.', 'warning')
         }
     }, [todosLosAmbientes, almacenGeneral])
+
+    useEffect(() => {
+        if (!openModal || editMode) {
+            autoPopulatedRef.current = false
+            return
+        }
+        if (autoPopulatedRef.current || personas.length === 0) return
+        autoPopulatedRef.current = true
+
+        supabase.auth.getSession().then(({ data }) => {
+            const email = data?.session?.user?.email
+            if (!email) return
+            const match = personas.find(p => p.email?.toLowerCase() === email.toLowerCase())
+            if (match) {
+                setFormData(prev => prev.persona_origen_id ? prev : { ...prev, persona_origen_id: match.id })
+            }
+        })
+    }, [openModal, editMode, personas])
 
     const cargarDatos = async () => {
         try {
@@ -805,6 +824,9 @@ export function useAsignaciones(dispatchToast) {
                 fecha_asignacion: formData.fecha_asignacion,
                 observaciones: formData.observaciones,
                 ubicacion_detalle: formData.ubicacion_detalle || null,
+                documento_referencia: formData.documento_referencia || null,
+                persona_origen_id: formData.persona_origen_id || null,
+                motivo: formData.motivo || null,
                 estado_asignacion: formData.estado_asignacion,
                 ...(!editMode && numeroActa ? { numero_acta: numeroActa } : {})
             }
@@ -861,9 +883,9 @@ export function useAsignaciones(dispatchToast) {
             persona_id: asignacion.persona_id,
             ambiente_id: asignacion.ambiente_id || '',
             fecha_asignacion: asignacion.fecha_asignacion,
-            documento_referencia: '',
-            persona_origen_id: '',
-            motivo: '',
+            documento_referencia: asignacion.documento_referencia || '',
+            persona_origen_id: asignacion.persona_origen_id || '',
+            motivo: asignacion.motivo || '',
             observaciones: asignacion.observaciones || '',
             ubicacion_detalle: asignacion.ubicacion_detalle || '',
             estado_asignacion: asignacion.estado_asignacion || ESTADOS.ASIGNACION.ACTIVO

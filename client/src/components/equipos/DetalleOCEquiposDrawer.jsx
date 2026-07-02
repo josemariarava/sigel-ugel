@@ -1,4 +1,5 @@
-import { DesktopRegular, DismissRegular, EditRegular, SaveRegular } from '@fluentui/react-icons'
+import { useEffect } from 'react'
+import { DesktopRegular, DismissRegular, EditRegular, DeleteRegular, SaveRegular } from '@fluentui/react-icons'
 import { supabase } from '../../lib/supabaseClient'
 import {
     Button,
@@ -14,16 +15,46 @@ import {
     Drawer,
     DrawerBody,
     DrawerHeader,
-    DrawerHeaderTitle
+    DrawerHeaderTitle,
+    Tooltip
 } from '@fluentui/react-components'
 import { useState } from 'react'
 
-const DetalleOCEquiposDrawer = ({ open, onClose, compra, equipos, onEditEquipo, onAgregarMas, onBatchUpdate }) => {
+const DetalleOCEquiposDrawer = ({ open, onClose, compra, equipos, onEditEquipo, onDeleteEquipo, onAgregarMas, onBatchUpdate }) => {
+    const [asignacionesMap, setAsignacionesMap] = useState({})
     const [batchEdit, setBatchEdit] = useState({ detalleId: null, open: false })
     const [batchForm, setBatchForm] = useState({
         fecha_compra: '', razon_social: '', ruc: '', direccion: '', mes_calendario: '', observaciones: ''
     })
     const [saving, setSaving] = useState(false)
+
+    useEffect(() => {
+        if (open) {
+            const equipoIds = (equipos || []).flatMap(d => (d.equipos || []).map(e => e.id))
+            if (equipoIds.length === 0) return
+                supabase
+                    .from('asignaciones')
+                    .select('bien_id, numero_acta, persona:personas!fk_asignaciones_persona(*)')
+                    .in('bien_id', equipoIds)
+                    .order('fecha_asignacion', { ascending: true })
+                    .then(({ data, error }) => {
+                    if (error) {
+                        console.error('[DetalleOCEquiposDrawer] asignaciones:', error)
+                        return
+                    }
+                    const map = {}
+                    ;(data || []).forEach(a => {
+                        map[a.bien_id] = {
+                            acta: a.numero_acta,
+                            persona: a.persona ? `${a.persona.apellidos}, ${a.persona.nombres}` : '—'
+                        }
+                    })
+                    setAsignacionesMap(map)
+                })
+        } else {
+            setAsignacionesMap({})
+        }
+    }, [open, equipos])
 
     const openBatchEdit = (detalle) => {
         setBatchForm({
@@ -123,7 +154,7 @@ const DetalleOCEquiposDrawer = ({ open, onClose, compra, equipos, onEditEquipo, 
             <DrawerBody className="p-4 space-y-6">
                 {equipos.length === 0 ? (
                     <div className="text-center text-gray-400 py-12">
-                        <p>Cargando equipos...</p>
+                        <p>No se encontraron equipos registrados</p>
                     </div>
                 ) : (
                     equipos.map((detalle) => (
@@ -226,6 +257,7 @@ const DetalleOCEquiposDrawer = ({ open, onClose, compra, equipos, onEditEquipo, 
                                         <TableHeaderCell>Serie</TableHeaderCell>
                                         <TableHeaderCell>Cód. Patrimonial</TableHeaderCell>
                                         <TableHeaderCell>Estado</TableHeaderCell>
+                                        <TableHeaderCell>Asignado a</TableHeaderCell>
                                         <TableHeaderCell>Condición</TableHeaderCell>
                                         <TableHeaderCell>Especificaciones</TableHeaderCell>
                                         <TableHeaderCell>Acciones</TableHeaderCell>
@@ -234,7 +266,7 @@ const DetalleOCEquiposDrawer = ({ open, onClose, compra, equipos, onEditEquipo, 
                                 <TableBody>
                                     {(detalle.equipos || []).length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-6 text-gray-400">
+                                            <TableCell colSpan={7} className="text-center py-6 text-gray-400">
                                                 No se encontraron bienes registrados para este detalle
                                             </TableCell>
                                         </TableRow>
@@ -263,21 +295,45 @@ const DetalleOCEquiposDrawer = ({ open, onClose, compra, equipos, onEditEquipo, 
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-xs">
+                                                    {equipo.estado === 'Asignado' && asignacionesMap[equipo.id] ? (
+                                                        <Tooltip content={`Acta: ${asignacionesMap[equipo.id].acta}`} relationship="label">
+                                                            <span className="text-amber-700 font-medium cursor-default">
+                                                                {asignacionesMap[equipo.id].persona}
+                                                            </span>
+                                                        </Tooltip>
+                                                    ) : (
+                                                        <span className="text-gray-400">—</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-xs">
                                                     {equipo.condicion || '—'}
                                                 </TableCell>
                                                 <TableCell className="text-xs text-gray-500 max-w-[200px] truncate">
                                                     {[equipo.procesador, equipo.ram, equipo.almacenamiento].filter(Boolean).join(' | ') || '—'}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Button
-                                                        appearance="subtle"
-                                                        icon={<EditRegular />}
-                                                        onClick={() => {
-                                                            onClose()
-                                                            onEditEquipo(equipo)
-                                                        }}
-                                                        size="small"
-                                                    />
+                                                    <div className="flex gap-1">
+                                                        <Tooltip content="Editar equipo" relationship="label">
+                                                            <Button
+                                                                appearance="subtle"
+                                                                icon={<EditRegular />}
+                                                                onClick={() => {
+                                                                    onClose()
+                                                                    onEditEquipo(equipo)
+                                                                }}
+                                                                size="small"
+                                                            />
+                                                        </Tooltip>
+                                                        <Tooltip content="Eliminar equipo" relationship="label">
+                                                            <Button
+                                                                appearance="subtle"
+                                                                icon={<DeleteRegular />}
+                                                                onClick={() => onDeleteEquipo(equipo)}
+                                                                size="small"
+                                                                className="text-red-500 hover:text-red-700"
+                                                            />
+                                                        </Tooltip>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))

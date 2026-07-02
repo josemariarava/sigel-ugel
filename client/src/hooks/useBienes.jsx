@@ -320,6 +320,8 @@ const useBienes = () => {
                     .order('created_at', { ascending: false })
             ])
             if (comprasRes.error) throw comprasRes.error
+            if (tonersRes.error) throw tonersRes.error
+            if (tonersSinOCRes.error) throw tonersSinOCRes.error
             setComprasAgrupadas(comprasRes.data || [])
 
             const counts = {}
@@ -524,6 +526,7 @@ const useBienes = () => {
 
                 if (errDet) throw errDet
 
+                const detalleId = detalleCreado.id
                 const estado = determinarEstado(detalle.tipo_equipo, detalle.condicion)
                 const { error: errBien } = await supabase
                     .from('bienes')
@@ -536,7 +539,7 @@ const useBienes = () => {
                         serie: detalle.serie,
                         codigo_patrimonial: detalle.codigo_patrimonial || null,
                         orden_compra: compraForm.orden_compra,
-                        compra_equipo_detalle_id: detalleCreado.id,
+                        compra_equipo_detalle_id: detalleId,
                         estado,
                         condicion: detalle.condicion || 'Bueno',
                         valor_compra: safeParseFloat(detalle.costo_unitario),
@@ -550,7 +553,10 @@ const useBienes = () => {
                         other: compraForm.observaciones || detalle.other || ''
                     }])
 
-                if (errBien) throw errBien
+                if (errBien) {
+                    await supabase.from('compras_equipos_detalles').delete().eq('id', detalleId)
+                    throw errBien
+                }
                 totalCreados++
             }
 
@@ -734,7 +740,11 @@ const useBienes = () => {
                                 direccion_mac: String(row.direccion_mac || '').trim() || null,
                                 other: String(row.other || '').trim() || null
                             }])
-                        if (errBien) { errors.push(`Bien ${row.serie}: ${errBien.message}`); continue }
+                        if (errBien) {
+                            await supabase.from('compras_equipos_detalles').delete().eq('id', detalle.id)
+                            errors.push(`Bien ${row.serie}: ${errBien.message}`)
+                            continue
+                        }
                         totalCreados++
                         conOC++
                     } catch (e) {
@@ -859,6 +869,7 @@ const useBienes = () => {
 
                 if (errDet) throw errDet
 
+                const detalleId = detalleCreado.id
                 const bienesData = []
                 const now = Date.now()
                 let seriesInput = []
@@ -886,7 +897,7 @@ const useBienes = () => {
                         rendimiento: safeParseInt(detalle.rendimiento),
                         orden_compra: compraForm.orden_compra,
                         proveedor: compraForm.proveedor,
-                        compra_detalle_id: detalleCreado.id,
+                        compra_detalle_id: detalleId,
                         estado: 'Disponible',
                         condicion: 'Bueno',
                         valor_compra: safeParseFloat(detalle.costo_unitario),
@@ -900,7 +911,10 @@ const useBienes = () => {
                     .from('bienes')
                     .insert(bienesData)
 
-                if (errBienes) throw errBienes
+                if (errBienes) {
+                    await supabase.from('compra_detalles').delete().eq('id', detalleId)
+                    throw errBienes
+                }
                 totalCreados += totalSeries
             }
 
@@ -1419,6 +1433,12 @@ const useBienes = () => {
             cargarCatalogo(true).catch(err => console.warn('[useBienes]', err))
             loadStats(true).catch(err => console.warn('[useBienes]', err))
             cargarBienesPorCategoria(activeTab, true).catch(err => console.warn('[useBienes]', err))
+            if (activeTab === 'consumibles') {
+                cargarCompras(debouncedSearch).catch(err => console.warn('[useBienes]', err))
+            } else if (activeTab === 'equipos') {
+                cargarComprasEquipos(debouncedSearch).catch(err => console.warn('[useBienes]', err))
+                cargarBienesSinOC().catch(err => console.warn('[useBienes]', err))
+            }
         } catch (error) {
             mostrarToast(handleApiError(error, 'guardar bien'), 'error')
         } finally {
@@ -1426,17 +1446,55 @@ const useBienes = () => {
         }
     }
 
-    const handleEdit = (bien) => {
+    const handleEdit = async (bien) => {
         setEditMode(true)
         setSelectedBien(bien)
         setMonitoresDetectados([])
         setMonitorSeleccionadoIndex(null)
+
+        let resolvedMarcaId = bien.marca_id || ''
+        let resolvedModeloId = bien.modelo_id || ''
+
+        if (!resolvedMarcaId && bien.marca) {
+            const match = marcas.find(m => m.nombre.toLowerCase() === bien.marca.toLowerCase())
+            if (match) {
+                resolvedMarcaId = String(match.id)
+            }
+        }
+
+        if (!resolvedMarcaId && bien.marca) {
+            try {
+                const newId = await findOrCreateMarca(bien.marca)
+                if (newId) resolvedMarcaId = String(newId)
+            } catch (e) {
+                console.warn('[handleEdit] Error creando marca:', e)
+            }
+        }
+
+        if (resolvedMarcaId && !resolvedModeloId && bien.modelo) {
+            const modeloMatch = modelos.find(
+                m => String(m.marca_id) === resolvedMarcaId && m.nombre.toLowerCase() === bien.modelo.toLowerCase()
+            )
+            if (modeloMatch) {
+                resolvedModeloId = String(modeloMatch.id)
+            }
+        }
+
+        if (resolvedMarcaId && !resolvedModeloId && bien.modelo) {
+            try {
+                const newId = await findOrCreateModelo(bien.modelo, resolvedMarcaId)
+                if (newId) resolvedModeloId = String(newId)
+            } catch (e) {
+                console.warn('[handleEdit] Error creando modelo:', e)
+            }
+        }
+
         setFormData({
             tipo_equipo: bien.tipo_equipo || '',
             marca: bien.marca || '',
             modelo: bien.modelo || '',
-            marca_id: bien.marca_id || '',
-            modelo_id: bien.modelo_id || '',
+            marca_id: resolvedMarcaId,
+            modelo_id: resolvedModeloId,
             color: bien.color || '',
             other: bien.other || '',
             codigo_ti: bien.codigo_ti || '',
@@ -1461,10 +1519,9 @@ const useBienes = () => {
             direccion_mac: bien.direccion_mac || '',
             tamano_pantalla: bien.tamano_pantalla || ''
         })
-        if (bien.marca_id) {
-            const filtrados = modelos.filter(m => m.marca_id === bien.marca_id)
+        if (resolvedMarcaId) {
+            const filtrados = modelos.filter(m => String(m.marca_id) === resolvedMarcaId)
             setModelosFiltrados(filtrados)
-        } else if (bien.marca) {
         }
         setOpenDrawer(true)
     }
@@ -1507,6 +1564,12 @@ const useBienes = () => {
             mostrarToast('Bien eliminado correctamente')
             loadStats(true).catch(err => console.warn('[useBienes]', err))
             cargarBienesPorCategoria(activeTab, true).catch(err => console.warn('[useBienes]', err))
+            if (activeTab === 'consumibles') {
+                cargarCompras(debouncedSearch).catch(err => console.warn('[useBienes]', err))
+            } else if (activeTab === 'equipos') {
+                cargarComprasEquipos(debouncedSearch).catch(err => console.warn('[useBienes]', err))
+                cargarBienesSinOC().catch(err => console.warn('[useBienes]', err))
+            }
         } catch (error) {
             mostrarToast(handleApiError(error, 'eliminar bien'), 'error')
         } finally {
@@ -1577,7 +1640,7 @@ const useBienes = () => {
         impresoras: statsLight.filter(b => categorias.impresoras.includes(b.tipo_equipo)).length,
         perifericos: statsLight.filter(b => categorias.perifericos.includes(b.tipo_equipo)).length,
         consumibles: statsLight.filter(b => categorias.consumibles.includes(b.tipo_equipo)).length,
-        activos: statsLight.filter(b => b.estado === 'Activo').length
+        activos: statsLight.filter(b => b.estado === 'Activo' || b.estado === 'Disponible').length
     }
 
     const exportarAExcel = async () => {

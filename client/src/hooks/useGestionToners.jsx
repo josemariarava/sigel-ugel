@@ -48,6 +48,7 @@ export function useGestionToners(dispatchToast) {
     })
 
     const [selectedTonerPreview, setSelectedTonerPreview] = useState(null)
+    const [impresoraConTonerActivo, setImpresoraConTonerActivo] = useState(null)
     const [stockMismoModelo, setStockMismoModelo] = useState({ total: 0, disponibles: 0, asignados: 0 })
     const [entregadoPor, setEntregadoPor] = useState('')
 
@@ -74,6 +75,25 @@ export function useGestionToners(dispatchToast) {
             setStockMismoModelo({ total: 0, disponibles: 0, asignados: 0 })
         }
     }, [formData.toner_id, toners, asignaciones, selectedAsignacion])
+
+    useEffect(() => {
+        if (!formData.impresora_id) {
+            setImpresoraConTonerActivo(null)
+            return
+        }
+        let query = supabase
+            .from('asignacion_toners')
+            .select('id, toner_id')
+            .eq('impresora_id', formData.impresora_id)
+            .eq('estado', 'Activo')
+            .limit(1)
+        if (editMode && selectedAsignacion?.impresora_id === formData.impresora_id) {
+            query = query.neq('id', selectedAsignacion.id)
+        }
+        query.then(({ data }) => {
+            setImpresoraConTonerActivo(data && data.length > 0 ? data[0] : false)
+        })
+    }, [formData.impresora_id, editMode, selectedAsignacion])
 
     useEffect(() => {
         if (selectedPiso) {
@@ -230,6 +250,25 @@ export function useGestionToners(dispatchToast) {
             return
         }
 
+        if (formData.impresora_id) {
+            const { data: ocupada } = await supabase
+                .from('asignacion_toners')
+                .select('id, toner_id')
+                .eq('impresora_id', formData.impresora_id)
+                .eq('estado', 'Activo')
+                .limit(1)
+            if (ocupada && ocupada.length > 0 &&
+                !(editMode && selectedAsignacion?.id === ocupada[0].id)) {
+                mostrarToast(
+                    '⚠️ Esta impresora ya tiene un tóner asignado activamente. Debe finalizar esa asignación antes de asignar uno nuevo.',
+                    'error'
+                )
+                submittingRef.current = false
+                setSubmitting(false)
+                return
+            }
+        }
+
         submittingRef.current = true
         setSubmitting(true)
         try {
@@ -254,12 +293,6 @@ export function useGestionToners(dispatchToast) {
                 if (error) throw error
                 mostrarToast('Asignación actualizada correctamente')
             } else {
-                const { error: reserveError } = await supabase
-                    .from('bienes')
-                    .update({ estado: 'Asignado' })
-                    .eq('id', formData.toner_id)
-                if (reserveError) throw reserveError
-
                 const anio = new Date().getFullYear()
                 let data
                 let numeroActa
@@ -287,7 +320,6 @@ export function useGestionToners(dispatchToast) {
 
                     if (error) {
                         if (error.code === '23505' && attempt < 2) continue
-                        await supabase.from('bienes').update({ estado: 'Disponible' }).eq('id', formData.toner_id)
                         throw error
                     }
                     data = inserted
@@ -295,6 +327,16 @@ export function useGestionToners(dispatchToast) {
                 }
 
                 if (data && data[0]) {
+                    const { error: updateError } = await supabase
+                        .from('bienes')
+                        .update({ estado: 'Asignado' })
+                        .eq('id', formData.toner_id)
+
+                    if (updateError) {
+                        await supabase.from('asignacion_toners').delete().eq('id', data[0].id)
+                        throw updateError
+                    }
+
                     await generarActa(data[0])
                 }
 
@@ -714,6 +756,7 @@ export function useGestionToners(dispatchToast) {
         setEditMode(false)
         setSelectedAsignacion(null)
         setEntregadoPor('')
+        setImpresoraConTonerActivo(null)
         setFormData({
             toner_id: '',
             impresora_id: '',
@@ -791,6 +834,7 @@ export function useGestionToners(dispatchToast) {
         devolverTarget, setDevolverTarget,
         detallesTarget, setDetallesTarget,
         submitting,
+        impresoraConTonerActivo,
         handleTerminar, generarActaManual, verHistorial, resetForm,
     }
 }

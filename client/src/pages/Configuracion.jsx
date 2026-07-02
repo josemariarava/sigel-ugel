@@ -292,9 +292,10 @@ const Configuracion = () => {
     const confirmEliminarMarca = async () => {
         if (!deleteTarget) return
         try {
-            const [bienesRes, comprasRes] = await Promise.all([
+            const [bienesRes, comprasRes, equiposRes] = await Promise.all([
                 supabase.from('bienes').select('id, tipo_equipo, marca, modelo, serie, estado').eq('marca_id', deleteTarget.id),
-                supabase.from('compra_detalles').select('id, marca, modelo, cantidad_pedida').eq('marca_id', deleteTarget.id)
+                supabase.from('compra_detalles').select('id, marca, modelo, cantidad_pedida').eq('marca_id', deleteTarget.id),
+                supabase.from('compras_equipos_detalles').select('id, marca, modelo, cantidad_recibida').eq('marca_id', deleteTarget.id)
             ])
 
             const items = [
@@ -305,9 +306,15 @@ const Configuracion = () => {
                     estado: b.estado || '—'
                 })),
                 ...(comprasRes.data || []).map(c => ({
-                    tipo: 'Compra',
+                    tipo: 'Compra Tóner',
                     descripcion: [c.marca, c.modelo].filter(Boolean).join(' ') || '—',
                     serie: `${c.cantidad_pedida} unidad(es)`,
+                    estado: '—'
+                })),
+                ...(equiposRes.data || []).map(e => ({
+                    tipo: 'Compra Equipo',
+                    descripcion: [e.marca, e.modelo].filter(Boolean).join(' ') || '—',
+                    serie: `${e.cantidad_recibida} unidad(es)`,
                     estado: '—'
                 }))
             ]
@@ -393,24 +400,35 @@ const Configuracion = () => {
     const confirmEliminarModelo = async () => {
         if (!deleteTarget) return
         try {
-            const { data: bienes, error: errB } = await supabase
-                .from('bienes')
-                .select('id, tipo_equipo, marca, modelo, serie, estado')
-                .eq('modelo_id', deleteTarget.id)
+            const [bienesRes, comprasRes, equiposRes] = await Promise.all([
+                supabase.from('bienes').select('id, tipo_equipo, marca, modelo, serie, estado').eq('modelo_id', deleteTarget.id),
+                supabase.from('compra_detalles').select('id, marca, modelo, cantidad_pedida').eq('modelo_id', deleteTarget.id),
+                supabase.from('compras_equipos_detalles').select('id, marca, modelo, cantidad_recibida').eq('modelo_id', deleteTarget.id)
+            ])
 
-            if (errB) throw errB
+            const items = [
+                ...(bienesRes.data || []).map(b => ({
+                    tipo: b.tipo_equipo,
+                    descripcion: [b.marca, b.modelo].filter(Boolean).join(' ') || '—',
+                    serie: b.serie || '—',
+                    estado: b.estado || '—'
+                })),
+                ...(comprasRes.data || []).map(c => ({
+                    tipo: 'Compra Tóner',
+                    descripcion: [c.marca, c.modelo].filter(Boolean).join(' ') || '—',
+                    serie: `${c.cantidad_pedida} unidad(es)`,
+                    estado: '—'
+                })),
+                ...(equiposRes.data || []).map(e => ({
+                    tipo: 'Compra Equipo',
+                    descripcion: [e.marca, e.modelo].filter(Boolean).join(' ') || '—',
+                    serie: `${e.cantidad_recibida} unidad(es)`,
+                    estado: '—'
+                }))
+            ]
 
-            if (bienes && bienes.length > 0) {
-                setBloqueoInfo({
-                    tipo: 'modelo',
-                    nombre: deleteTarget.nombre,
-                    items: bienes.map(b => ({
-                        tipo: b.tipo_equipo,
-                        descripcion: [b.marca, b.modelo].filter(Boolean).join(' ') || '—',
-                        serie: b.serie || '—',
-                        estado: b.estado || '—'
-                    }))
-                })
+            if (items.length > 0) {
+                setBloqueoInfo({ tipo: 'modelo', nombre: deleteTarget.nombre, items })
                 setDeleteTarget(null)
                 return
             }

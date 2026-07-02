@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { DismissRegular } from '@fluentui/react-icons'
+import { DismissRegular, WarningRegular } from '@fluentui/react-icons'
 import {
     Button,
     Drawer,
@@ -27,6 +27,7 @@ export default function DrawerAsignacionToners({
     ambientes, ambientesFiltrados, pisos,
     handleSubmit, resetForm,
     submitting,
+    impresoraConTonerActivo,
 }) {
     const [showConfirmClose, setShowConfirmClose] = useState(false)
     const initialSnapshotRef = useRef('')
@@ -260,6 +261,13 @@ export default function DrawerAsignacionToners({
                             </Dropdown>
                         </Field>
                     </div>
+
+                    {formData.impresora_id && impresoraConTonerActivo && (
+                        <div className="p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 flex items-start gap-2">
+                            <WarningRegular className="text-amber-600 mt-0.5 shrink-0" />
+                            <span>Esta impresora ya tiene un tóner activo. Debe finalizar esa asignación antes de asignar uno nuevo.</span>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <Field label="Ambiente">

@@ -39,9 +39,12 @@ import PaginationBar from '../components/bienes/PaginationBar'
 import WorkstationGridView from '../components/bienes/WorkstationGridView'
 import TonersPorOC from '../components/toners/TonersPorOC'
 import DetalleOCDrawer from '../components/toners/DetalleOCDrawer'
+import DrawerDetalleToner from '../components/toners/DrawerDetalleToner'
 import CompraTonersDrawer from '../components/toners/CompraTonersDrawer'
 import EquiposPorOC from '../components/equipos/EquiposPorOC'
 import DetalleOCEquiposDrawer from '../components/equipos/DetalleOCEquiposDrawer'
+import DrawerDetalleEquipo from '../components/equipos/DrawerDetalleEquipo'
+import DrawerDetalleBien from '../components/bienes/DrawerDetalleBien'
 import CompraEquiposDrawer from '../components/equipos/CompraEquiposDrawer'
 import ImportarBienesExcelDrawer from '../components/equipos/ImportarBienesExcelDrawer'
 
@@ -90,9 +93,24 @@ const Bienes = () => {
         handleSerieBlur, serieError
     } = useBienes()
 
+    const handleConfirmDelete = async () => {
+        await confirmDelete()
+        setOpenDetalleDrawer(false)
+        setOpenDetalleEquipoDrawer(false)
+        setOpenTonerDetalleDrawer(false)
+        setOpenEquipoDetalleDrawer(false)
+        setOpenBienDetalleDrawer(false)
+    }
+
     const [selectedIds, setSelectedIds] = useState(new Set())
     const [batchCondicion, setBatchCondicion] = useState('')
     const [batchUpdating, setBatchUpdating] = useState(false)
+    const [selectedTonerDetail, setSelectedTonerDetail] = useState(null)
+    const [openTonerDetalleDrawer, setOpenTonerDetalleDrawer] = useState(false)
+    const [selectedEquipoDetail, setSelectedEquipoDetail] = useState(null)
+    const [openEquipoDetalleDrawer, setOpenEquipoDetalleDrawer] = useState(false)
+    const [selectedBienDetail, setSelectedBienDetail] = useState(null)
+    const [openBienDetalleDrawer, setOpenBienDetalleDrawer] = useState(false)
 
     useEffect(() => {
         setSelectedIds(new Set())
@@ -182,6 +200,34 @@ const Bienes = () => {
     const onCloseDrawer = () => {
         setOpenDrawer(false)
         resetForm()
+    }
+
+    const handleEditFromDetail = (toner) => {
+        setOpenTonerDetalleDrawer(false)
+        setSelectedTonerDetail(null)
+        handleEdit(toner)
+    }
+
+    const handleEquipoDetailClick = (equipo) => {
+        setSelectedEquipoDetail(equipo)
+        setOpenEquipoDetalleDrawer(true)
+    }
+
+    const handleEditFromEquipoDetail = (equipo) => {
+        setOpenEquipoDetalleDrawer(false)
+        setSelectedEquipoDetail(null)
+        handleEdit(equipo)
+    }
+
+    const handleBienDetailClick = (bien) => {
+        setSelectedBienDetail(bien)
+        setOpenBienDetalleDrawer(true)
+    }
+
+    const handleEditFromBienDetail = (bien) => {
+        setOpenBienDetalleDrawer(false)
+        setSelectedBienDetail(null)
+        handleEdit(bien)
     }
 
     const tabsConfig = [
@@ -315,7 +361,10 @@ const Bienes = () => {
                                         : t.estado === 'Asignado' ? 'brand'
                                         : 'danger'
                                     return (
-                                        <Card key={t.id} appearance="outline" className="border-gray-200 !shadow-sm hover:!shadow-md transition-shadow cursor-pointer" onClick={() => handleEdit(t)}>
+                                        <Card key={t.id} appearance="outline" className="border-gray-200 !shadow-sm hover:!shadow-md transition-shadow cursor-pointer" onClick={() => {
+                                            setSelectedTonerDetail(t)
+                                            setOpenTonerDetalleDrawer(true)
+                                        }}>
                                             <div className="space-y-1.5">
                                                 <div className="flex items-center justify-between">
                                                     <span className="font-medium text-sm text-gray-800 truncate">
@@ -364,6 +413,7 @@ const Bienes = () => {
                     bienesSinOC={bienesSinOC}
                     onCompraClick={handleCompraEquipoClick}
                     onAgregarMas={handleAddMoreToCompraEquipo}
+                    onBienSinODetail={handleEquipoDetailClick}
                     onBienSinOClick={handleEdit}
                 />
             ) : activeTab === 'estaciones' ? (
@@ -398,6 +448,7 @@ const Bienes = () => {
                             toggleSelectAll={toggleSelectAll}
                             handleEdit={handleEdit}
                             handleDelete={handleDelete}
+                            onDetailClick={handleBienDetailClick}
                         />
                     )}
                 </Card>
@@ -449,6 +500,7 @@ const Bienes = () => {
                 compra={selectedCompra}
                 toners={selectedCompraToners}
                 onEditToner={handleEdit}
+                onDeleteToner={handleDelete}
                 onAgregarMas={handleAddMoreToCompra}
                 onBatchUpdate={handleBatchUpdate}
             />
@@ -471,6 +523,7 @@ const Bienes = () => {
                 compra={selectedCompraEquipo}
                 equipos={selectedCompraEquipos}
                 onEditEquipo={handleEdit}
+                onDeleteEquipo={handleDelete}
                 onAgregarMas={handleAddMoreToCompraEquipo}
                 onBatchUpdate={handleBatchUpdateEquipo}
             />
@@ -481,11 +534,44 @@ const Bienes = () => {
                 onImport={handleImportarExcelBienes}
             />
 
+            <DrawerDetalleToner
+                open={openTonerDetalleDrawer}
+                onClose={() => {
+                    setOpenTonerDetalleDrawer(false)
+                    setSelectedTonerDetail(null)
+                }}
+                toner={selectedTonerDetail}
+                onEdit={handleEditFromDetail}
+                onDelete={handleDelete}
+            />
+
+            <DrawerDetalleEquipo
+                open={openEquipoDetalleDrawer}
+                onClose={() => {
+                    setOpenEquipoDetalleDrawer(false)
+                    setSelectedEquipoDetail(null)
+                }}
+                equipo={selectedEquipoDetail}
+                onEdit={handleEditFromEquipoDetail}
+                onDelete={handleDelete}
+            />
+
+            <DrawerDetalleBien
+                open={openBienDetalleDrawer}
+                onClose={() => {
+                    setOpenBienDetalleDrawer(false)
+                    setSelectedBienDetail(null)
+                }}
+                bien={selectedBienDetail}
+                onEdit={handleEditFromBienDetail}
+                onDelete={handleDelete}
+            />
+
             <ConfirmDialog
                 title="Eliminar bien"
                 open={!!deleteTarget}
                 message="¿Estás seguro? Esta acción no se puede deshacer."
-                onConfirm={confirmDelete}
+                onConfirm={handleConfirmDelete}
                 onCancel={() => setDeleteTarget(null)}
             >
                 {deleteTarget && (

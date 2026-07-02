@@ -1,6 +1,7 @@
 import {
     EditRegular,
     DeleteRegular,
+    DocumentRegular,
     LaptopRegular,
     PrintRegular,
     TvRegular,
@@ -50,7 +51,7 @@ const tipoIcono = (tipo) => {
     return map[tipo] || null
 }
 
-const BienesTable = ({ filteredBienes, paginatedData, selectedIds, toggleSelect, toggleSelectAll, handleEdit, handleDelete }) => {
+const BienesTable = ({ filteredBienes, paginatedData, selectedIds, toggleSelect, toggleSelectAll, handleEdit, handleDelete, onDetailClick }) => {
     return (
         <div className="overflow-x-auto">
             <Table className="w-full">
@@ -127,6 +128,16 @@ const BienesTable = ({ filteredBienes, paginatedData, selectedIds, toggleSelect,
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex gap-1">
+                                        {onDetailClick && (
+                                            <Tooltip content="Ver detalle" relationship="label">
+                                                <Button
+                                                    appearance="subtle"
+                                                    icon={<DocumentRegular />}
+                                                    onClick={() => onDetailClick(bien)}
+                                                    size="small"
+                                                />
+                                            </Tooltip>
+                                        )}
                                         <Tooltip content="Editar bien" relationship="label">
                                             <Button
                                                 appearance="subtle"

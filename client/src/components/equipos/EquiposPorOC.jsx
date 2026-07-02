@@ -17,7 +17,7 @@ const tipoIcono = (tipo) => {
     }
 }
 
-const EquiposPorOC = ({ compras, bienesSinOC = [], onCompraClick, onAgregarMas, onBienSinOClick }) => {
+const EquiposPorOC = ({ compras, bienesSinOC = [], onCompraClick, onAgregarMas, onBienSinODetail, onBienSinOClick }) => {
     const sinOCSection = bienesSinOC.length > 0 && (
         <Card className="!p-0 !border-amber-200 !bg-amber-50/30">
             <div className="p-4">
@@ -31,7 +31,10 @@ const EquiposPorOC = ({ compras, bienesSinOC = [], onCompraClick, onAgregarMas, 
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
                     {bienesSinOC.slice(0, 12).map((bien) => (
-                        <div key={bien.id} className="flex items-center gap-2 text-sm bg-white rounded-lg px-3 py-1.5 border border-amber-100">
+                        <div key={bien.id}
+                            className="flex items-center gap-2 text-sm bg-white rounded-lg px-3 py-1.5 border border-amber-100 cursor-pointer hover:bg-amber-50/50 transition-colors"
+                            onClick={() => onBienSinODetail(bien)}
+                        >
                             <span className="flex-shrink-0">{tipoIcono(bien.tipo_equipo)}</span>
                             <span className="font-medium text-gray-700 truncate min-w-[80px]">
                                 {bien.tipo_equipo}

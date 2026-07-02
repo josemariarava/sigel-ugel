@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { CartRegular, DismissRegular, EditRegular, SaveRegular, BoxRegular } from '@fluentui/react-icons'
+import { CartRegular, DismissRegular, EditRegular, DeleteRegular, SaveRegular, BoxRegular } from '@fluentui/react-icons'
 import { supabase } from '../../lib/supabaseClient'
 import {
     Button,
@@ -23,7 +23,7 @@ import {
     MessageBarBody
 } from '@fluentui/react-components'
 
-const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onAgregarMas, onBatchUpdate }) => {
+const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onDeleteToner, onAgregarMas, onBatchUpdate }) => {
     const [batchEdit, setBatchEdit] = useState({ detalleId: null, open: false })
     const [batchForm, setBatchForm] = useState({
         lote: '', ubicacion: '', fecha_vencimiento: '', rendimiento: '',
@@ -35,24 +35,33 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onAgregar
 
     useEffect(() => {
         if (open) {
+            const tonerIds = (toners || []).flatMap(d => (d.toners || []).map(t => t.id))
             Promise.all([
                 supabase.from('ambientes').select('*').order('nombre'),
                 supabase.from('asignacion_toners')
-                    .select('toner_id, numero_acta, persona:personas(*)')
-                    .eq('estado', 'Activo')
+                    .select('toner_id, numero_acta, persona:personas!asignacion_toners_persona_id_fkey(*), impresora:bienes!asignacion_toners_impresora_id_fkey(*)')
+                    .in('toner_id', tonerIds)
+                    .order('fecha_asignacion', { ascending: true })
             ]).then(([amb, asig]) => {
+                if (amb.error) console.error('[DetalleOCDrawer] ambientes:', amb.error)
                 setAmbientes(amb.data || [])
+                if (asig.error) {
+                    console.error('[DetalleOCDrawer] asignaciones:', asig.error)
+                    return
+                }
                 const map = {}
                 ;(asig.data || []).forEach(a => {
+                    const imp = a.impresora
                     map[a.toner_id] = {
                         acta: a.numero_acta,
-                        persona: a.persona ? `${a.persona.nombres} ${a.persona.apellidos}` : '—'
+                        persona: a.persona ? `${a.persona.nombres} ${a.persona.apellidos}` : '—',
+                        impresora: imp ? `${imp.marca} ${imp.modelo}${imp.serie ? ` (${imp.serie})` : ''}` : null
                     }
                 })
                 setAsignacionesMap(map)
             })
         }
-    }, [open])
+    }, [open, toners])
 
     const openBatchEdit = (detalle) => {
         setBatchForm({
@@ -66,15 +75,15 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onAgregar
 
     const handleBatchSave = async () => {
         const bienesUpdates = {}
-        if (batchForm.lote) bienesUpdates.lote = batchForm.lote
-        if (batchForm.ubicacion) bienesUpdates.ubicacion_almacen = batchForm.ubicacion
-        if (batchForm.fecha_vencimiento) bienesUpdates.fecha_vencimiento = batchForm.fecha_vencimiento
-        if (batchForm.rendimiento) bienesUpdates.rendimiento = Number(batchForm.rendimiento)
+        if (batchForm.lote !== '') bienesUpdates.lote = batchForm.lote
+        if (batchForm.ubicacion !== '') bienesUpdates.ubicacion_almacen = batchForm.ubicacion
+        if (batchForm.fecha_vencimiento !== '') bienesUpdates.fecha_vencimiento = batchForm.fecha_vencimiento
+        if (batchForm.rendimiento !== '') bienesUpdates.rendimiento = Number(batchForm.rendimiento)
 
         const compraUpdates = {}
-        if (batchForm.fecha_compra) compraUpdates.fecha_compra = batchForm.fecha_compra
-        if (batchForm.proveedor) compraUpdates.proveedor = batchForm.proveedor
-        if (batchForm.observaciones) compraUpdates.observaciones = batchForm.observaciones
+        if (batchForm.fecha_compra !== '') compraUpdates.fecha_compra = batchForm.fecha_compra
+        if (batchForm.proveedor !== '') compraUpdates.proveedor = batchForm.proveedor
+        if (batchForm.observaciones !== '') compraUpdates.observaciones = batchForm.observaciones
 
         if (Object.keys(bienesUpdates).length === 0 && Object.keys(compraUpdates).length === 0) return
 
@@ -162,8 +171,8 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onAgregar
             <DrawerBody className="p-4 space-y-6">
                 {toners.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                        <Spinner size="small" />
-                        <p className="mt-3 text-sm">Cargando tóneres...</p>
+                        <BoxRegular className="mb-2" style={{ fontSize: 32 }} />
+                        <p className="text-sm">No se encontraron tóneres individuales</p>
                     </div>
                 ) : (
                     toners.map((detalle) => (
@@ -334,7 +343,7 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onAgregar
                                                 </TableCell>
                                                 <TableCell className="text-xs">
                                                     {toner.estado === 'Asignado' && asignacionesMap[toner.id] ? (
-                                                        <Tooltip content={`Acta: ${asignacionesMap[toner.id].acta}`} relationship="label">
+                                                        <Tooltip content={`Acta: ${asignacionesMap[toner.id].acta}${asignacionesMap[toner.id].impresora ? ` · Impresora: ${asignacionesMap[toner.id].impresora}` : ''}`} relationship="label">
                                                             <span className="text-amber-700 font-medium cursor-default">
                                                                 {asignacionesMap[toner.id].persona}
                                                             </span>
@@ -347,17 +356,28 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onAgregar
                                                     {toner.ubicacion_almacen || '—'}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Tooltip content="Editar tóner" relationship="label">
-                                                        <Button
-                                                            appearance="subtle"
-                                                            icon={<EditRegular />}
-                                                            onClick={() => {
-                                                                onClose()
-                                                                onEditToner(toner)
-                                                            }}
-                                                            size="small"
-                                                        />
-                                                    </Tooltip>
+                                                    <div className="flex gap-1">
+                                                        <Tooltip content="Editar tóner" relationship="label">
+                                                            <Button
+                                                                appearance="subtle"
+                                                                icon={<EditRegular />}
+                                                                onClick={() => {
+                                                                    onClose()
+                                                                    onEditToner(toner)
+                                                                }}
+                                                                size="small"
+                                                            />
+                                                        </Tooltip>
+                                                        <Tooltip content="Eliminar tóner" relationship="label">
+                                                            <Button
+                                                                appearance="subtle"
+                                                                icon={<DeleteRegular />}
+                                                                onClick={() => onDeleteToner(toner)}
+                                                                size="small"
+                                                                className="text-red-500 hover:text-red-700"
+                                                            />
+                                                        </Tooltip>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))

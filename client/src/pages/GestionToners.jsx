@@ -302,6 +302,7 @@ const GestionToners = () => {
                 pisos={h.pisos}
                 handleSubmit={h.handleSubmit} resetForm={h.resetForm}
                 submitting={h.submitting}
+                impresoraConTonerActivo={h.impresoraConTonerActivo}
             />
 
             <DrawerDetallesToners

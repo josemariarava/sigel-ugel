@@ -225,24 +225,20 @@ const DrawerBien = ({
                                     </Field>
 
                                     <Field label="Modelo" hint="Escribe para buscar en el catálogo o ingresa un nuevo">
-                                        {formData.marca_id ? (
-                                            <>
-                                                <Input
-                                                    name="modelo"
-                                                    value={formData.modelo || ''}
-                                                    onChange={handleInputChange}
-                                                    placeholder="Escribe o selecciona un modelo..."
-                                                    list="modelo-list"
-                                                    contentAfter={<ChevronDownRegular />}
-                                                />
-                                                <datalist id="modelo-list">
-                                                    {modelosFiltrados.map(m => (
-                                                        <option key={m.id} value={m.nombre} />
-                                                    ))}
-                                                </datalist>
-                                            </>
-                                        ) : (
-                                            <p className="text-sm text-gray-400 italic py-1">Seleccione una marca primero</p>
+                                        <Input
+                                            name="modelo"
+                                            value={formData.modelo || ''}
+                                            onChange={handleInputChange}
+                                            placeholder={formData.marca_id ? "Escribe o selecciona un modelo..." : "Primero selecciona una marca en el campo superior"}
+                                            list={formData.marca_id ? "modelo-list" : undefined}
+                                            contentAfter={formData.marca_id ? <ChevronDownRegular /> : undefined}
+                                        />
+                                        {formData.marca_id && (
+                                            <datalist id="modelo-list">
+                                                {modelosFiltrados.map(m => (
+                                                    <option key={m.id} value={m.nombre} />
+                                                ))}
+                                            </datalist>
                                         )}
                                     </Field>
                                 </div>

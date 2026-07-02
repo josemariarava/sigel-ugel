@@ -110,13 +110,13 @@ const CompraTonersDrawer = ({ open, onClose, marcas, modelos, prefillCompraId = 
         const nuevos = [...detalles]
         nuevos[index] = { ...nuevos[index], [field]: value }
         if (field === 'marca_id') {
-            const marca = marcas.find(m => m.id === value)
+            const marca = marcas.find(m => String(m.id) === value)
             nuevos[index].marca = marca?.nombre || ''
             nuevos[index].modelo_id = ''
             nuevos[index].modelo = ''
         }
         if (field === 'modelo_id') {
-            const modelo = modelos.find(m => m.id === value)
+            const modelo = modelos.find(m => String(m.id) === value)
             nuevos[index].modelo = modelo?.nombre || ''
         }
         setDetalles(nuevos)

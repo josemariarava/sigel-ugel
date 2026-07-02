@@ -190,7 +190,7 @@ const CompraEquiposDrawer = ({ open, onClose, marcas, modelos, prefillCompraId =
 
         detalles.forEach((det, i) => {
             if (!det.tipo_equipo) errors[`detalles.${i}.tipo_equipo`] = 'Selecciona un tipo de equipo'
-            if (det.cantidad <= 1 && !det.serie.trim()) errors[`detalles.${i}.serie`] = 'La serie es obligatoria'
+            if (det.cantidad <= 1 && !(det.serie || '').trim()) errors[`detalles.${i}.serie`] = 'La serie es obligatoria'
         })
 
         setFieldErrors(errors)
