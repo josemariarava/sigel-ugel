@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
+import { buildMostrarToast } from '../lib/toastUtils'
 import {
     Toast,
     ToastTitle,
@@ -105,6 +106,8 @@ const useBienes = () => {
     const [selectedCompraEquipos, setSelectedCompraEquipos] = useState([])
     const [prefillCompraEquipoId, setPrefillCompraEquipoId] = useState('')
     const [openImportarExcelDrawer, setOpenImportarExcelDrawer] = useState(false)
+    const [deleteOCTarget, setDeleteOCTarget] = useState(null)
+    const [ocBloqueoInfo, setOcBloqueoInfo] = useState(null)
     const [bienesSinOC, setBienesSinOC] = useState([])
     const [filtroOC, setFiltroOC] = useState('todos')
     const [currentPage, setCurrentPage] = useState(1)
@@ -116,6 +119,7 @@ const useBienes = () => {
 
     const { dispatchToast } = useToastController()
     const submittingRef = useRef(false)
+    const loadGenRef = useRef(0)
 
     const [tonerCountsByDetalle, setTonerCountsByDetalle] = useState({})
     const [tonersSinOC, setTonersSinOC] = useState([])
@@ -179,29 +183,22 @@ const useBienes = () => {
     }, [searchTerm])
 
     useEffect(() => {
+        const gen = ++loadGenRef.current
         if (activeTab === 'consumibles') {
             setBienes([])
-            cargarCompras(debouncedSearch)
+            cargarCompras(debouncedSearch, gen)
         } else if (activeTab === 'equipos') {
             setBienes([])
-            cargarComprasEquipos(debouncedSearch)
-            cargarBienesSinOC()
+            cargarComprasEquipos(debouncedSearch, gen)
+            cargarBienesSinOC(gen)
         } else {
-            cargarBienesPorCategoria(activeTab)
+            cargarBienesPorCategoria(activeTab, gen)
         }
     }, [activeTab, debouncedSearch])
 
-    const mostrarToast = (mensaje, tipo = 'success') => {
-        dispatchToast(
-            <Toast>
-                <ToastTitle>{tipo === 'success' ? '✅ Éxito' : '❌ Error'}</ToastTitle>
-                <ToastBody>{mensaje}</ToastBody>
-            </Toast>,
-            { intent: tipo }
-        )
-    }
+    const mostrarToast = buildMostrarToast(dispatchToast)
 
-    const cargarBienesPorCategoria = async (tab, forceRefresh = false) => {
+    const cargarBienesPorCategoria = async (tab, forceRefresh = false, gen) => {
         const cacheKey = `bienes_${tab}`
         if (!forceRefresh) {
             const cached = getCached(cacheKey, TTL)
@@ -223,7 +220,6 @@ const useBienes = () => {
                     query = query.in('tipo_equipo', tipos)
                 }
             } else {
-                // 'otros': excluir todas las categorías conocidas
                 const excluir = [...categorias.computo, ...categorias.impresoras, ...categorias.perifericos, ...categorias.consumibles]
                 query = query.not('tipo_equipo', 'in', excluir)
             }
@@ -231,6 +227,7 @@ const useBienes = () => {
             const { data, error } = await query.order('created_at', { ascending: false })
 
             if (error) throw error
+            if (gen && gen !== loadGenRef.current) return
             setCache(cacheKey, data || [])
             setBienes(data || [])
         } catch (error) {
@@ -269,6 +266,7 @@ const useBienes = () => {
             setAmbientes(ambientesRes.data || [])
         } catch (error) {
             console.error('Error al cargar catálogo:', error.message)
+            mostrarToast(handleApiError(error, 'cargar catálogo'), 'error')
         }
     }
 
@@ -289,10 +287,11 @@ const useBienes = () => {
             setStatsLight(data || [])
         } catch (error) {
             console.error('Error al cargar estadísticas:', error.message)
+            mostrarToast(handleApiError(error, 'cargar estadísticas'), 'error')
         }
     }
 
-    const cargarCompras = async (term = '') => {
+    const cargarCompras = async (term = '', gen) => {
         try {
             const [comprasRes, tonersRes, tonersSinOCRes] = await Promise.all([
                 (() => {
@@ -322,6 +321,7 @@ const useBienes = () => {
             if (comprasRes.error) throw comprasRes.error
             if (tonersRes.error) throw tonersRes.error
             if (tonersSinOCRes.error) throw tonersSinOCRes.error
+            if (gen && gen !== loadGenRef.current) return
             setComprasAgrupadas(comprasRes.data || [])
 
             const counts = {}
@@ -338,6 +338,7 @@ const useBienes = () => {
             setTonersSinOC(tonersSinOCRes.data || [])
         } catch (error) {
             console.error('Error al cargar compras:', error.message)
+            mostrarToast(handleApiError(error, 'cargar compras'), 'error')
         }
     }
 
@@ -358,6 +359,7 @@ const useBienes = () => {
             setSelectedCompraToners(data || [])
         } catch (error) {
             console.error('Error al cargar tóneres:', error.message)
+            mostrarToast(handleApiError(error, 'cargar tóneres'), 'error')
         }
     }
 
@@ -368,21 +370,30 @@ const useBienes = () => {
     }
 
     const handleBatchUpdate = async () => {
-        if (selectedCompra?.id) {
-            const { data } = await supabase
-                .from('compras_toners')
-                .select('*, detalles:compra_detalles(*)')
-                .eq('id', selectedCompra.id)
-                .single()
-            if (data) setSelectedCompra(data)
+        try {
+            let compraActualizada = selectedCompra
+            if (selectedCompra?.id) {
+                const { data } = await supabase
+                    .from('compras_toners')
+                    .select('*, detalles:compra_detalles(*)')
+                    .eq('id', selectedCompra.id)
+                    .single()
+                if (data) {
+                    setSelectedCompra(data)
+                    compraActualizada = data
+                }
+            }
+            await Promise.all([
+                cargarCompras(),
+                loadDetalleCompra(compraActualizada)
+            ])
+        } catch (error) {
+            console.error('Error al actualizar lote:', error.message)
+            mostrarToast(handleApiError(error, 'actualizar lote'), 'error')
         }
-        await Promise.all([
-            cargarCompras(),
-            loadDetalleCompra(selectedCompra)
-        ])
     }
 
-    const cargarComprasEquipos = async (term = '') => {
+    const cargarComprasEquipos = async (term = '', gen) => {
         try {
             let query = supabase
                 .from('compras_equipos')
@@ -395,13 +406,15 @@ const useBienes = () => {
             }
             const { data, error } = await query
             if (error) throw error
+            if (gen && gen !== loadGenRef.current) return
             setComprasEquipos(data || [])
         } catch (error) {
             console.error('Error al cargar compras de equipos:', error.message)
+            mostrarToast(handleApiError(error, 'cargar compras de equipos'), 'error')
         }
     }
 
-    const cargarBienesSinOC = async () => {
+    const cargarBienesSinOC = async (gen) => {
         try {
             const { data, error } = await supabase
                 .from('bienes')
@@ -410,9 +423,11 @@ const useBienes = () => {
                 .is('compra_detalle_id', null)
                 .order('tipo_equipo', { ascending: true })
             if (error) throw error
+            if (gen && gen !== loadGenRef.current) return
             setBienesSinOC(data || [])
         } catch (error) {
             console.error('Error al cargar bienes sin OC:', error.message)
+            mostrarToast(handleApiError(error, 'cargar bienes sin OC'), 'error')
         }
     }
 
@@ -433,6 +448,7 @@ const useBienes = () => {
             setSelectedCompraEquipos(data || [])
         } catch (error) {
             console.error('Error al cargar equipos:', error.message)
+            mostrarToast(handleApiError(error, 'cargar equipos'), 'error')
         }
     }
 
@@ -443,18 +459,27 @@ const useBienes = () => {
     }
 
     const handleBatchUpdateEquipo = async () => {
-        if (selectedCompraEquipo?.id) {
-            const { data } = await supabase
-                .from('compras_equipos')
-                .select('*, detalles:compras_equipos_detalles(*)')
-                .eq('id', selectedCompraEquipo.id)
-                .single()
-            if (data) setSelectedCompraEquipo(data)
+        try {
+            let compraActualizada = selectedCompraEquipo
+            if (selectedCompraEquipo?.id) {
+                const { data } = await supabase
+                    .from('compras_equipos')
+                    .select('*, detalles:compras_equipos_detalles(*)')
+                    .eq('id', selectedCompraEquipo.id)
+                    .single()
+                if (data) {
+                    setSelectedCompraEquipo(data)
+                    compraActualizada = data
+                }
+            }
+            await Promise.all([
+                cargarComprasEquipos(),
+                loadDetalleCompraEquipo(compraActualizada)
+            ])
+        } catch (error) {
+            console.error('Error al actualizar lote de equipos:', error.message)
+            mostrarToast(handleApiError(error, 'actualizar lote de equipos'), 'error')
         }
-        await Promise.all([
-            cargarComprasEquipos(),
-            loadDetalleCompraEquipo(selectedCompraEquipo)
-        ])
     }
 
     const handleRegistrarCompraEquipo = async ({ compraForm, detalles, compraMode, selectedExistingCompra }) => {
@@ -844,6 +869,7 @@ const useBienes = () => {
             }
 
             let totalCreados = 0
+            let globalSerieCounter = 0
             for (const detalle of detalles) {
                 const recibido = parseInt(detalle.cantidad_recibida) || 0
                 if (recibido === 0) continue
@@ -878,7 +904,8 @@ const useBienes = () => {
                 }
                 const totalSeries = seriesInput.length > 0 ? seriesInput.length : recibido
                 for (let i = 0; i < totalSeries; i++) {
-                    const numSerie = String(i + 1).padStart(3, '0')
+                    globalSerieCounter++
+                    const numSerie = String(globalSerieCounter).padStart(3, '0')
                     const serie = seriesInput.length > 0
                         ? seriesInput[i]
                         : detalle.lote
@@ -936,8 +963,6 @@ const useBienes = () => {
         setFormData(prev => {
             const next = { ...prev, [name]: value }
             if (name === 'tipo_equipo' && prev.tipo_equipo !== value) {
-                const tiposComputo = ['CPU', 'Desktop', 'Laptop', 'All-in-One', 'Tablet']
-
                 if (!editMode) {
                     next.serie = ''
                     next.marca = ''
@@ -946,7 +971,7 @@ const useBienes = () => {
                     next.modelo_id = ''
                 }
 
-                if (!tiposComputo.includes(value)) {
+                if (!categorias.computo.includes(value)) {
                     next.procesador = ''
                     next.ram = ''
                     next.almacenamiento = ''
@@ -967,7 +992,7 @@ const useBienes = () => {
                 }
 
                 if (value === 'Tóner') {
-                    next.color = null
+                    next.color = ''
                     if (!editMode) {
                         next.condicion = 'Bueno'
                         next.estado = 'Disponible'
@@ -1037,9 +1062,8 @@ const useBienes = () => {
         }
         setMonitoresDetectados([])
         setMonitorSeleccionadoIndex(null)
-        const tiposComputo = ['CPU', 'Desktop', 'Laptop', 'All-in-One', 'Tablet']
         if (!editMode) {
-            if (tiposComputo.includes(value)) {
+            if (categorias.computo.includes(value)) {
                 intentarAutoDetectar()
             } else if (value === 'Monitor') {
                 intentarAutoDetectarMonitor()
@@ -1251,7 +1275,13 @@ const useBienes = () => {
         const value = e.target.value?.trim()
         if (!value) { setSerieError(''); return }
 
-        if (/^SIN-SERIE-/i.test(value) && !(editMode && selectedBien?.serie === value)) {
+        // Si estamos editando y la serie no cambió, no validar
+        if (editMode && selectedBien?.serie === value) {
+            setSerieError('')
+            return
+        }
+
+        if (/^SIN-SERIE-/i.test(value)) {
             setSerieError('Este patrón está reservado para auto-generación. Deje el campo vacío.')
             return
         }
@@ -1273,7 +1303,7 @@ const useBienes = () => {
 
         submittingRef.current = true
         try {
-            if (formData.codigo_patrimonial) {
+            if (formData.codigo_patrimonial && !(editMode && selectedBien?.codigo_patrimonial === formData.codigo_patrimonial)) {
                 let query = supabase
                     .from('bienes')
                     .select('id', { count: 'exact', head: true })
@@ -1290,14 +1320,18 @@ const useBienes = () => {
 
             if (formData.serie?.trim()) {
                 const serieTrim = formData.serie.trim()
-                if (/^SIN-SERIE-/i.test(serieTrim) && !(editMode && selectedBien?.serie === serieTrim)) {
-                    mostrarToast('El patrón "SIN-SERIE-*" está reservado para auto-generación. Deje el campo vacío.', 'error')
-                    return
+
+                // Si editando y la serie no cambió, saltar validación
+                if (!(editMode && selectedBien?.serie === serieTrim)) {
+                    if (/^SIN-SERIE-/i.test(serieTrim)) {
+                        mostrarToast('El patrón "SIN-SERIE-*" está reservado para auto-generación. Deje el campo vacío.', 'error')
+                        return
+                    }
+                    let query = supabase.from('bienes').select('id', { count: 'exact', head: true }).eq('serie', serieTrim)
+                    if (editMode && selectedBien?.id) query = query.neq('id', selectedBien.id)
+                    const { count } = await query
+                    if (count > 0) { mostrarToast('El número de serie ya está registrado para otro bien', 'error'); return }
                 }
-                let query = supabase.from('bienes').select('id', { count: 'exact', head: true }).eq('serie', serieTrim)
-                if (editMode && selectedBien?.id) query = query.neq('id', selectedBien.id)
-                const { count } = await query
-                if (count > 0) { mostrarToast('El número de serie ya está registrado para otro bien', 'error'); return }
             }
 
             let marcaId = formData.marca_id
@@ -1339,7 +1373,8 @@ const useBienes = () => {
             sanitized.modelo_id = modeloId
             sanitized.serie = serie
             const nullableFields = ['fecha_vencimiento', 'valor_compra', 'rendimiento', 'anio_compra', 'codigo_ti', 'color', 'codigo_patrimonial',
-                'procesador', 'ram', 'almacenamiento', 'tipo_almacenamiento', 'sistema_operativo', 'direccion_mac', 'tamano_pantalla']
+                'procesador', 'ram', 'almacenamiento', 'tipo_almacenamiento', 'sistema_operativo', 'direccion_mac', 'tamano_pantalla',
+                'ubicacion_almacen', 'proveedor', 'lote', 'other']
             nullableFields.forEach(f => {
                 if (sanitized[f] === '') sanitized[f] = null
             })
@@ -1577,6 +1612,112 @@ const useBienes = () => {
         }
     }
 
+    const handleEliminarOC = (compra, tipo) => {
+        setDeleteOCTarget({ compra, tipo })
+    }
+
+    const confirmEliminarOC = async () => {
+        if (!deleteOCTarget) return
+        const { compra, tipo } = deleteOCTarget
+        try {
+            let detalleIds
+            let deleteTable
+
+            if (tipo === 'toners') {
+                const { data: detalles } = await supabase
+                    .from('compra_detalles')
+                    .select('id')
+                    .eq('compra_id', compra.id)
+                detalleIds = (detalles || []).map(d => d.id)
+                deleteTable = 'compras_toners'
+            } else {
+                const { data: detalles } = await supabase
+                    .from('compras_equipos_detalles')
+                    .select('id')
+                    .eq('compra_id', compra.id)
+                detalleIds = (detalles || []).map(d => d.id)
+                deleteTable = 'compras_equipos'
+            }
+
+            const bienKey = tipo === 'toners' ? 'compra_detalle_id' : 'compra_equipo_detalle_id'
+            const { data: bienesData } = await supabase
+                .from('bienes')
+                .select('id, tipo_equipo, marca, modelo, serie, estado')
+                .in(bienKey, detalleIds.length > 0 ? detalleIds : [null])
+
+            const bienes = bienesData || []
+            const bienIds = bienes.map(b => b.id)
+
+            if (bienIds.length > 0) {
+                const [asigCount, tonerAsigCount] = await Promise.all([
+                    supabase
+                        .from('asignaciones')
+                        .select('id', { count: 'exact', head: true })
+                        .in('bien_id', bienIds)
+                        .eq('estado_asignacion', 'Activo'),
+                    supabase
+                        .from('asignacion_toners')
+                        .select('id', { count: 'exact', head: true })
+                        .in('toner_id', bienIds)
+                        .eq('estado', 'Activo')
+                ])
+
+                if ((asigCount.count || 0) > 0 || (tonerAsigCount.count || 0) > 0) {
+                    const { data: asigDetail } = await supabase
+                        .from('asignaciones')
+                        .select('*, persona:personas(*)')
+                        .in('bien_id', bienIds)
+                        .eq('estado_asignacion', 'Activo')
+
+                    const { data: tonerDetail } = await supabase
+                        .from('asignacion_toners')
+                        .select('*, persona:personas(*)')
+                        .in('toner_id', bienIds)
+                        .eq('estado', 'Activo')
+
+                    setOcBloqueoInfo({
+                        compra, tipo,
+                        items: [
+                            ...(asigDetail || []).map(a => ({
+                                tipo: a.persona ? `${a.persona.apellidos}, ${a.persona.nombres}` : 'Persona',
+                                descripcion: `Acta: ${a.numero_acta || '—'}`,
+                                estado: 'Activo'
+                            })),
+                            ...(tonerDetail || []).map(a => ({
+                                tipo: a.persona ? `${a.persona.apellidos}, ${a.persona.nombres}` : 'Persona',
+                                descripcion: `Acta: ${a.numero_acta || '—'} · Tóner`,
+                                estado: 'Activo'
+                            }))
+                        ]
+                    })
+                    setDeleteOCTarget(null)
+                    return
+                }
+            }
+
+            const { error } = await supabase
+                .from(deleteTable)
+                .delete()
+                .eq('id', compra.id)
+
+            if (error) throw error
+            mostrarToast('Orden de compra eliminada correctamente')
+
+            loadStats(true).catch(err => console.warn('[useBienes]', err))
+            cargarBienesPorCategoria(activeTab, true).catch(err => console.warn('[useBienes]', err))
+            if (tipo === 'toners') {
+                cargarCompras(debouncedSearch).catch(err => console.warn('[useBienes]', err))
+            } else {
+                cargarComprasEquipos(debouncedSearch).catch(err => console.warn('[useBienes]', err))
+                cargarBienesSinOC().catch(err => console.warn('[useBienes]', err))
+            }
+        } catch (error) {
+            mostrarToast(handleApiError(error, 'eliminar orden de compra'), 'error')
+        } finally {
+            setDeleteOCTarget(null)
+        }
+    }
+
     const resetForm = () => {
         setEditMode(false)
         setSelectedBien(null)
@@ -1731,6 +1872,9 @@ const useBienes = () => {
         handleImportarExcelBienes,
         handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete,
         deleteTarget, setDeleteTarget,
+        handleEliminarOC, confirmEliminarOC,
+        deleteOCTarget, setDeleteOCTarget,
+        ocBloqueoInfo, setOcBloqueoInfo,
         diagnostico, diagnosticar,
         intentarAutoDetectarMonitor,
         monitoresDetectados, monitorSeleccionadoIndex, seleccionarMonitor,

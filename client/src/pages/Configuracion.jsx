@@ -10,7 +10,13 @@ import {
     ArrowSyncRegular,
     BuildingRegular,
     PersonCircleRegular,
-    LockClosedRegular
+    LockClosedRegular,
+    WarningFilled,
+    SearchRegular,
+    BoxRegular,
+    CartRegular,
+    DesktopRegular,
+    TagRegular
 } from '@fluentui/react-icons'
 import {
     Button,
@@ -43,7 +49,9 @@ import {
     Subtitle2,
     TabList,
     Tab,
-    Spinner
+    Spinner,
+    Avatar,
+    SearchBox
 } from '@fluentui/react-components'
 import ConfirmDialog from '../components/shared/ConfirmDialog'
 
@@ -68,6 +76,50 @@ const Configuracion = () => {
     const [passwordForm, setPasswordForm] = useState({ newPassword: '', confirmPassword: '' })
     const [savingProfile, setSavingProfile] = useState(false)
     const [savingPassword, setSavingPassword] = useState(false)
+
+    const [marcaSearch, setMarcaSearch] = useState('')
+    const [modeloSearch, setModeloSearch] = useState('')
+    const [savingMarca, setSavingMarca] = useState(false)
+    const [savingModelo, setSavingModelo] = useState(false)
+
+    const BRAND_COLORS = {
+        HP: '#0071CE',
+        BROTHER: '#009E3D',
+        XEROX: '#C8102E',
+        EPSON: '#003399',
+        SAMSUNG: '#1428A0',
+        CANON: '#CC0000',
+        PANASONIC: '#0066CC',
+        LENOVO: '#E31C1C',
+        DELL: '#007DB8',
+        ACER: '#83B81A',
+        ASUS: '#333333',
+        HUAWEI: '#CF0A2C',
+        TOSHIBA: '#CC0000',
+        OKI: '#006F3C',
+        KYOCERA: '#D71921',
+        RICOH: '#000000',
+        SHARP: '#262262',
+        SONY: '#000000',
+        LG: '#A50034',
+        MICROSOFT: '#737373',
+        APPLE: '#555555'
+    }
+
+    const getBrandColor = (nombre) => {
+        const key = nombre?.toUpperCase() || ''
+        if (BRAND_COLORS[key]) return BRAND_COLORS[key]
+        const hue = [...key].reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360
+        return `hsl(${hue}, 55%, 55%)`
+    }
+
+    const marcasFiltradas = marcas.filter(m =>
+        m.nombre.toLowerCase().includes(marcaSearch.toLowerCase())
+    )
+
+    const modelosFiltrados = modelos.filter(m =>
+        m.nombre.toLowerCase().includes(modeloSearch.toLowerCase())
+    )
 
     useEffect(() => {
         if (user?.user_metadata?.nombre) {
@@ -258,6 +310,7 @@ const Configuracion = () => {
             return
         }
         try {
+            setSavingMarca(true)
             if (editMode) {
                 const { error } = await supabase
                     .from('marcas')
@@ -282,6 +335,8 @@ const Configuracion = () => {
             cargarMarcas()
         } catch (error) {
             mostrarToast(handleApiError(error, 'guardar marca'), 'error')
+        } finally {
+            setSavingMarca(false)
         }
     }
 
@@ -366,6 +421,7 @@ const Configuracion = () => {
             return
         }
         try {
+            setSavingModelo(true)
             if (editMode) {
                 const { error } = await supabase
                     .from('modelos')
@@ -390,6 +446,8 @@ const Configuracion = () => {
             cargarModelos(selectedMarca.id)
         } catch (error) {
             mostrarToast(handleApiError(error, 'guardar modelo'), 'error')
+        } finally {
+            setSavingModelo(false)
         }
     }
 
@@ -466,119 +524,154 @@ const Configuracion = () => {
             {selectedTab === 'catalogo' ? (
                 <div className="flex flex-col lg:flex-row gap-4">
                     {/* Panel izquierdo: Marcas */}
-                    <div className="w-full lg:w-1/2 xl:w-2/5">
-                        <div className="flex gap-2 mb-3">
-                            <Button
-                                appearance="subtle"
-                                icon={<ArrowSyncRegular />}
-                                onClick={cargarDatosPorDefecto}
-                                size="small"
-                            >
-                                Cargar datos por defecto
-                            </Button>
-                            <Button
-                                appearance="primary"
-                                icon={<AddRegular />}
-                                onClick={abrirNuevaMarca}
-                                size="small"
-                            >
-                                Nueva Marca
-                            </Button>
-                        </div>
-
-                        <Card className="!p-0 overflow-hidden">
-                            <div className="px-4 py-3 border-b bg-gray-50 flex justify-between items-center">
+                    <div className="w-full lg:w-1/2 xl:w-2/5 flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <BuildingRegular className="text-blue-600 text-lg" />
                                 <Subtitle2>Marcas</Subtitle2>
                                 <Badge appearance="filled" color="brand" size="small">{marcas.length}</Badge>
                             </div>
+                            <div className="flex gap-2">
+                                <Tooltip content="Cargar marcas y modelos por defecto" relationship="label">
+                                    <Button
+                                        appearance="subtle"
+                                        icon={<ArrowSyncRegular />}
+                                        onClick={cargarDatosPorDefecto}
+                                        size="small"
+                                    />
+                                </Tooltip>
+                                <Button
+                                    appearance="primary"
+                                    icon={<AddRegular />}
+                                    onClick={abrirNuevaMarca}
+                                    size="small"
+                                >
+                                    Nueva Marca
+                                </Button>
+                            </div>
+                        </div>
 
+                        <SearchBox
+                            placeholder="Buscar marcas..."
+                            value={marcaSearch}
+                            onChange={(_, d) => setMarcaSearch(d.value)}
+                            size="small"
+                            className="w-full"
+                        />
+
+                        <Card className="!p-0 overflow-hidden flex-1">
                             {loading ? (
                                 <div className="flex items-center justify-center h-32 text-gray-500">
-                                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
-                                    Cargando...
+                                    <Spinner size="tiny" />
+                                    <span className="ml-2 text-sm">Cargando...</span>
                                 </div>
-                            ) : marcas.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-32 text-gray-400">
-                                    <BuildingRegular className="mb-2" style={{ fontSize: 32 }} />
-                                    <p className="text-sm">No hay marcas registradas</p>
-                                    <p className="text-xs mt-1">Crea una o carga datos por defecto</p>
+                            ) : marcasFiltradas.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+                                    <BuildingRegular className="mb-2" style={{ fontSize: 36 }} />
+                                    <p className="text-sm font-medium">
+                                        {marcaSearch ? 'Sin resultados' : 'No hay marcas registradas'}
+                                    </p>
+                                    <p className="text-xs mt-1">
+                                        {marcaSearch ? 'Prueba con otro término' : 'Crea una o carga datos por defecto'}
+                                    </p>
+                                    {!marcaSearch && (
+                                        <Button appearance="subtle" icon={<AddRegular />} onClick={abrirNuevaMarca} size="small" className="mt-3">
+                                            Crear primera marca
+                                        </Button>
+                                    )}
                                 </div>
                             ) : (
-                                <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
-                                    {marcas.map(marca => {
-                                        const initial = marca.nombre.charAt(0).toUpperCase()
-                                        const hue = [...marca.nombre].reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360
-                                        return (
-                                            <div
-                                                key={marca.id}
-                                                className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-all duration-200 hover:bg-blue-50/50 ${
-                                                    selectedMarca?.id === marca.id
-                                                        ? 'bg-blue-50 border-l-4 border-l-blue-500 shadow-sm'
-                                                        : 'border-l-4 border-l-transparent'
-                                                }`}
-                                                onClick={() => seleccionarMarca(marca)}
-                                            >
-                                                <div
-                                                    className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-                                                    style={{ backgroundColor: `hsl(${hue}, 55%, 55%)` }}
-                                                >
-                                                    {initial}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-gray-800 truncate">{marca.nombre}</p>
-                                                </div>
-                                                <div className="flex gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                                    <Tooltip content="Editar marca" relationship="label">
-                                                        <Button appearance="subtle" icon={<EditRegular />} onClick={() => abrirEditarMarca(marca)} size="small" />
-                                                    </Tooltip>
-                                                    <Tooltip content="Eliminar marca" relationship="label">
-                                                        <Button appearance="subtle" icon={<DeleteRegular />} onClick={() => eliminarMarca(marca.id, marca.nombre)} size="small" />
-                                                    </Tooltip>
-                                                </div>
+                                <div className="divide-y divide-gray-100 max-h-[460px] overflow-y-auto">
+                                    {marcasFiltradas.map(marca => (
+                                        <div
+                                            key={marca.id}
+                                            className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-200 hover:bg-blue-50/50 ${
+                                                selectedMarca?.id === marca.id
+                                                    ? 'bg-blue-50 border-l-[3px] border-l-blue-500 shadow-sm'
+                                                    : 'border-l-[3px] border-l-transparent'
+                                            }`}
+                                            onClick={() => seleccionarMarca(marca)}
+                                        >
+                                            <Avatar
+                                                name={marca.nombre}
+                                                initials={marca.nombre.charAt(0).toUpperCase()}
+                                                style={{ backgroundColor: getBrandColor(marca.nombre), color: '#fff' }}
+                                                size={32}
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-gray-800 truncate">{marca.nombre}</p>
                                             </div>
-                                        )
-                                    })}
+                                            <div className="flex gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                <Tooltip content="Editar marca" relationship="label">
+                                                    <Button appearance="subtle" icon={<EditRegular />} onClick={() => abrirEditarMarca(marca)} size="small" />
+                                                </Tooltip>
+                                                <Tooltip content="Eliminar marca" relationship="label">
+                                                    <Button appearance="subtle" icon={<DeleteRegular />} onClick={() => eliminarMarca(marca.id, marca.nombre)} size="small" />
+                                                </Tooltip>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </Card>
                     </div>
 
                     {/* Panel derecho: Modelos */}
-                    <div className={`w-full lg:w-1/2 xl:w-3/5 transition-all duration-300 ${selectedMarca ? 'opacity-100' : 'lg:opacity-40'}`}>
-                        <Card className="!p-0 overflow-hidden h-full">
-                            {selectedMarca ? (
-                                <>
-                                    <div className="px-4 py-3 border-b bg-gradient-to-r from-blue-50 to-white flex justify-between items-center">
-                                        <div className="flex items-center gap-2">
-                                            <div
-                                                className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                                                style={{ backgroundColor: `hsl(${[...selectedMarca.nombre].reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 55%, 55%)` }}
-                                            >
-                                                {selectedMarca.nombre.charAt(0).toUpperCase()}
-                                            </div>
-                                            <Subtitle2>
-                                                Modelos de <span className="text-blue-600">{selectedMarca.nombre}</span>
-                                            </Subtitle2>
-                                            <Badge appearance="filled" color="brand" size="small">{modelos.length}</Badge>
-                                        </div>
-                                        <Button appearance="primary" icon={<AddRegular />} onClick={abrirNuevoModelo} size="small">
-                                            Nuevo Modelo
-                                        </Button>
+                    <div className={`w-full lg:w-1/2 xl:w-3/5 transition-all duration-300 flex flex-col gap-3 ${selectedMarca ? 'opacity-100' : 'lg:opacity-40'}`}>
+                        {selectedMarca ? (
+                            <>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Avatar
+                                            name={selectedMarca.nombre}
+                                            initials={selectedMarca.nombre.charAt(0).toUpperCase()}
+                                            style={{ backgroundColor: getBrandColor(selectedMarca.nombre), color: '#fff' }}
+                                            size={24}
+                                        />
+                                        <Subtitle2>
+                                            Modelos de <span className="text-blue-600">{selectedMarca.nombre}</span>
+                                        </Subtitle2>
+                                        <Badge appearance="filled" color="brand" size="small">{modelos.length}</Badge>
                                     </div>
+                                    <Button appearance="primary" icon={<AddRegular />} onClick={abrirNuevoModelo} size="small">
+                                        Nuevo Modelo
+                                    </Button>
+                                </div>
 
-                                    {modelos.length === 0 ? (
+                                <SearchBox
+                                    placeholder="Buscar modelos..."
+                                    value={modeloSearch}
+                                    onChange={(_, d) => setModeloSearch(d.value)}
+                                    size="small"
+                                    className="w-full"
+                                />
+
+                                {modelosFiltrados.length === 0 ? (
+                                    <Card className="!p-0 overflow-hidden">
                                         <div className="flex flex-col items-center justify-center h-48 text-gray-400">
-                                            <p className="text-sm">No hay modelos para esta marca</p>
-                                            <Button appearance="subtle" icon={<AddRegular />} onClick={abrirNuevoModelo} size="small" className="mt-2">
-                                                Crear primer modelo
-                                            </Button>
+                                            <p className="text-sm font-medium">
+                                                {modeloSearch ? 'Sin resultados' : 'No hay modelos para esta marca'}
+                                            </p>
+                                            <p className="text-xs mt-1">
+                                                {modeloSearch ? 'Prueba con otro término' : 'Agrega el primer modelo'}
+                                            </p>
+                                            {!modeloSearch && (
+                                                <Button appearance="subtle" icon={<AddRegular />} onClick={abrirNuevoModelo} size="small" className="mt-3">
+                                                    Crear primer modelo
+                                                </Button>
+                                            )}
                                         </div>
-                                    ) : (
-                                        <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
-                                            {modelos.map(modelo => (
-                                                <div key={modelo.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
-                                                    <span className="text-sm font-mono text-gray-700">{modelo.nombre}</span>
-                                                    <div className="flex gap-0.5 shrink-0">
+                                    </Card>
+                                ) : (
+                                    <Card className="!p-0 overflow-hidden flex-1">
+                                        <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-2 p-3 max-h-[500px] overflow-y-auto">
+                                            {modelosFiltrados.map(modelo => (
+                                                <div
+                                                    key={modelo.id}
+                                                    className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all bg-white group"
+                                                >
+                                                    <span className="text-sm font-mono text-gray-700 truncate">{modelo.nombre}</span>
+                                                    <div className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <Tooltip content="Editar modelo" relationship="label">
                                                             <Button appearance="subtle" icon={<EditRegular />} onClick={() => abrirEditarModelo(modelo)} size="small" />
                                                         </Tooltip>
@@ -589,16 +682,18 @@ const Configuracion = () => {
                                                 </div>
                                             ))}
                                         </div>
-                                    )}
-                                </>
-                            ) : (
+                                    </Card>
+                                )}
+                            </>
+                        ) : (
+                            <Card className="!p-0 overflow-hidden flex-1">
                                 <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                                     <BuildingRegular className="mb-3" style={{ fontSize: 40 }} />
                                     <p className="text-sm font-medium">Selecciona una marca</p>
                                     <p className="text-xs mt-1">Para ver y gestionar sus modelos</p>
                                 </div>
-                            )}
-                        </Card>
+                            </Card>
+                        )}
                     </div>
                 </div>
             ) : (
@@ -675,9 +770,12 @@ const Configuracion = () => {
             <Drawer position="end" open={openMarcaDrawer} onOpenChange={(_, data) => setOpenMarcaDrawer(data.open)}>
                 <DrawerHeader className="border-b bg-gradient-to-r from-blue-50 to-white">
                     <DrawerHeaderTitle action={<Button appearance="subtle" icon={<DismissRegular />} onClick={() => setOpenMarcaDrawer(false)} />}>
-                        <span className="text-lg font-bold text-slate-800">
-                            {editMode ? '✏️ Editar Marca' : '📝 Nueva Marca'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <BuildingRegular className="text-blue-600" />
+                            <span className="text-lg font-bold text-slate-800">
+                                {editMode ? 'Editar Marca' : 'Nueva Marca'}
+                            </span>
+                        </div>
                     </DrawerHeaderTitle>
                 </DrawerHeader>
                 <DrawerBody className="p-6 space-y-4">
@@ -686,12 +784,13 @@ const Configuracion = () => {
                             value={marcaForm.nombre}
                             onChange={(e) => setMarcaForm({ ...marcaForm, nombre: e.target.value })}
                             placeholder="Ej. HP, Brother, Xerox"
+                            onKeyDown={(e) => { if (e.key === 'Enter') guardarMarca() }}
                         />
                     </Field>
-                    <div className="flex justify-end gap-2 pt-4">
-                        <Button appearance="secondary" onClick={() => setOpenMarcaDrawer(false)}>Cancelar</Button>
-                        <Button appearance="primary" onClick={guardarMarca}>
-                            {editMode ? 'Actualizar' : 'Guardar'}
+                    <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+                        <Button appearance="secondary" onClick={() => setOpenMarcaDrawer(false)} disabled={savingMarca}>Cancelar</Button>
+                        <Button appearance="primary" onClick={guardarMarca} disabled={savingMarca}>
+                            {savingMarca ? <Spinner size="tiny" /> : (editMode ? 'Actualizar' : 'Guardar')}
                         </Button>
                     </div>
                 </DrawerBody>
@@ -701,26 +800,40 @@ const Configuracion = () => {
             <Drawer position="end" open={openModeloDrawer} onOpenChange={(_, data) => setOpenModeloDrawer(data.open)}>
                 <DrawerHeader className="border-b bg-gradient-to-r from-green-50 to-white">
                     <DrawerHeaderTitle action={<Button appearance="subtle" icon={<DismissRegular />} onClick={() => setOpenModeloDrawer(false)} />}>
-                        <span className="text-lg font-bold text-slate-800">
-                            {editMode ? '✏️ Editar Modelo' : '📝 Nuevo Modelo'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <TagRegular className="text-green-600" />
+                            <span className="text-lg font-bold text-slate-800">
+                                {editMode ? 'Editar Modelo' : 'Nuevo Modelo'}
+                            </span>
+                        </div>
                     </DrawerHeaderTitle>
                 </DrawerHeader>
                 <DrawerBody className="p-6 space-y-4">
                     <Field label="Marca" required>
-                        <Input value={selectedMarca?.nombre || ''} disabled />
+                        <div className="flex items-center gap-2">
+                            {selectedMarca && (
+                                <Avatar
+                                    name={selectedMarca.nombre}
+                                    initials={selectedMarca.nombre.charAt(0).toUpperCase()}
+                                    style={{ backgroundColor: getBrandColor(selectedMarca.nombre), color: '#fff' }}
+                                    size={20}
+                                />
+                            )}
+                            <Input value={selectedMarca?.nombre || ''} disabled className="flex-1" />
+                        </div>
                     </Field>
                     <Field label="Nombre del Modelo" required>
                         <Input
                             value={modeloForm.nombre}
                             onChange={(e) => setModeloForm({ ...modeloForm, nombre: e.target.value })}
                             placeholder="Ej. CF283A, TN3479, 006R01731"
+                            onKeyDown={(e) => { if (e.key === 'Enter') guardarModelo() }}
                         />
                     </Field>
-                    <div className="flex justify-end gap-2 pt-4">
-                        <Button appearance="secondary" onClick={() => setOpenModeloDrawer(false)}>Cancelar</Button>
-                        <Button appearance="primary" onClick={guardarModelo}>
-                            {editMode ? 'Actualizar' : 'Guardar'}
+                    <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+                        <Button appearance="secondary" onClick={() => setOpenModeloDrawer(false)} disabled={savingModelo}>Cancelar</Button>
+                        <Button appearance="primary" onClick={guardarModelo} disabled={savingModelo}>
+                            {savingModelo ? <Spinner size="tiny" /> : (editMode ? 'Actualizar' : 'Guardar')}
                         </Button>
                     </div>
                 </DrawerBody>
@@ -742,11 +855,14 @@ const Configuracion = () => {
                 <DialogSurface>
                     <DialogBody>
                         <DialogTitle>
-                            No se puede eliminar {bloqueoInfo?.tipo === 'marca' ? 'la marca' : 'el modelo'}
+                            <div className="flex items-center gap-2">
+                                <WarningFilled className="text-amber-500" />
+                                <span>No se puede eliminar {bloqueoInfo?.tipo === 'marca' ? 'la marca' : 'el modelo'}</span>
+                            </div>
                         </DialogTitle>
                         <DialogContent>
                             <p className="text-sm text-gray-600 mb-3">
-                                {bloqueoInfo?.tipo === 'marca' ? 'La marca' : 'El modelo'} <strong>"{bloqueoInfo?.nombre}"</strong> está asignado a:
+                                {bloqueoInfo?.tipo === 'marca' ? 'La marca' : 'El modelo'} <strong>"{bloqueoInfo?.nombre}"</strong> está asignado a los siguientes registros:
                             </p>
                             <Table className="w-full text-xs">
                                 <TableHeader>
@@ -758,14 +874,32 @@ const Configuracion = () => {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {bloqueoInfo?.items.map((item, i) => (
-                                        <TableRow key={i}>
-                                            <TableCell>{item.tipo}</TableCell>
-                                            <TableCell>{item.descripcion}</TableCell>
-                                            <TableCell>{item.serie}</TableCell>
-                                            <TableCell>{item.estado}</TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {bloqueoInfo?.items.map((item, i) => {
+                                        const TipoIcon = item.tipo === 'Compra Tóner' ? CartRegular
+                                            : item.tipo === 'Compra Equipo' ? BoxRegular
+                                            : ['Desktop', 'Laptop', 'CPU', 'All-in-One', 'Impresora', 'Multifuncional', 'Monitor', 'Proyector', 'Escáner', 'Plotter', 'Tablet'].includes(item.tipo) ? DesktopRegular
+                                            : TagRegular
+                                        return (
+                                            <TableRow key={i}>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <TipoIcon className="text-gray-400" style={{ fontSize: 14 }} />
+                                                        <span>{item.tipo}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="font-medium">{item.descripcion}</TableCell>
+                                                <TableCell className="font-mono">{item.serie}</TableCell>
+                                                <TableCell>
+                                                    <Badge appearance="filled" color={
+                                                        item.estado === 'Activo' || item.estado === 'Disponible' ? 'success'
+                                                        : item.estado === 'Asignado' ? 'warning'
+                                                        : item.estado === 'Agotado' || item.estado === 'Dado de Baja' || item.estado === 'Inactivo' ? 'danger'
+                                                        : 'informative'
+                                                    } size="extra-small">{item.estado}</Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    })}
                                 </TableBody>
                             </Table>
                         </DialogContent>

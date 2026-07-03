@@ -20,7 +20,7 @@ import {
 } from '@fluentui/react-components'
 import { useState } from 'react'
 
-const DetalleOCEquiposDrawer = ({ open, onClose, compra, equipos, onEditEquipo, onDeleteEquipo, onAgregarMas, onBatchUpdate }) => {
+const DetalleOCEquiposDrawer = ({ open, onClose, compra, equipos, onEditEquipo, onDeleteEquipo, onAgregarMas, onBatchUpdate, onEliminarOC }) => {
     const [asignacionesMap, setAsignacionesMap] = useState({})
     const [batchEdit, setBatchEdit] = useState({ detalleId: null, open: false })
     const [batchForm, setBatchForm] = useState({
@@ -126,6 +126,14 @@ const DetalleOCEquiposDrawer = ({ open, onClose, compra, equipos, onEditEquipo, 
                                 className="text-blue-600"
                             >
                                 + Agregar más
+                            </Button>
+                            <Button
+                                appearance="outline"
+                                size="small"
+                                icon={<DeleteRegular />}
+                                onClick={() => onEliminarOC(compra)}
+                            >
+                                Eliminar
                             </Button>
                             <Button
                                 appearance="subtle"

@@ -237,10 +237,10 @@ export default function DrawerDetalleBien({ open, onClose, bien, onEdit, onDelet
                 )}
 
                 {/* Observaciones del bien */}
-                {bien.observaciones && (
+                {bien.other && (
                     <Card appearance="outline" className="border-gray-200">
                         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Observaciones</div>
-                        <p className="text-sm text-gray-700">{bien.observaciones}</p>
+                        <p className="text-sm text-gray-700">{bien.other}</p>
                     </Card>
                 )}
             </DrawerBody>

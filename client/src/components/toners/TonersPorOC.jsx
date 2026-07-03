@@ -1,4 +1,4 @@
-import { CartRegular, InfoRegular } from '@fluentui/react-icons'
+import { CartRegular, InfoRegular, DeleteRegular } from '@fluentui/react-icons'
 import { Button, Card, Badge } from '@fluentui/react-components'
 
 const StockBadge = ({ disponibles, total }) => {
@@ -10,7 +10,7 @@ const StockBadge = ({ disponibles, total }) => {
     return <Badge appearance="tint" color="success" size="small">Stock</Badge>
 }
 
-const TonersPorOC = ({ compras, tonerCountsByDetalle = {}, onCompraClick, onAgregarMas }) => {
+const TonersPorOC = ({ compras, tonerCountsByDetalle = {}, onCompraClick, onAgregarMas, onEliminarOC }) => {
     if (compras.length === 0) {
         return (
             <Card className="!p-8">
@@ -123,14 +123,27 @@ const TonersPorOC = ({ compras, tonerCountsByDetalle = {}, onCompraClick, onAgre
                             >
                                 + Agregar más
                             </Button>
-                            <Button
-                                appearance="primary"
-                                size="small"
-                                icon={<InfoRegular />}
-                                onClick={() => onCompraClick(compra)}
-                            >
-                                Ver detalle
-                            </Button>
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    appearance="outline"
+                                    size="small"
+                                    icon={<DeleteRegular />}
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        onEliminarOC(compra)
+                                    }}
+                                >
+                                    Eliminar
+                                </Button>
+                                <Button
+                                    appearance="primary"
+                                    size="small"
+                                    icon={<InfoRegular />}
+                                    onClick={() => onCompraClick(compra)}
+                                >
+                                    Ver detalle
+                                </Button>
+                            </div>
                         </div>
                     </Card>
                 )

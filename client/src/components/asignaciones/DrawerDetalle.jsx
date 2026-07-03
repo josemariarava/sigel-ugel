@@ -62,9 +62,17 @@ export default function DrawerDetalle({
                                     </div>
                                     <Badge appearance="filled" color="success">{asig.estado_asignacion}</Badge>
                                 </div>
-                                <div className="mt-3 pt-2 border-t border-gray-100 text-xs text-gray-500 flex justify-between">
-                                    <span>📍 {asig.ambiente?.nombre}</span>
-                                    <span>📅 {asig.fecha_asignacion}</span>
+                                <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500 space-y-1">
+                                    <div className="flex justify-between">
+                                        <span>📍 {asig.ambiente?.nombre}</span>
+                                        <span>📅 {asig.fecha_asignacion}</span>
+                                    </div>
+                                    {asig.numero_acta && <p>📄 Acta N°: {asig.numero_acta}</p>}
+                                    {asig.motivo && <p>📌 Motivo: {asig.motivo}</p>}
+                                    {asig.documento_referencia && <p>📎 Documento: {asig.documento_referencia}</p>}
+                                    {(asig.persona_origen?.nombres || asig.persona_origen?.apellidos) && (
+                                        <p>👤 Asignado por: {asig.persona_origen.apellidos}, {asig.persona_origen.nombres}</p>
+                                    )}
                                 </div>
                             </div>
                         ))}

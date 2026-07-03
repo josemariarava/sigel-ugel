@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
+import { buildMostrarToast } from '../lib/toastUtils'
 import { createActaTonerPdf } from '../lib/pdfGeneratorToners'
 import { getEstadoColorToner } from '../lib/utils'
 import { Toast, ToastTitle, ToastBody } from '@fluentui/react-components'
@@ -34,6 +35,7 @@ export function useGestionToners(dispatchToast) {
     const [submitting, setSubmitting] = useState(false)
     const submittingRef = useRef(false)
     const impresorasCache = useRef(null)
+    const impresoraLoadGenRef = useRef(0)
     const [currentPage, setCurrentPage] = useState(1)
     const PAGE_SIZE = 25
 
@@ -81,6 +83,7 @@ export function useGestionToners(dispatchToast) {
             setImpresoraConTonerActivo(null)
             return
         }
+        const gen = ++impresoraLoadGenRef.current
         let query = supabase
             .from('asignacion_toners')
             .select('id, toner_id')
@@ -91,6 +94,7 @@ export function useGestionToners(dispatchToast) {
             query = query.neq('id', selectedAsignacion.id)
         }
         query.then(({ data }) => {
+            if (gen !== impresoraLoadGenRef.current) return
             setImpresoraConTonerActivo(data && data.length > 0 ? data[0] : false)
         })
     }, [formData.impresora_id, editMode, selectedAsignacion])
@@ -104,15 +108,7 @@ export function useGestionToners(dispatchToast) {
         }
     }, [selectedPiso, ambientes])
 
-    const mostrarToast = (mensaje, tipo = 'success') => {
-        dispatchToast(
-            <Toast>
-                <ToastTitle>{tipo === 'success' ? '✅ Éxito' : '❌ Error'}</ToastTitle>
-                <ToastBody>{mensaje}</ToastBody>
-            </Toast>,
-            { intent: tipo }
-        )
-    }
+    const mostrarToast = buildMostrarToast(dispatchToast)
 
     const cargarDatos = async () => {
         try {
@@ -226,6 +222,7 @@ export function useGestionToners(dispatchToast) {
             setImpresoras(data || [])
         } catch (error) {
             console.error('Error al cargar impresoras:', error.message)
+            mostrarToast(handleApiError(error, 'cargar impresoras'), 'error')
         }
     }
 

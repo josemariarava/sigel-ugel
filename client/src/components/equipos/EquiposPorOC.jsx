@@ -1,4 +1,4 @@
-import { EditRegular, DesktopRegular, LaptopRegular, TvRegular, PrintRegular } from '@fluentui/react-icons'
+import { EditRegular, DesktopRegular, LaptopRegular, TvRegular, PrintRegular, DeleteRegular } from '@fluentui/react-icons'
 import {
     Button,
     Card,
@@ -17,7 +17,7 @@ const tipoIcono = (tipo) => {
     }
 }
 
-const EquiposPorOC = ({ compras, bienesSinOC = [], onCompraClick, onAgregarMas, onBienSinODetail, onBienSinOClick }) => {
+const EquiposPorOC = ({ compras, bienesSinOC = [], onCompraClick, onAgregarMas, onEliminarOC, onBienSinODetail, onBienSinOClick }) => {
     const sinOCSection = bienesSinOC.length > 0 && (
         <Card className="!p-0 !border-amber-200 !bg-amber-50/30">
             <div className="p-4">
@@ -146,9 +146,22 @@ const EquiposPorOC = ({ compras, bienesSinOC = [], onCompraClick, onAgregarMas, 
                         )}
 
                         <div className="border-t border-gray-100 px-4 py-2 bg-gradient-to-r from-blue-50 to-transparent flex justify-between items-center">
-                            <span className="text-xs text-gray-400 group-hover:text-blue-600 transition-colors">
-                                👆 Haz clic para ver detalle
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    appearance="outline"
+                                    size="small"
+                                    icon={<DeleteRegular />}
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        onEliminarOC(compra)
+                                    }}
+                                >
+                                    Eliminar
+                                </Button>
+                                <span className="text-xs text-gray-400 group-hover:text-blue-600 transition-colors">
+                                    👆 Haz clic para ver detalle
+                                </span>
+                            </div>
                             <div className="flex items-center gap-2">
                                 <Button
                                     appearance="subtle"

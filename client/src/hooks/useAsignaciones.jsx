@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
+import { buildMostrarToast } from '../lib/toastUtils'
 import { createActaCargoPdf, createActaAsignacionPdf } from '../lib/pdfGenerator'
 import { getEstadoColorAsignacion } from '../lib/utils'
 import { Toast, ToastTitle, ToastBody } from '@fluentui/react-components'
@@ -67,7 +68,7 @@ export function useAsignaciones(dispatchToast) {
         documento_referencia: '',
         fecha: new Date().toISOString().split('T')[0],
         observaciones: '',
-        usuario_registro: ''
+        persona_origen_id: ''
     })
 
     const [formData, setFormData] = useState({
@@ -212,11 +213,30 @@ export function useAsignaciones(dispatchToast) {
         })
     }, [openModal, editMode, personas])
 
+    const trasladoAutoPopulatedRef = useRef(false)
+    useEffect(() => {
+        if (!openTrasladoModal) {
+            trasladoAutoPopulatedRef.current = false
+            return
+        }
+        if (trasladoAutoPopulatedRef.current || personas.length === 0 || trasladoData.persona_origen_id) return
+        trasladoAutoPopulatedRef.current = true
+
+        supabase.auth.getSession().then(({ data }) => {
+            const email = data?.session?.user?.email
+            if (!email) return
+            const match = personas.find(p => p.email?.toLowerCase() === email.toLowerCase())
+            if (match) {
+                setTrasladoData(prev => ({ ...prev, persona_origen_id: match.id }))
+            }
+        })
+    }, [openTrasladoModal, personas, trasladoData.persona_origen_id])
+
     const cargarDatos = async () => {
         try {
             setLoading(true)
-            const [asignacionesResult, personasResult, pisosResult, ambientesResult, areasResult, tiposMovResult] = await Promise.all([
-               supabase.from('asignaciones').select(`*, bien:bienes!fk_asignaciones_bien(*), persona:personas!fk_asignaciones_persona(*), ambiente:ambientes!fk_asignaciones_ambiente(*, piso:pisos(*))`).order('fecha_asignacion', { ascending: false }),
+            const results = await Promise.allSettled([
+                supabase.from('asignaciones').select(`*, bien:bienes!fk_asignaciones_bien(*), persona:personas!fk_asignaciones_persona(*), persona_origen:personas!asignaciones_persona_origen_id_fkey(*), ambiente:ambientes!fk_asignaciones_ambiente(*, piso:pisos(*))`).order('fecha_asignacion', { ascending: false }),
                 supabase.from('personas').select('*, area:areas(*)').order('apellidos'),
                 supabase.from('pisos').select('*').order('numero'),
                 supabase.from('ambientes').select('*, piso:pisos(*), area:areas(*)').order('nombre'),
@@ -224,15 +244,19 @@ export function useAsignaciones(dispatchToast) {
                 supabase.from('tipos_movimiento').select('*'),
             ])
 
-            setAsignaciones(asignacionesResult.data || [])
-            setPersonas(personasResult.data || [])
-            setPisos(pisosResult.data || [])
-            setTodosLosAmbientes(ambientesResult.data || [])
-            setAreas(areasResult.data || [])
-            setTiposMovimiento(tiposMovResult.data || [])
+            const extraer = (r) => r.status === 'fulfilled' ? (r.value.data || []) : []
 
-        } catch (error) {
-            mostrarToast(handleApiError(error, 'cargar datos'), 'error')
+            setAsignaciones(extraer(results[0]))
+            setPersonas(extraer(results[1]))
+            setPisos(extraer(results[2]))
+            setTodosLosAmbientes(extraer(results[3]))
+            setAreas(extraer(results[4]))
+            setTiposMovimiento(extraer(results[5]))
+
+            const fallos = results.filter(r => r.status === 'rejected')
+            if (fallos.length > 0) {
+                console.error(`${fallos.length} consulta(s) fallaron al cargar datos`)
+            }
         } finally {
             setLoading(false)
         }
@@ -246,21 +270,14 @@ export function useAsignaciones(dispatchToast) {
                 .in('estado', [ESTADOS.BIEN.ACTIVO, ESTADOS.BIEN.ASIGNADO, ESTADOS.BIEN.DISPONIBLE])
                 .order('tipo_equipo')
             if (error) throw error
-            setBienes(data || [])
+            const consumibles = ['Tóner', 'Cartucho', 'Cinta', 'Batería', 'Cargador']
+            setBienes((data || []).filter(b => !consumibles.includes(b.tipo_equipo)))
         } catch (error) {
             mostrarToast(handleApiError(error, 'cargar bienes'), 'error')
         }
     }
 
-    const mostrarToast = (mensaje, tipo = 'success') => {
-        dispatchToast(
-            <Toast>
-                <ToastTitle>{tipo === 'success' ? '✅ Éxito' : '❌ Error'}</ToastTitle>
-                <ToastBody>{mensaje}</ToastBody>
-            </Toast>,
-            { intent: tipo }
-        )
-    }
+    const mostrarToast = buildMostrarToast(dispatchToast)
 
     const verBienesPorPersona = (personaId, personaNombre, personaApellidos) => {
         const bienesAsignados = asignaciones.filter(asig =>
@@ -441,6 +458,7 @@ export function useAsignaciones(dispatchToast) {
             setExportando(true)
             const { utils, writeFile } = await import('xlsx')
             const datosExportar = asignacionesFiltradasAvanzado.map(asig => ({
+                'N° Acta': asig.numero_acta || '',
                 'Tipo de Bien': asig.bien?.tipo_equipo,
                 'Marca': asig.bien?.marca || '',
                 'Modelo': asig.bien?.modelo || '',
@@ -449,17 +467,22 @@ export function useAsignaciones(dispatchToast) {
                 'Responsable': `${asig.persona?.apellidos} ${asig.persona?.nombres}`,
                 'DNI': asig.persona?.dni || '',
                 'Cargo': asig.persona?.cargo || '',
+                'Asignado por': `${asig.persona_origen?.apellidos || ''} ${asig.persona_origen?.nombres || ''}`.trim(),
+                'Motivo': asig.motivo || '',
                 'Ubicación': `${asig.ambiente?.nombre || ''} (Piso ${asig.ambiente?.piso?.numero || ''})`,
                 'Fecha Asignación': asig.fecha_asignacion,
                 'Estado': asig.estado_asignacion,
+                'Documento Ref.': asig.documento_referencia || '',
                 'Observaciones': asig.observaciones || ''
             }))
 
             const ws = utils.json_to_sheet(datosExportar)
             ws['!cols'] = [
-                { wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 20 },
+                { wch: 14 }, { wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 20 },
                 { wch: 15 }, { wch: 30 }, { wch: 12 }, { wch: 20 },
-                { wch: 28 }, { wch: 16 }, { wch: 14 }, { wch: 30 }
+                { wch: 30 }, { wch: 18 },
+                { wch: 28 }, { wch: 16 }, { wch: 14 },
+                { wch: 18 }, { wch: 30 }
             ]
 
             const wb = utils.book_new()
@@ -489,23 +512,31 @@ export function useAsignaciones(dispatchToast) {
             })
 
             const columnas = [
+                { header: 'N° Acta', dataKey: 'acta' },
                 { header: 'Tipo de Bien', dataKey: 'tipo' },
                 { header: 'Código Pat.', dataKey: 'codigo' },
                 { header: 'Marca/Modelo', dataKey: 'modelo' },
                 { header: 'Responsable', dataKey: 'responsable' },
+                { header: 'Asignado por', dataKey: 'asignadoPor' },
+                { header: 'Motivo', dataKey: 'motivo' },
                 { header: 'Ubicación', dataKey: 'ubicacion' },
                 { header: 'Fecha', dataKey: 'fecha' },
-                { header: 'Estado', dataKey: 'estado' }
+                { header: 'Estado', dataKey: 'estado' },
+                { header: 'Doc. Ref.', dataKey: 'docRef' }
             ]
 
             const filas = asignacionesFiltradasAvanzado.map(asig => ({
+                acta: asig.numero_acta || '',
                 tipo: asig.bien?.tipo_equipo || '',
                 codigo: asig.bien?.codigo_patrimonial || '',
                 modelo: `${asig.bien?.marca || 'S/M'} ${asig.bien?.modelo || 'S/M'}`,
                 responsable: asig.persona ? `${asig.persona.apellidos}, ${asig.persona.nombres}` : 'No asignado',
+                asignadoPor: `${asig.persona_origen?.apellidos || ''} ${asig.persona_origen?.nombres || ''}`.trim(),
+                motivo: asig.motivo || '',
                 ubicacion: `${asig.ambiente?.nombre || 'Almacén General'} (Piso ${asig.ambiente?.piso?.numero ?? '0'})`,
                 fecha: asig.fecha_asignacion || '',
-                estado: asig.estado_asignacion || ''
+                estado: asig.estado_asignacion || '',
+                docRef: asig.documento_referencia || ''
             }))
 
             autoTable(doc, {
@@ -662,12 +693,14 @@ export function useAsignaciones(dispatchToast) {
             const tipoMovId = tipoMovimientoId(getTipoMovNombre(tipo))
             const almacen = getAlmacenGeneral()
 
-            const personaRegistro = trasladoData.usuario_registro
-                ? personas.find(p => p.id === trasladoData.usuario_registro)
-                : null
-            const usuarioRegistroNombre = personaRegistro
-                ? `${personaRegistro.nombres} ${personaRegistro.apellidos}`
-                : null
+            let usuarioRegistroNombre = null
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session?.user?.email) {
+                const match = personas.find(p => p.email?.toLowerCase() === session.user.email.toLowerCase())
+                if (match) {
+                    usuarioRegistroNombre = `${match.nombres} ${match.apellidos}`
+                }
+            }
 
             if (tipo === 'traslado') {
                 const { error: updateOldError } = await supabase
@@ -679,7 +712,7 @@ export function useAsignaciones(dispatchToast) {
                     .eq('id', asignacionActual.id)
                 if (updateOldError) throw updateOldError
 
-                const { data: newAsignacion, error: insertError } = await supabase
+                const { error: insertError } = await supabase
                     .from('asignaciones')
                     .insert({
                         bien_id: asignacionActual.bien_id,
@@ -688,6 +721,8 @@ export function useAsignaciones(dispatchToast) {
                         estado_asignacion: ESTADOS.ASIGNACION.ACTIVO,
                         fecha_asignacion: trasladoData.fecha,
                         fecha_actualizacion: trasladoData.fecha,
+                        persona_origen_id: trasladoData.persona_origen_id || asignacionActual.persona_id,
+                        motivo: motivoFinal,
                         observaciones: trasladoData.observaciones || `Transferido desde ${asignacionActual.persona?.nombres || ''} ${asignacionActual.persona?.apellidos || ''}`,
                         documento_referencia: trasladoData.documento_referencia || null
                     })
@@ -744,7 +779,7 @@ export function useAsignaciones(dispatchToast) {
             documento_referencia: '',
             fecha: new Date().toISOString().split('T')[0],
             observaciones: '',
-            usuario_registro: ''
+            persona_origen_id: ''
         })
         setInfoNuevoResponsable(null)
         setInfoNuevoAmbiente(null)
@@ -799,39 +834,19 @@ export function useAsignaciones(dispatchToast) {
 
             const anio = new Date().getFullYear()
 
-            let numeroActa = null
-            if (!editMode) {
-                const { data: maxActaData } = await supabase
-                    .from('asignaciones')
-                    .select('numero_acta')
-                    .like('numero_acta', `%-${anio}`)
-                    .order('numero_acta', { ascending: false })
-                    .limit(1)
-
-                if (maxActaData && maxActaData.length > 0) {
-                    const parts = maxActaData[0].numero_acta.split('-')
-                    const nextNumber = (parseInt(parts[0], 10) || 0) + 1
-                    numeroActa = `${String(nextNumber).padStart(4, '0')}-${anio}`
-                } else {
-                    numeroActa = `0001-${anio}`
-                }
-            }
-
-            const payload = {
-                bien_id: formData.bien_id,
-                persona_id: formData.persona_id,
-                ambiente_id: formData.ambiente_id || null,
-                fecha_asignacion: formData.fecha_asignacion,
-                observaciones: formData.observaciones,
-                ubicacion_detalle: formData.ubicacion_detalle || null,
-                documento_referencia: formData.documento_referencia || null,
-                persona_origen_id: formData.persona_origen_id || null,
-                motivo: formData.motivo || null,
-                estado_asignacion: formData.estado_asignacion,
-                ...(!editMode && numeroActa ? { numero_acta: numeroActa } : {})
-            }
-
             if (editMode) {
+                const payload = {
+                    bien_id: formData.bien_id,
+                    persona_id: formData.persona_id,
+                    ambiente_id: formData.ambiente_id || null,
+                    fecha_asignacion: formData.fecha_asignacion,
+                    observaciones: formData.observaciones,
+                    ubicacion_detalle: formData.ubicacion_detalle || null,
+                    documento_referencia: formData.documento_referencia || null,
+                    persona_origen_id: formData.persona_origen_id || null,
+                    motivo: formData.motivo || null,
+                    estado_asignacion: formData.estado_asignacion,
+                }
                 const { error } = await supabase
                     .from('asignaciones')
                     .update({ ...payload, fecha_actualizacion: new Date().toISOString().split('T')[0] })
@@ -840,8 +855,48 @@ export function useAsignaciones(dispatchToast) {
                 if (error) throw error
                 mostrarToast('Asignación actualizada ✨')
             } else {
-                const { error } = await supabase.from('asignaciones').insert([payload])
-                if (error) throw error
+                let numeroActa
+
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    const { data: maxActaData } = await supabase
+                        .from('asignaciones')
+                        .select('numero_acta')
+                        .like('numero_acta', `%-${anio}`)
+                        .order('numero_acta', { ascending: false })
+                        .limit(1)
+
+                    let nextNum = 1
+                    if (maxActaData && maxActaData.length > 0) {
+                        const parts = maxActaData[0].numero_acta.split('-')
+                        const lastNum = parseInt(parts[0], 10)
+                        nextNum = !isNaN(lastNum) ? lastNum + 1 : 1
+                    }
+                    numeroActa = `${String(nextNum).padStart(4, '0')}-${anio}`
+
+                    const payload = {
+                        bien_id: formData.bien_id,
+                        persona_id: formData.persona_id,
+                        ambiente_id: formData.ambiente_id || null,
+                        fecha_asignacion: formData.fecha_asignacion,
+                        observaciones: formData.observaciones,
+                        ubicacion_detalle: formData.ubicacion_detalle || null,
+                        documento_referencia: formData.documento_referencia || null,
+                        persona_origen_id: formData.persona_origen_id || null,
+                        motivo: formData.motivo || null,
+                        estado_asignacion: formData.estado_asignacion,
+                        numero_acta: numeroActa
+                    }
+
+                    const { error } = await supabase
+                        .from('asignaciones')
+                        .insert([payload])
+
+                    if (error) {
+                        if (error.code === '23505' && attempt < 2) continue
+                        throw error
+                    }
+                    break
+                }
 
                 const movOk = await registrarMovimiento({
                     bien_id: formData.bien_id,
@@ -1006,9 +1061,15 @@ export function useAsignaciones(dispatchToast) {
     const getAlmacenGeneral = () => almacenGeneral
 
     const buildUpdateAsignacion = (tipo, asignacionActual, almacen) => {
+        const motivoFinal = trasladoData.motivo === 'Otro'
+            ? trasladoData.motivo_especifico
+            : trasladoData.motivo
         const payload = {
             fecha_actualizacion: trasladoData.fecha,
-            estado_asignacion: getEstadoPorTipo(tipo)
+            estado_asignacion: getEstadoPorTipo(tipo),
+            persona_origen_id: trasladoData.persona_origen_id || null,
+            motivo: motivoFinal || null,
+            documento_referencia: trasladoData.documento_referencia || null
         }
         if (tipo === 'devolucion') {
             if (almacen) payload.ambiente_id = almacen.id
@@ -1017,24 +1078,27 @@ export function useAsignaciones(dispatchToast) {
         return payload
     }
 
-    const getMovimiento = (tipo, asignacionActual, tipoMovId, motivoFinal, usuarioRegistroNombre) => ({
-        bien_id: asignacionActual.bien_id,
-        tipo_movimiento_id: tipoMovId,
-        persona_origen_id: asignacionActual.persona_id,
-        persona_destino_id: tipo === 'traslado' ? trasladoData.persona_destino_id : null,
-        ambiente_origen_id: asignacionActual.ambiente_id,
-        ambiente_destino_id: tipo === 'devolucion' ? getAlmacenGeneral()?.id : trasladoData.ambiente_destino_id,
-        fecha_movimiento: trasladoData.fecha,
-        motivo: motivoFinal,
-        documento_referencia: trasladoData.documento_referencia,
-        observaciones: trasladoData.observaciones,
-        usuario_registro: usuarioRegistroNombre
-    })
+    const getMovimiento = (tipo, asignacionActual, tipoMovId, motivoFinal, usuarioRegistroNombre) => {
+        const ambDestId = tipo === 'devolucion' ? getAlmacenGeneral()?.id : trasladoData.ambiente_destino_id
+        return {
+            bien_id: asignacionActual.bien_id,
+            tipo_movimiento_id: tipoMovId,
+            persona_origen_id: asignacionActual.persona_id,
+            persona_destino_id: tipo === 'traslado' ? trasladoData.persona_destino_id : null,
+            ambiente_origen_id: asignacionActual.ambiente_id,
+            ambiente_destino_id: ambDestId || null,
+            fecha_movimiento: trasladoData.fecha,
+            motivo: motivoFinal,
+            documento_referencia: trasladoData.documento_referencia,
+            observaciones: trasladoData.observaciones,
+            usuario_registro: usuarioRegistroNombre
+        }
+    }
 
     const [showCloseConfirm, setShowCloseConfirm] = useState(false)
     const [showTrasladoCloseConfirm, setShowTrasladoCloseConfirm] = useState(false)
 
-    const formHasData = formData.bien_id || formData.persona_id || formData.observaciones || formData.ubicacion_detalle || formData.documento_referencia
+    const formHasData = formData.bien_id || formData.persona_id || formData.ambiente_id || formData.fecha_asignacion || formData.persona_origen_id || formData.motivo || formData.observaciones || formData.ubicacion_detalle || formData.documento_referencia
 
     const requestCloseDrawer = () => {
         if (formHasData) {

@@ -18,7 +18,6 @@ import {
     Button,
     Input,
     Card,
-
     Badge,
     Spinner,
     Select,
@@ -28,7 +27,14 @@ import {
     MenuTrigger,
     MenuPopover,
     MenuList,
-    MenuItem
+    MenuItem,
+    Dialog,
+    DialogTrigger,
+    DialogSurface,
+    DialogBody,
+    DialogTitle,
+    DialogContent,
+    DialogActions
 } from '@fluentui/react-components'
 import ConfirmDialog from '../components/shared/ConfirmDialog'
 import useBienes from '../hooks/useBienes'
@@ -84,6 +90,9 @@ const Bienes = () => {
         handleImportarExcelBienes,
         handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete,
         deleteTarget, setDeleteTarget,
+        handleEliminarOC, confirmEliminarOC,
+        deleteOCTarget, setDeleteOCTarget,
+        ocBloqueoInfo, setOcBloqueoInfo,
         diagnostico, diagnosticar,
         intentarAutoDetectarMonitor,
         monitoresDetectados, monitorSeleccionadoIndex, seleccionarMonitor,
@@ -347,6 +356,7 @@ const Bienes = () => {
                         tonerCountsByDetalle={tonerCountsByDetalle}
                         onCompraClick={handleCompraClick}
                         onAgregarMas={handleAddMoreToCompra}
+                        onEliminarOC={(compra) => handleEliminarOC(compra, 'toners')}
                     />
                     {tonersSinOC.length > 0 && (
                         <div className="mt-6">
@@ -413,6 +423,7 @@ const Bienes = () => {
                     bienesSinOC={bienesSinOC}
                     onCompraClick={handleCompraEquipoClick}
                     onAgregarMas={handleAddMoreToCompraEquipo}
+                    onEliminarOC={(compra) => handleEliminarOC(compra, 'equipos')}
                     onBienSinODetail={handleEquipoDetailClick}
                     onBienSinOClick={handleEdit}
                 />
@@ -503,6 +514,7 @@ const Bienes = () => {
                 onDeleteToner={handleDelete}
                 onAgregarMas={handleAddMoreToCompra}
                 onBatchUpdate={handleBatchUpdate}
+                onEliminarOC={(compra) => handleEliminarOC(compra, 'toners')}
             />
 
             <CompraEquiposDrawer
@@ -526,6 +538,7 @@ const Bienes = () => {
                 onDeleteEquipo={handleDelete}
                 onAgregarMas={handleAddMoreToCompraEquipo}
                 onBatchUpdate={handleBatchUpdateEquipo}
+                onEliminarOC={(compra) => handleEliminarOC(compra, 'equipos')}
             />
 
             <ImportarBienesExcelDrawer
@@ -590,6 +603,69 @@ const Bienes = () => {
                     </div>
                 )}
             </ConfirmDialog>
+
+            <ConfirmDialog
+                title="Eliminar orden de compra"
+                open={!!deleteOCTarget}
+                message="¿Estás seguro? Esta acción eliminará la O/C y sus detalles. Los bienes asociados se conservarán sin vínculo a la O/C."
+                onConfirm={confirmEliminarOC}
+                onCancel={() => setDeleteOCTarget(null)}
+            >
+                {deleteOCTarget && (
+                    <div className="border border-red-200 bg-red-50 rounded-lg p-3 text-sm space-y-1">
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                            <span className="text-gray-500">O/C:</span>
+                            <span className="font-medium">{deleteOCTarget.compra.orden_compra}</span>
+                            <span className="text-gray-500">Tipo:</span>
+                            <span className="font-medium capitalize">{deleteOCTarget.tipo}</span>
+                            {deleteOCTarget.compra.proveedor && <><span className="text-gray-500">Proveedor:</span><span className="font-medium">{deleteOCTarget.compra.proveedor}</span></>}
+                        </div>
+                    </div>
+                )}
+            </ConfirmDialog>
+
+            <Dialog open={!!ocBloqueoInfo} onOpenChange={(_, d) => { if (!d.open) setOcBloqueoInfo(null) }}>
+                <DialogSurface>
+                    <DialogBody>
+                        <DialogTitle>
+                            <div className="flex items-center gap-2 text-red-600">
+                                <span className="text-xl">⚠️</span>
+                                <span>No se puede eliminar la O/C</span>
+                            </div>
+                        </DialogTitle>
+                        <DialogContent>
+                            <div className="space-y-3">
+                                <p className="text-sm text-gray-600">
+                                    Los siguientes bienes tienen asignaciones activas:
+                                </p>
+                                {ocBloqueoInfo && ocBloqueoInfo.items.length > 0 && (
+                                    <div className="space-y-1 max-h-64 overflow-y-auto">
+                                        {ocBloqueoInfo.items.map((item, i) => (
+                                            <div key={i} className="flex items-center gap-2 text-xs bg-red-50 border border-red-100 rounded px-3 py-2">
+                                                <span className="font-medium text-gray-700 min-w-[120px] truncate">{item.tipo}</span>
+                                                <span className="text-gray-500 truncate">{item.descripcion}</span>
+                                                <span className="ml-auto">
+                                                    <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-medium">
+                                                        {item.estado}
+                                                    </span>
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <p className="text-xs text-gray-400 mt-3">
+                                    Para eliminar la O/C, primero debes finalizar las asignaciones activas.
+                                </p>
+                            </div>
+                        </DialogContent>
+                        <DialogActions>
+                            <DialogTrigger disableButtonEnhancement>
+                                <Button appearance="primary">Entendido</Button>
+                            </DialogTrigger>
+                        </DialogActions>
+                    </DialogBody>
+                </DialogSurface>
+            </Dialog>
         </div>
     )
 }

@@ -51,7 +51,7 @@ export default function DrawerTraslado({
     infoNuevoAmbiente, setInfoNuevoAmbiente,
     handleNuevoResponsableChange, handleNuevoAmbienteChange,
     handleTraslado, resetTrasladoForm,
-    personas, todosLosAmbientes,
+    personas, todosLosAmbientes, areas,
     submitting,
     requestCloseTrasladoDrawer
 }) {
@@ -65,7 +65,10 @@ export default function DrawerTraslado({
             persona_destino_id: '',
             ambiente_destino_id: '',
             motivo: '',
-            motivo_especifico: ''
+            motivo_especifico: '',
+            persona_origen_id: '',
+            documento_referencia: '',
+            observaciones: ''
         })
         setInfoNuevoResponsable(null)
         setInfoNuevoAmbiente(null)
@@ -234,14 +237,18 @@ export default function DrawerTraslado({
                     />
                 </Field>
 
-                <Field label="Registrado por">
+                <Field label="Asignado por / Entregado por">
                     <Select
                         size="small"
-                        value={trasladoData.usuario_registro}
-                        onChange={(e, data) => setTrasladoData({ ...trasladoData, usuario_registro: data.value })}
+                        value={trasladoData.persona_origen_id}
+                        onChange={(e, data) => setTrasladoData({ ...trasladoData, persona_origen_id: data.value })}
                     >
-                        <option value="">-- Seleccionar responsable del registro --</option>
-                        {personas.map(p => (
+                        <option value="">-- Seleccionar responsable --</option>
+                        {personas.filter(p => {
+                            if (!areas || !p.area_id) return true
+                            const area = areas.find(a => a.id === p.area_id)
+                            return area && area.nombre.toLowerCase() === 'informática'
+                        }).map(p => (
                             <option key={p.id} value={p.id}>
                                 👤 {p.apellidos}, {p.nombres} - {p.cargo || 'Personal'}
                             </option>

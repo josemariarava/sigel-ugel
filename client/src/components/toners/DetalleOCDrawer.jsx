@@ -23,7 +23,7 @@ import {
     MessageBarBody
 } from '@fluentui/react-components'
 
-const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onDeleteToner, onAgregarMas, onBatchUpdate }) => {
+const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onDeleteToner, onAgregarMas, onBatchUpdate, onEliminarOC }) => {
     const [batchEdit, setBatchEdit] = useState({ detalleId: null, open: false })
     const [batchForm, setBatchForm] = useState({
         lote: '', ubicacion: '', fecha_vencimiento: '', rendimiento: '',
@@ -142,6 +142,14 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onDeleteT
                                 className="text-blue-600"
                             >
                                 + Agregar más
+                            </Button>
+                            <Button
+                                appearance="outline"
+                                size="small"
+                                icon={<DeleteRegular />}
+                                onClick={() => onEliminarOC(compra)}
+                            >
+                                Eliminar
                             </Button>
                             <Button
                                 appearance="subtle"
