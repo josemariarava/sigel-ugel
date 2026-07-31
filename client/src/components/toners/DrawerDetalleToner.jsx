@@ -51,7 +51,7 @@ export default function DrawerDetalleToner({ open, onClose, toner, onEdit, onDel
                 <DrawerHeaderTitle action={<Button appearance="subtle" icon={<DismissRegular />} onClick={onClose} />}>
                     <div>
                         <span className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <CartRegular className="text-teal-600" /> Detalle del Tóner
+                            <CartRegular className="text-teal-600" /> {toner.tipo_equipo === 'Contenedor de Tóner (Residuo)' ? 'Detalle del Contenedor' : 'Detalle del Tóner'}
                         </span>
                         <p className="text-xs text-gray-500 mt-0.5">Información completa del bien consumible</p>
                     </div>
@@ -73,6 +73,10 @@ export default function DrawerDetalleToner({ open, onClose, toner, onEdit, onDel
                         )}
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-gray-600">
+                        <div>
+                            <span className="text-gray-400 uppercase tracking-wider text-[10px]">Tipo</span>
+                            <p className="font-medium mt-0.5">{toner.tipo_equipo || 'Tóner'}</p>
+                        </div>
                         <div>
                             <span className="text-gray-400 uppercase tracking-wider text-[10px]">Serie</span>
                             <p className="font-mono font-medium mt-0.5">{toner.serie || '—'}</p>

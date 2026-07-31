@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
 import { buildMostrarToast } from '../lib/toastUtils'
+import { TIPOS_TONER } from '../lib/utils'
 import {
     Toast,
     ToastTitle,
@@ -12,8 +13,8 @@ import {
 const categorias = {
     computo: ['Laptop', 'Desktop', 'CPU', 'Tablet', 'All-in-One'],
     impresoras: ['Impresora', 'Proyector', 'Multifuncional', 'Escáner', 'Plotter'],
-    perifericos: ['Monitor', 'Teclado', 'Mouse', 'Parlantes', 'Diadema', 'Webcam', 'Router', 'Switch'],
-    consumibles: ['Tóner', 'Cartucho', 'Cinta', 'Batería', 'Cargador'],
+    perifericos: ['Monitor', 'Teclado', 'Mouse', 'Parlantes', 'Diadema', 'Webcam', 'Cámara', 'Router', 'Switch'],
+    consumibles: [...TIPOS_TONER, 'Cartucho', 'Cinta', 'Batería', 'Cargador'],
     otros: []
 }
 
@@ -52,7 +53,7 @@ const safeParseFloat = (val) => (val !== '' && val != null ? parseFloat(val) : n
 const safeParseInt = (val) => (val !== '' && val != null ? parseInt(val) : null)
 const generarSerieUnica = () => `SIN-SERIE-${crypto.randomUUID().slice(0, 8)}`
 const determinarEstado = (tipoEquipo, condicion) => {
-    if (tipoEquipo === 'Tóner') return 'Disponible'
+    if (TIPOS_TONER.includes(tipoEquipo)) return 'Disponible'
     if (condicion === 'Chatarra') return 'Dado de Baja'
     if (condicion === 'Malo') return 'Inactivo'
     return 'Activo'
@@ -309,12 +310,13 @@ const useBienes = () => {
                 supabase
                     .from('bienes')
                     .select('compra_detalle_id, estado')
-                    .eq('tipo_equipo', 'Tóner')
-                    .not('compra_detalle_id', 'is', null),
+                    .in('tipo_equipo', TIPOS_TONER)
+                    .not('compra_detalle_id', 'is', null)
+                    .in('estado', ['Disponible', 'Asignado', 'Activo', 'Agotado']),
                 supabase
                     .from('bienes')
                     .select('*')
-                    .eq('tipo_equipo', 'Tóner')
+                    .in('tipo_equipo', TIPOS_TONER)
                     .is('compra_detalle_id', null)
                     .order('created_at', { ascending: false })
             ])
@@ -723,6 +725,7 @@ const useBienes = () => {
                                 modelo: modeloStr,
                                 serie: serieValue,
                                 codigo_patrimonial: String(row.codigo_patrimonial || '').trim() || null,
+                                codigo_ti: String(row.codigo_ti || '').trim() || null,
                                 cantidad_recibida: 1,
                                 costo_unitario: safeParseFloat(row.costo_unitario),
                                 procesador: String(row.procesador || '').trim() || null,
@@ -750,12 +753,20 @@ const useBienes = () => {
                                 modelo: modeloStr,
                                 serie: serieValue,
                                 codigo_patrimonial: String(row.codigo_patrimonial || '').trim() || null,
+                                codigo_ti: String(row.codigo_ti || '').trim() || null,
                                 orden_compra: oc,
                                 compra_equipo_detalle_id: detalle.id,
                                 estado,
                                 condicion: String(row.condicion || 'Bueno').trim(),
-                                valor_compra: safeParseFloat(row.costo_unitario),
+                                valor_compra: safeParseFloat(row.valor_compra ?? row.costo_unitario),
                                 color: String(row.color || '').trim() || null,
+                                anio_compra: safeParseInt(row.anio_compra),
+                                color_toner: String(row.color_toner || '').trim() || null,
+                                rendimiento: safeParseInt(row.rendimiento),
+                                lote: String(row.lote || '').trim() || null,
+                                fecha_vencimiento: row.fecha_vencimiento || null,
+                                proveedor: String(row.proveedor || row.razon_social || '').trim() || null,
+                                ubicacion_almacen: String(row.ubicacion_almacen || '').trim() || null,
                                 procesador: String(row.procesador || '').trim() || null,
                                 ram: String(row.ram || '').trim() || null,
                                 almacenamiento: String(row.almacenamiento || '').trim() || null,
@@ -799,10 +810,18 @@ const useBienes = () => {
                                 modelo: modeloStr,
                                 serie: String(row.serie || '').trim() || generarSerieUnica(),
                                 codigo_patrimonial: String(row.codigo_patrimonial || '').trim() || null,
+                                codigo_ti: String(row.codigo_ti || '').trim() || null,
                                 estado,
                                 condicion: String(row.condicion || 'Bueno').trim(),
-                                valor_compra: safeParseFloat(row.costo_unitario),
+                                valor_compra: safeParseFloat(row.valor_compra ?? row.costo_unitario),
                                 color: String(row.color || '').trim() || null,
+                                anio_compra: safeParseInt(row.anio_compra),
+                                color_toner: String(row.color_toner || '').trim() || null,
+                                rendimiento: safeParseInt(row.rendimiento),
+                                lote: String(row.lote || '').trim() || null,
+                                fecha_vencimiento: row.fecha_vencimiento || null,
+                                proveedor: String(row.proveedor || row.razon_social || '').trim() || null,
+                                ubicacion_almacen: String(row.ubicacion_almacen || '').trim() || null,
                                 procesador: String(row.procesador || '').trim() || null,
                                 ram: String(row.ram || '').trim() || null,
                                 almacenamiento: String(row.almacenamiento || '').trim() || null,
@@ -913,7 +932,7 @@ const useBienes = () => {
                             : `${compraForm.orden_compra.replace(/[/\s]/g, '-')}-${numSerie}-${now}`
 
                     bienesData.push({
-                        tipo_equipo: 'Tóner',
+                        tipo_equipo: detalle.tipo_equipo || 'Tóner',
                         marca_id: detalle.marca_id || null,
                         modelo_id: detalle.modelo_id || null,
                         marca: detalle.marca,
@@ -982,7 +1001,7 @@ const useBienes = () => {
                 if (value !== 'Monitor') {
                     next.tamano_pantalla = ''
                 }
-                if (value !== 'Tóner') {
+                if (!TIPOS_TONER.includes(value)) {
                     next.color_toner = ''
                     next.rendimiento = ''
                     next.lote = ''
@@ -991,13 +1010,13 @@ const useBienes = () => {
                     next.ubicacion_almacen = ''
                 }
 
-                if (value === 'Tóner') {
+                if (TIPOS_TONER.includes(value)) {
                     next.color = ''
                     if (!editMode) {
                         next.condicion = 'Bueno'
                         next.estado = 'Disponible'
                     }
-                } else if (prev.tipo_equipo === 'Tóner') {
+                } else if (TIPOS_TONER.includes(prev.tipo_equipo)) {
                     next.color = ''
                     if (!editMode) next.estado = 'Activo'
                 }
@@ -1032,7 +1051,7 @@ const useBienes = () => {
                     next.modelo_id = ''
                 }
             }
-            if (name === 'condicion' && prev.tipo_equipo !== 'Tóner') {
+            if (name === 'condicion' && !TIPOS_TONER.includes(prev.tipo_equipo)) {
                 if (value === 'Malo' && prev.estado !== 'Inactivo') {
                     next.estado = 'Inactivo'
                 } else if (value === 'Chatarra') {
@@ -1381,7 +1400,7 @@ const useBienes = () => {
 
             if (!sanitized.estado) {
                 sanitized.estado = determinarEstado(sanitized.tipo_equipo, sanitized.condicion)
-            } else if (sanitized.tipo_equipo !== 'Tóner') {
+            } else if (!TIPOS_TONER.includes(sanitized.tipo_equipo)) {
                 if (sanitized.condicion === 'Malo' && sanitized.estado !== 'Inactivo') {
                     sanitized.estado = 'Inactivo'
                 } else if (sanitized.condicion === 'Chatarra') {
@@ -1825,7 +1844,7 @@ const useBienes = () => {
                 { wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 18 },
                 { wch: 22 }, { wch: 20 }, { wch: 14 }, { wch: 14 },
                 { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 20 },
-                { wch: 30 }
+                { wch: 20 }, { wch: 30 }
             ]
 
             const wb = utils.book_new()

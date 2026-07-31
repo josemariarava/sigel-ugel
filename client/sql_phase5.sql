@@ -25,7 +25,7 @@ WHERE a.id = n.id;
 -- 1. Equipos con estado 'Activo' que tienen asignación activa -> 'Asignado'
 UPDATE bienes
 SET estado = 'Asignado'
-WHERE (tipo_equipo IS NULL OR tipo_equipo != 'Tóner')
+WHERE (tipo_equipo IS NULL OR tipo_equipo NOT IN ('Tóner', 'Contenedor de Tóner (Residuo)'))
   AND estado = 'Activo'
   AND id IN (
       SELECT DISTINCT bien_id FROM asignaciones WHERE estado_asignacion = 'Activo'
@@ -34,7 +34,7 @@ WHERE (tipo_equipo IS NULL OR tipo_equipo != 'Tóner')
 -- 2. Equipos con estado 'Asignado' pero SIN asignación activa -> 'Activo'
 UPDATE bienes
 SET estado = 'Activo'
-WHERE (tipo_equipo IS NULL OR tipo_equipo != 'Tóner')
+WHERE (tipo_equipo IS NULL OR tipo_equipo NOT IN ('Tóner', 'Contenedor de Tóner (Residuo)'))
   AND estado = 'Asignado'
   AND id NOT IN (
       SELECT DISTINCT bien_id FROM asignaciones WHERE estado_asignacion = 'Activo'
@@ -43,7 +43,7 @@ WHERE (tipo_equipo IS NULL OR tipo_equipo != 'Tóner')
 -- 3. Equipos con estado 'Asignado' cuya última asignación fue 'Baja' -> 'Dado de Baja'
 UPDATE bienes
 SET estado = 'Dado de Baja'
-WHERE (tipo_equipo IS NULL OR tipo_equipo != 'Tóner')
+WHERE (tipo_equipo IS NULL OR tipo_equipo NOT IN ('Tóner', 'Contenedor de Tóner (Residuo)'))
   AND estado = 'Asignado'
   AND id IN (
       SELECT DISTINCT a1.bien_id

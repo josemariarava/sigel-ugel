@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
 import { buildMostrarToast } from '../lib/toastUtils'
 import { createActaTonerPdf } from '../lib/pdfGeneratorToners'
-import { getEstadoColorToner } from '../lib/utils'
+import { getEstadoColorToner, TIPOS_TONER } from '../lib/utils'
 import { Toast, ToastTitle, ToastBody } from '@fluentui/react-components'
 
 export function useGestionToners(dispatchToast) {
@@ -65,7 +65,7 @@ export function useGestionToners(dispatchToast) {
             if (toner) {
                 const asignadosActivos = asignaciones.filter(a => a.estado === 'Activo').map(a => a.toner_id)
                 const mismoModelo = toners.filter(t => t.marca === toner.marca && t.modelo === toner.modelo)
-                const disponibles = mismoModelo.filter(t => !asignadosActivos.includes(t.id))
+                const disponibles = mismoModelo.filter(t => t.estado !== 'Agotado' && !asignadosActivos.includes(t.id))
                 setStockMismoModelo({
                     total: mismoModelo.length,
                     disponibles: disponibles.length,
@@ -130,7 +130,7 @@ export function useGestionToners(dispatchToast) {
                     persona:personas!asignacion_toners_persona_id_fkey(*),
                     ambiente:ambientes!asignacion_toners_ambiente_id_fkey(*)
                 `).order('fecha_asignacion', { ascending: false }),
-                supabase.from('bienes').select('*').eq('tipo_equipo', 'Tóner').in('estado', ['Disponible', 'Asignado', 'Activo', 'Agotado']).order('marca'),
+                supabase.from('bienes').select('*').in('tipo_equipo', TIPOS_TONER).in('estado', ['Disponible', 'Asignado', 'Activo', 'Agotado']).order('marca'),
                 supabase.from('personas').select('*').order('apellidos'),
                 supabase.from('ambientes').select('*, piso:pisos(*)').order('nombre'),
                 supabase.from('pisos').select('*').order('numero'),
@@ -228,6 +228,14 @@ export function useGestionToners(dispatchToast) {
 
     const openDrawerToners = () => {
         cargarImpresoras()
+        supabase.auth.getSession().then(({ data }) => {
+            const email = data?.session?.user?.email
+            if (!email) return
+            const match = personas.find(p => p.email?.toLowerCase() === email.toLowerCase())
+            if (match) {
+                setEntregadoPor(match.id)
+            }
+        })
         setOpenDrawer(true)
     }
 
@@ -295,19 +303,9 @@ export function useGestionToners(dispatchToast) {
                 let numeroActa
 
                 for (let attempt = 0; attempt < 3; attempt++) {
-                    const { data: maxActaData } = await supabase
-                        .from('asignacion_toners')
-                        .select('numero_acta')
-                        .like('numero_acta', `%-${anio}`)
-                        .order('numero_acta', { ascending: false })
-                        .limit(1)
+                    const { data: nextNum, error: actaError } = await supabase.rpc('siguiente_acta', { p_anio: anio })
 
-                    let nextNum = 1
-                    if (maxActaData && maxActaData.length > 0) {
-                        const parts = maxActaData[0].numero_acta.split('-')
-                        const lastNum = parseInt(parts[0], 10)
-                        nextNum = !isNaN(lastNum) ? lastNum + 1 : 1
-                    }
+                    if (actaError) throw actaError
                     numeroActa = `${String(nextNum).padStart(4, '0')}-${anio}`
 
                     const { data: inserted, error } = await supabase
@@ -357,6 +355,12 @@ export function useGestionToners(dispatchToast) {
                         }])
                 } catch (movError) {
                     console.warn('Tabla toner_movimientos no disponible:', movError)
+                }
+
+                try {
+                    await supabase.rpc('incrementar_veces_asignado', { toner_id: formData.toner_id })
+                } catch (countError) {
+                    console.warn('No se pudo incrementar veces_asignado:', countError)
                 }
 
                 mostrarToast('Asignación registrada y acta generada ✅')
@@ -494,7 +498,7 @@ export function useGestionToners(dispatchToast) {
             const { data: tonersMismoModelo } = await supabase
                 .from('bienes')
                 .select('*')
-                .eq('tipo_equipo', 'Tóner')
+                .in('tipo_equipo', TIPOS_TONER)
                 .eq('marca', tonerActual.marca)
                 .eq('modelo', tonerActual.modelo)
                 .in('estado', ['Activo', 'Disponible'])
@@ -551,12 +555,14 @@ export function useGestionToners(dispatchToast) {
 
             const doc = await createActaTonerPdf({ asignacion, personaRecibe, entregador, toner, impresora, ambiente })
 
-            doc.save(`Acta_Toner_${asignacion.numero_acta || 'NUEVA'}.pdf`)
+            const esContenedor = TIPOS_TONER.includes(toner?.tipo_equipo) && toner?.tipo_equipo !== 'Tóner'
+            const prefix = esContenedor ? 'Acta_Contenedor' : 'Acta_Toner'
+            doc.save(`${prefix}_${asignacion.numero_acta || 'NUEVA'}.pdf`)
 
             let uploadedUrl = null
             try {
                 const blob = doc.output('blob')
-                const fileName = `toners/Acta_Toner_${asignacion.numero_acta || 'NUEVA'}.pdf`
+                const fileName = `toners/${prefix}_${asignacion.numero_acta || 'NUEVA'}.pdf`
 
                 const { error: uploadError } = await supabase.storage
                     .from('actas')
@@ -801,8 +807,10 @@ export function useGestionToners(dispatchToast) {
         if (asignacion.estado === 'Activo' && asignacion.fecha_asignacion) {
             const inicio = new Date(asignacion.fecha_asignacion)
             const hoy = new Date()
-            const dias = Math.ceil((hoy - inicio) / (1000 * 60 * 60 * 24))
-            return `${dias} días (activo)`
+            const diff = Math.floor((hoy - inicio) / (1000 * 60 * 60 * 24))
+            if (diff === 0) return 'Hoy (activo)'
+            if (diff === 1) return '1 día (activo)'
+            return `${diff} días (activo)`
         }
         return '-'
     }

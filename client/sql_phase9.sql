@@ -72,7 +72,7 @@ BEGIN
     IF TG_OP = 'INSERT' AND NEW.estado_asignacion = 'Activo' THEN
         UPDATE bienes SET estado = 'Asignado' WHERE id = NEW.bien_id;
     ELSIF TG_OP = 'UPDATE' AND OLD.estado_asignacion = 'Activo' THEN
-        SELECT COALESCE(tipo_equipo = 'Tóner', false) INTO es_toner FROM bienes WHERE id = NEW.bien_id;
+        SELECT COALESCE(tipo_equipo IN ('Tóner', 'Contenedor de Tóner (Residuo)'), false) INTO es_toner FROM bienes WHERE id = NEW.bien_id;
         IF NEW.estado_asignacion = 'Devuelto' THEN
             IF es_toner THEN
                 UPDATE bienes SET estado = 'Disponible' WHERE id = NEW.bien_id;
@@ -83,7 +83,7 @@ BEGIN
             UPDATE bienes SET estado = 'Dado de Baja' WHERE id = NEW.bien_id;
         END IF;
     ELSIF TG_OP = 'DELETE' AND OLD.estado_asignacion = 'Activo' THEN
-        SELECT COALESCE(tipo_equipo = 'Tóner', false) INTO es_toner FROM bienes WHERE id = OLD.bien_id;
+        SELECT COALESCE(tipo_equipo IN ('Tóner', 'Contenedor de Tóner (Residuo)'), false) INTO es_toner FROM bienes WHERE id = OLD.bien_id;
         IF es_toner THEN
             UPDATE bienes SET estado = 'Disponible' WHERE id = OLD.bien_id;
         ELSE

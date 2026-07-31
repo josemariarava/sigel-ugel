@@ -1,3 +1,5 @@
+export const TIPOS_TONER = ['Tóner', 'Contenedor de Tóner (Residuo)']
+
 export const getEstadoColorToner = (estado) => {
     switch (estado) {
         case 'Activo': return 'bg-green-50 text-green-700 border-green-200'

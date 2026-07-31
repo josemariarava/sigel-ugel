@@ -71,13 +71,18 @@ export function createActaCargoPdf({ personaNombre, personaApellidos, personaDat
     doc.setTextColor(96, 94, 92)
     doc.text('Firma del Responsable', 30, finalY + 5)
 
+    doc.setFontSize(8)
+    doc.setTextColor(80, 80, 80)
+    doc.text(`${personaNombre} ${personaApellidos}`.trim(), 20, finalY + 10)
+    if (personaData?.dni) doc.text(`DNI: ${personaData.dni}`, 20, finalY + 15)
+
     doc.line(130, finalY, 190, finalY)
     doc.text('Huella Digital / Constancia', 145, finalY + 5)
 
     doc.setFontSize(8)
     doc.setTextColor(150, 150, 150)
-    doc.text('Documento de control patrimonial - Copia para el servidor', 20, finalY + 15)
-    doc.text(`Total de bienes asignados: ${bienesPersona.length}`, 20, finalY + 22)
+    doc.text('Documento de control patrimonial - Copia para el servidor', 20, finalY + 22)
+    doc.text(`Total de bienes asignados: ${bienesPersona.length}`, 20, finalY + 29)
 
     return doc
 }
@@ -136,7 +141,7 @@ export async function createActaAsignacionPdf({ asignacion }) {
         ['Ubicación', asignacion.ambiente?.nombre || 'Almacén General'],
         ['Piso', asignacion.ambiente?.piso?.nombre || '-'],
         ['Fecha Asignación', asignacion.fecha_asignacion || '-'],
-        ['Documento Ref.', asignacion.documento_referencia || '-'],
+        ...(asignacion.documento_referencia ? [['Documento Ref.', asignacion.documento_referencia]] : []),
         ['Observaciones', asignacion.observaciones || 'Ninguna']
     ]
 
@@ -177,6 +182,18 @@ export async function createActaAsignacionPdf({ asignacion }) {
         doc.setDrawColor(200, 200, 200)
         doc.line(col1X, y, rightEdge, y)
         y += 5
+
+        doc.setFont(FONT, 'normal')
+        doc.setFontSize(9)
+        doc.setTextColor(100, 100, 100)
+
+        const textoIntroduccion = `En la ciudad de Cajamarca, el ${fechaActual}, reunidos en la sede de la Unidad de Gestión Educativa Local de Cajamarca, ubicada en el Jr. Pisagua N° 466, se procede a la ENTREGA - RECEPCIÓN del siguiente bien:`;
+
+        const maxTextWidth = copyW - (margin * 2)
+        const lineasIntro = doc.splitTextToSize(textoIntroduccion, maxTextWidth)
+        doc.text(lineasIntro, col1X, y)
+
+        y += (lineasIntro.length * 4.2) + 3
 
         doc.setFont(FONT, 'bold')
         doc.setFontSize(9)
@@ -220,19 +237,33 @@ export async function createActaAsignacionPdf({ asignacion }) {
         doc.line(col1X, y, rightEdge, y)
         y += 18
 
-        doc.setFont(FONT, 'normal')
+        const sigLeft = col1X
+        const sigRight = rightEdge - 42
+        const sigWidth = 42
+
+        doc.setDrawColor(50, 49, 48)
+        doc.line(sigLeft, y, sigLeft + sigWidth, y)
+        doc.setFont(FONT, 'bold')
         doc.setFontSize(8)
         doc.setTextColor(50, 49, 48)
-        doc.line(col1X, y, col1X + 42, y)
+        doc.text('ENTREGÓ CONFORME', sigLeft, y + 4.5)
+
+        doc.line(sigRight, y, sigRight + sigWidth, y)
+        doc.text('RECIBÍ CONFORME', sigRight, y + 4.5)
+
+        const entregador = asignacion.persona_origen
         doc.setFont(FONT, 'normal')
         doc.setFontSize(7)
-        doc.setTextColor(96, 94, 92)
-        doc.text('Firma del Responsable', col1X, y + 4)
+        doc.setTextColor(80, 80, 80)
+        doc.text(entregador ? `${entregador.apellidos}, ${entregador.nombres}` : 'Área de Informática', sigLeft, y + 11)
+        if (entregador?.dni) doc.text(`DNI: ${entregador.dni}`, sigLeft, y + 16)
 
-        doc.line(rightEdge - 42, y, rightEdge, y)
-        doc.text('Recibí Conforme', rightEdge - 42, y + 4)
+        const personaRecibe = persona
+        doc.text(`${personaRecibe.apellidos || ''} ${personaRecibe.nombres || ''}`.trim(), sigRight, y + 11)
+        doc.text(personaRecibe?.cargo || '', sigRight, y + 16)
+        if (personaRecibe?.dni) doc.text(`DNI: ${personaRecibe.dni}`, sigRight, y + 21)
 
-        y += 10
+        y += 48
         doc.setFont(FONT, 'normal')
         doc.setFontSize(7)
         doc.setTextColor(150, 150, 150)

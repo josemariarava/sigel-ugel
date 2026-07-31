@@ -18,6 +18,7 @@ import {
     DrawerHeaderTitle
 } from '@fluentui/react-components'
 import { SearchRegular, CartRegular, DismissRegular } from '@fluentui/react-icons'
+import { TIPOS_TONER } from '../lib/utils'
 
 const StockToners = () => {
     const [view, setView] = useState('modelo')
@@ -26,6 +27,7 @@ const StockToners = () => {
     const [toners, setToners] = useState([])
     const [loading, setLoading] = useState(true)
     const [selectedModel, setSelectedModel] = useState(null)
+    const [asignaciones, setAsignaciones] = useState([])
 
     useEffect(() => {
         cargarDatos()
@@ -34,18 +36,23 @@ const StockToners = () => {
     const cargarDatos = async () => {
         setLoading(true)
         try {
-            const [comprasRes, tonersRes] = await Promise.all([
+            const [comprasRes, tonersRes, asignacionesRes] = await Promise.all([
                 supabase
                     .from('compras_toners')
                     .select('*, detalles:compra_detalles(*)')
                     .order('fecha_compra', { ascending: false }),
                 supabase
                     .from('bienes')
-                    .select('compra_detalle_id, estado, marca, modelo, color_toner, serie, lote, ubicacion_almacen, fecha_vencimiento')
-                    .eq('tipo_equipo', 'Tóner')
+                    .select('id, compra_detalle_id, estado, marca, modelo, color_toner, serie, lote, ubicacion_almacen, fecha_vencimiento, veces_asignado')
+                    .in('tipo_equipo', TIPOS_TONER)
+                    .in('estado', ['Disponible', 'Asignado', 'Activo', 'Agotado']),
+                supabase
+                    .from('asignacion_toners')
+                    .select('toner_id, fecha_asignacion, persona:personas!asignacion_toners_persona_id_fkey(apellidos, nombres)')
             ])
             setCompras(comprasRes.data || [])
             setToners(tonersRes.data || [])
+            setAsignaciones(asignacionesRes.data || [])
         } catch (e) {
             console.error('Error al cargar stock:', e.message)
         } finally {
@@ -93,13 +100,16 @@ const StockToners = () => {
         )
     }, [compras, search])
 
-    const BadgeStock = ({ disponibles, total }) => {
+    const BadgeStock = ({ disponibles, asignados = 0, agotados = 0, total }) => {
         if (total === 0) return <Badge appearance="filled" color="danger">Sin stock</Badge>
-        const pct = disponibles / total
-        if (pct === 0) return <Badge appearance="filled" color="danger">Agotado</Badge>
-        if (pct <= 0.25) return <Badge appearance="filled" color="warning">Crítico</Badge>
-        if (pct <= 0.5) return <Badge appearance="filled" color="important">Bajo</Badge>
-        return <Badge appearance="filled" color="success">Disponible</Badge>
+        if (disponibles > 0) {
+            const pct = disponibles / total
+            if (pct <= 0.25) return <Badge appearance="filled" color="warning">Crítico</Badge>
+            if (pct <= 0.5) return <Badge appearance="filled" color="important">Bajo</Badge>
+            return <Badge appearance="filled" color="success">Disponible</Badge>
+        }
+        if (asignados > 0 && agotados === 0) return <Badge appearance="filled" color="warning">Todos en uso</Badge>
+        return <Badge appearance="filled" color="danger">Sin stock</Badge>
     }
 
     const tonersDelModelo = useMemo(() => {
@@ -108,6 +118,12 @@ const StockToners = () => {
             t.marca === selectedModel.marca && t.modelo === selectedModel.modelo
         )
     }, [toners, selectedModel])
+
+    const asignacionPorToner = useMemo(() => {
+        const map = {}
+        asignaciones.forEach(a => { map[a.toner_id] = a })
+        return map
+    }, [asignaciones])
 
     const totales = useMemo(() => {
         return toners.reduce((acc, t) => {
@@ -224,7 +240,7 @@ const StockToners = () => {
                                                         style={{ width: `${item.total > 0 ? (item.activos / item.total) * 100 : 0}%` }}
                                                     />
                                                 </div>
-                                                <BadgeStock disponibles={item.activos} total={item.total} />
+                                                <BadgeStock disponibles={item.activos} asignados={item.asignados} agotados={item.agotados} total={item.total} />
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -252,6 +268,14 @@ const StockToners = () => {
                                 const real = tonerPorDetalle[d.id]
                                 return s + (real?.activos || 0)
                             }, 0) || 0
+                            const asigOC = compra.detalles?.reduce((s, d) => {
+                                const real = tonerPorDetalle[d.id]
+                                return s + (real?.asignados || 0)
+                            }, 0) || 0
+                            const agotOC = compra.detalles?.reduce((s, d) => {
+                                const real = tonerPorDetalle[d.id]
+                                return s + (real?.agotados || 0)
+                            }, 0) || 0
 
                             return (
                                 <div key={compra.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
@@ -267,7 +291,7 @@ const StockToners = () => {
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <BadgeStock disponibles={dispOC} total={totalOC} />
+                                            <BadgeStock disponibles={dispOC} asignados={asigOC} agotados={agotOC} total={totalOC} />
                                             <span className="text-xs text-gray-500 font-mono">
                                                 {dispOC}/{totalOC}
                                             </span>
@@ -308,7 +332,7 @@ const StockToners = () => {
                                                             {disp}/{total}
                                                         </span>
                                                     </div>
-                                                    <BadgeStock disponibles={disp} total={total} />
+                                                    <BadgeStock disponibles={disp} asignados={real?.asignados} agotados={real?.agotados} total={total} />
                                                 </div>
                                             )
                                         })}
@@ -353,8 +377,8 @@ const StockToners = () => {
                                     <TableHeaderCell>Serie</TableHeaderCell>
                                     <TableHeaderCell>Estado</TableHeaderCell>
                                     <TableHeaderCell>Ubicación</TableHeaderCell>
-                                    <TableHeaderCell>Lote</TableHeaderCell>
-                                    <TableHeaderCell>Fecha Venc.</TableHeaderCell>
+                                    <TableHeaderCell>Asignado a</TableHeaderCell>
+                                    <TableHeaderCell>Días</TableHeaderCell>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -371,10 +395,29 @@ const StockToners = () => {
                                             }`}>
                                                 {t.estado}
                                             </span>
+                                            {t.estado === 'Disponible' && t.veces_asignado > 0 && (
+                                                <span className="ml-1.5 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                                                    ↩️ {t.veces_asignado} uso{t.veces_asignado !== 1 ? 's' : ''}
+                                                </span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-xs">{t.ubicacion_almacen || '—'}</TableCell>
-                                        <TableCell className="font-mono text-xs">{t.lote || '—'}</TableCell>
-                                        <TableCell className="text-xs">{t.fecha_vencimiento || '—'}</TableCell>
+                                        <TableCell className="text-xs">
+                                            {asignacionPorToner[t.id]
+                                                ? `${asignacionPorToner[t.id].persona?.apellidos || ''}, ${asignacionPorToner[t.id].persona?.nombres || ''}`
+                                                : '—'
+                                            }
+                                        </TableCell>
+                                        <TableCell className="text-xs font-mono">
+                                            {(() => {
+                                                const a = asignacionPorToner[t.id]
+                                                if (!a) return '—'
+                                                const diff = Math.floor((Date.now() - new Date(a.fecha_asignacion).getTime()) / (1000 * 60 * 60 * 24))
+                                                if (diff === 0) return 'Hoy'
+                                                if (diff === 1) return '1 día'
+                                                return diff + ' días'
+                                            })()}
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>

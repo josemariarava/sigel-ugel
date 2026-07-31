@@ -15,7 +15,7 @@ ALTER TABLE bienes
 --    Los toners con estado 'Activo' que NO tengan asignación activa -> 'Disponible'
 UPDATE bienes
 SET estado = 'Disponible'
-WHERE tipo_equipo = 'Tóner'
+WHERE tipo_equipo IN ('Tóner', 'Contenedor de Tóner (Residuo)')
   AND estado = 'Activo'
   AND id NOT IN (
       SELECT DISTINCT toner_id FROM asignacion_toners WHERE estado = 'Activo'
@@ -24,7 +24,7 @@ WHERE tipo_equipo = 'Tóner'
 --    Los toners con estado 'Activo' que SÍ tengan asignación activa -> 'Asignado'
 UPDATE bienes
 SET estado = 'Asignado'
-WHERE tipo_equipo = 'Tóner'
+WHERE tipo_equipo IN ('Tóner', 'Contenedor de Tóner (Residuo)')
   AND estado = 'Activo'
   AND id IN (
       SELECT DISTINCT toner_id FROM asignacion_toners WHERE estado = 'Activo'

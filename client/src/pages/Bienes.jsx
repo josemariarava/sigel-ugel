@@ -244,7 +244,7 @@ const Bienes = () => {
         { id: 'computo', label: 'CPU y Laptops', icon: LaptopRegular, badge: stats.computo },
         { id: 'impresoras', label: 'Impresoras y Proyectores', icon: PrintRegular, badge: stats.impresoras },
         { id: 'perifericos', label: 'Periféricos', icon: KeyboardRegular, badge: stats.perifericos },
-        { id: 'consumibles', label: 'Consumibles (Tóner)', icon: CartRegular, badge: stats.consumibles },
+        { id: 'consumibles', label: 'Consumibles', icon: CartRegular, badge: stats.consumibles },
         { id: 'equipos', label: 'Equipos por OC', icon: DesktopRegular },
         { id: 'otros', label: 'Otros Equipos', icon: WindowDevToolsFilled },
     ]
@@ -361,28 +361,40 @@ const Bienes = () => {
                     {tonersSinOC.length > 0 && (
                         <div className="mt-6">
                             <div className="flex items-center gap-2 mb-3">
-                                <span className="text-sm font-semibold text-gray-700">Toners sin orden de compra</span>
+                                <span className="text-sm font-semibold text-gray-700">Consumibles sin orden de compra</span>
                                 <Badge appearance="filled" color="brand" size="small">{tonersSinOC.length}</Badge>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                                 {tonersSinOC.map(t => {
                                     const estadoLabel = t.estado === 'Activo' || t.estado === 'Disponible' ? 'Disponible' : t.estado
-                                    const estadoColor = t.estado === 'Activo' || t.estado === 'Disponible' ? 'success'
-                                        : t.estado === 'Asignado' ? 'brand'
+                                    const borderColor = t.estado === 'Activo' || t.estado === 'Disponible'
+                                        ? '#16a34a'
+                                        : t.estado === 'Asignado'
+                                        ? '#d97706'
+                                        : '#dc2626'
+                                    const badgeColor = t.estado === 'Activo' || t.estado === 'Disponible'
+                                        ? 'success'
+                                        : t.estado === 'Asignado'
+                                        ? 'warning'
                                         : 'danger'
                                     return (
-                                        <Card key={t.id} appearance="outline" className="border-gray-200 !shadow-sm hover:!shadow-md transition-shadow cursor-pointer" onClick={() => {
+                                        <Card key={t.id} appearance="outline" className="border-gray-200 !shadow-sm hover:!shadow-md transition-shadow cursor-pointer relative" style={{ borderLeft: `4px solid ${borderColor}` }} onClick={() => {
                                             setSelectedTonerDetail(t)
                                             setOpenTonerDetalleDrawer(true)
                                         }}>
                                             <div className="space-y-1.5">
                                                 <div className="flex items-center justify-between">
+                                                    <span className="text-[11px] font-semibold text-gray-500 truncate uppercase tracking-wider">
+                                                        {t.tipo_equipo || 'Tóner'}
+                                                    </span>
+                                                    <Badge appearance="filled" color={badgeColor} size="small">
+                                                        {estadoLabel}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex items-center justify-between">
                                                     <span className="font-medium text-sm text-gray-800 truncate">
                                                         {t.color_toner || '—'}
                                                     </span>
-                                                    <Badge appearance="filled" color={estadoColor} size="extra-small">
-                                                        {estadoLabel}
-                                                    </Badge>
                                                 </div>
                                                 {t.marca || t.modelo ? (
                                                     <p className="text-xs text-gray-500 truncate">

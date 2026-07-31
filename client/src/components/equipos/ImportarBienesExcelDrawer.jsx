@@ -43,6 +43,7 @@ const KNOWN_FIELDS = {
     fecha_compra: ['fecha compra', 'fecha_compra', 'fecha', 'fecha de compra', 'feccompra', 'fechadecompra'],
     costo_unitario: ['costo', 'costo unitario', 'costo_unitario', 'valor', 'precio', 'precio unitario', 'costounitario', 'preciounitario', 'costoxunidad'],
     condicion: ['condición', 'condicion', 'estado físico', 'state', 'cond'],
+    estado: ['estado', 'estado operativo', 'state', 'status', 'operativo'],
     procesador: ['procesador', 'cpu', 'processor', 'proc'],
     ram: ['ram', 'memoria', 'memory'],
     almacenamiento: ['almacenamiento', 'disco', 'storage', 'hd', 'disco duro', 'almac'],
@@ -51,16 +52,27 @@ const KNOWN_FIELDS = {
     tamano_pantalla: ['tamaño pantalla', 'tamano_pantalla', 'pantalla', 'screen size', 'pulgadas', 'tamanopantalla', 'tamanodepantalla'],
     direccion_mac: ['dirección mac', 'direccion_mac', 'mac', 'mac address', 'direccionmac'],
     other: ['observaciones', 'notas', 'comentarios', 'other', 'otros', 'obs'],
-    color: ['color']
+    color: ['color'],
+    codigo_ti: ['código ti', 'codigo ti', 'cod_ti', 'codigoti', 'código interno', 'código ti interno', 'ti'],
+    anio_compra: ['año compra', 'anio_compra', 'año de compra', 'año', 'anio', 'year'],
+    color_toner: ['color tóner', 'color toner', 'color_toner', 'color del toner', 'colortoner'],
+    rendimiento: ['rendimiento', 'páginas', 'paginas', 'page yield', 'rend'],
+    lote: ['lote', 'nro lote', 'número de lote', 'batch', 'lote'],
+    fecha_vencimiento: ['fecha vencimiento', 'fecha_vencimiento', 'vencimiento', 'fecha de vencimiento', 'expiry', 'expiration date'],
+    proveedor: ['proveedor', 'proveed', 'provedor', 'proveedor bien'],
+    ubicacion_almacen: ['ubicación almacén', 'ubicacion_almacen', 'ubicacion', 'almacén', 'almacen', 'ubicación', 'warehouse', 'location']
 }
 
 const TEMPLATE_HEADERS = [
     'Tipo', 'Marca', 'Modelo', 'Serie', 'Código Patrimonial',
+    'Código TI',
     'Orden Compra', 'Razón Social', 'RUC', 'Dirección', 'Mes Calendario',
-    'Fecha Compra', 'Costo Unitario',
-    'Condición', 'Procesador', 'RAM', 'Almacenamiento',
-    'Tipo Almacenamiento', 'Sistema Operativo', 'Tamaño Pantalla',
-    'Dirección MAC', 'Color', 'Observaciones'
+    'Fecha Compra', 'Año Compra', 'Costo Unitario',
+    'Condición', 'Estado',
+    'Procesador', 'RAM', 'Almacenamiento', 'Tipo Almacenamiento', 'Sistema Operativo',
+    'Tamaño Pantalla', 'Dirección MAC',
+    'Color', 'Color Tóner', 'Rendimiento', 'Lote', 'Fecha Vencimiento', 'Proveedor', 'Ubicación Almacén',
+    'Observaciones'
 ]
 
 const parseExcelDate = (val) => {
@@ -142,14 +154,17 @@ const ImportarBienesExcelDrawer = ({ open, onClose, onImport }) => {
                     'Modelo': 'ThinkPad X1',
                     'Serie': 'SN-2026-001',
                     'Código Patrimonial': 'P-2026-001',
+                    'Código TI': 'UGEL-TI-045',
                     'Orden Compra': 'OC-2026-001',
                     'Razón Social': 'Distribuidora Tecnológica S.A.',
                     'RUC': '20123456789',
                     'Dirección': 'Av. Principal 123, Lima',
                     'Mes Calendario': 'Enero 2026',
                     'Fecha Compra': '2026-01-15',
+                    'Año Compra': 2026,
                     'Costo Unitario': 3500.00,
                     'Condición': 'Bueno',
+                    'Estado': 'Activo',
                     'Procesador': 'Intel Core i5 12va gen',
                     'RAM': '16 GB',
                     'Almacenamiento': '512 GB SSD',
@@ -158,6 +173,12 @@ const ImportarBienesExcelDrawer = ({ open, onClose, onImport }) => {
                     'Tamaño Pantalla': '14 pulgadas',
                     'Dirección MAC': 'AA:BB:CC:DD:EE:01',
                     'Color': 'Negro',
+                    'Color Tóner': '',
+                    'Rendimiento': '',
+                    'Lote': '',
+                    'Fecha Vencimiento': '',
+                    'Proveedor': '',
+                    'Ubicación Almacén': '',
                     'Observaciones': ''
                 },
                 {
@@ -166,10 +187,13 @@ const ImportarBienesExcelDrawer = ({ open, onClose, onImport }) => {
                     'Modelo': 'LF24T350FHL',
                     'Serie': 'MON-2026-001',
                     'Código Patrimonial': 'P-2026-002',
+                    'Código TI': '',
                     'Orden Compra': '',
                     'Fecha Compra': '',
+                    'Año Compra': '',
                     'Costo Unitario': 850.00,
                     'Condición': 'Bueno',
+                    'Estado': 'Activo',
                     'Procesador': '',
                     'RAM': '',
                     'Almacenamiento': '',
@@ -178,16 +202,27 @@ const ImportarBienesExcelDrawer = ({ open, onClose, onImport }) => {
                     'Tamaño Pantalla': '24 pulgadas',
                     'Dirección MAC': '',
                     'Color': 'Negro',
+                    'Color Tóner': '',
+                    'Rendimiento': '',
+                    'Lote': '',
+                    'Fecha Vencimiento': '',
+                    'Proveedor': '',
+                    'Ubicación Almacén': '',
                     'Observaciones': 'Monitor de oficina'
                 }
             ]
             const ws = XLSX.utils.json_to_sheet(data)
             ws['!cols'] = [
                 { wch: 12 }, { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 22 },
+                { wch: 14 },
                 { wch: 16 }, { wch: 30 }, { wch: 14 }, { wch: 14 },
-                { wch: 14 }, { wch: 10 }, { wch: 16 },
-                { wch: 20 }, { wch: 20 }, { wch: 18 },
-                { wch: 24 }, { wch: 12 }, { wch: 24 }
+                { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 16 },
+                { wch: 20 }, { wch: 14 },
+                { wch: 20 }, { wch: 18 }, { wch: 24 }, { wch: 16 }, { wch: 24 },
+                { wch: 18 }, { wch: 20 },
+                { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 18 },
+                { wch: 18 }, { wch: 22 }, { wch: 22 },
+                { wch: 30 }
             ]
             const wb = XLSX.utils.book_new()
             XLSX.utils.book_append_sheet(wb, ws, 'Plantilla')

@@ -27,6 +27,7 @@ import {
     MessageBar,
     MessageBarBody
 } from '@fluentui/react-components'
+import { TIPOS_TONER } from '../../lib/utils'
 import {
     DismissRegular,
     ChevronDownRegular,
@@ -37,6 +38,7 @@ import {
     ArrowSyncRegular,
     CheckmarkCircleRegular,
     TvRegular,        // ← Usar TvRegular en lugar de MonitorRegular
+    CameraRegular,
     WarningRegular,
     EditRegular,
     DocumentAddRegular,
@@ -183,6 +185,7 @@ const DrawerBien = ({
                                             </optgroup>
                                             <optgroup label="⌨️ Periféricos">
                                                 <option value="Monitor">🖥️ Monitor</option>
+                                                <option value="Cámara">📷 Cámara</option>
                                                 <option value="Teclado">⌨️ Teclado</option>
                                                 <option value="Mouse">🖱️ Mouse</option>
                                                 <option value="Parlantes">🔊 Parlantes</option>
@@ -191,6 +194,7 @@ const DrawerBien = ({
                                             </optgroup>
                                             <optgroup label="🧴 Consumibles">
                                                 <option value="Tóner">🧴 Tóner</option>
+                                                <option value="Contenedor de Tóner (Residuo)">🗑️ Contenedor de Tóner (Residuo)</option>
                                                 <option value="Cartucho">💦 Cartucho</option>
                                                 <option value="Batería">🔋 Batería</option>
                                             </optgroup>
@@ -244,7 +248,7 @@ const DrawerBien = ({
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-                                    {formData.tipo_equipo !== 'Tóner' && (
+                                    {!TIPOS_TONER.includes(formData.tipo_equipo) && (
                                         <Field label="Color" hint="Escribe para buscar o ingresa un nuevo color">
                                             <Input name="color" value={formData.color || ''} onChange={handleInputChange} placeholder="Buscar o escribir color..." list="color-suggestions" contentAfter={<ChevronDownRegular />} />
                                             <datalist id="color-suggestions">
@@ -269,7 +273,7 @@ const DrawerBien = ({
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-                                    {formData.tipo_equipo !== 'Tóner' && (
+                                    {!TIPOS_TONER.includes(formData.tipo_equipo) && (
                                         <Field label="Condición Física">
                                             <Select name="condicion" value={formData.condicion || ''} onChange={handleInputChange}>
                                                 <option value="Bueno">✅ Bueno</option>
@@ -281,7 +285,7 @@ const DrawerBien = ({
                                     )}
                                     <Field label="Estado Operativo">
                                         <Select name="estado" value={formData.estado || ''} onChange={handleInputChange}>
-                                            {formData.tipo_equipo === 'Tóner' ? (
+                                            {TIPOS_TONER.includes(formData.tipo_equipo) ? (
                                                 <>
                                                     <option value="Disponible">🟢 Disponible</option>
                                                     <option value="Asignado">🟠 Asignado</option>
@@ -298,7 +302,7 @@ const DrawerBien = ({
                                     </Field>
                                 </div>
 
-                                {showEstadoWarning && formData.tipo_equipo !== 'Tóner' && (
+                                {showEstadoWarning && !TIPOS_TONER.includes(formData.tipo_equipo) && (
                                     <MessageBar intent="warning" layout="multiline"
                                         actions={{
                                             children: (
@@ -489,11 +493,11 @@ const DrawerBien = ({
                                 </div>
                             )}
 
-                            {formData.tipo_equipo === 'Tóner' && (
+                            {TIPOS_TONER.includes(formData.tipo_equipo) && (
                                 <div className="bg-amber-50 p-5 rounded-xl border border-amber-200">
                                     <Subtitle2 className="text-amber-700 flex items-center gap-2 mb-3">
                                         <CartRegular />
-                                        Datos del Tóner
+                                        Datos del {formData.tipo_equipo === 'Tóner' ? 'Tóner' : 'Contenedor'}
                                     </Subtitle2>
                                     <div className="grid grid-cols-2 gap-4">
                                         <Field label="Color del Tóner">
@@ -558,7 +562,7 @@ const DrawerBien = ({
                                 </div>
                             )}
 
-                            {!['Tóner', 'Laptop', 'Desktop', 'CPU', 'Tablet', 'All-in-One'].includes(formData.tipo_equipo) && (
+                            {![...TIPOS_TONER, 'Laptop', 'Desktop', 'CPU', 'Tablet', 'All-in-One'].includes(formData.tipo_equipo) && (
                                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 flex flex-col items-center gap-2 text-gray-400">
                                     <DesktopRegular style={{ fontSize: 40 }} />
                                     <p className="text-sm">No se requieren especificaciones adicionales para este tipo de equipo.</p>
@@ -653,8 +657,9 @@ const DrawerBien = ({
                                             {formData.tipo_equipo === 'Laptop' && <LaptopRegular style={{ fontSize: 24 }} />}
                                             {formData.tipo_equipo === 'Impresora' && <PrintRegular style={{ fontSize: 24 }} />}
                                             {formData.tipo_equipo === 'Monitor' && <TvRegular style={{ fontSize: 24 }} />}
-                                            {formData.tipo_equipo === 'Tóner' && <CartRegular style={{ fontSize: 24 }} />}
-                                            {!['Laptop', 'Impresora', 'Monitor', 'Tóner'].includes(formData.tipo_equipo) && <DesktopRegular style={{ fontSize: 24 }} />}
+                                            {formData.tipo_equipo === 'Cámara' && <CameraRegular style={{ fontSize: 24 }} />}
+                                            {TIPOS_TONER.includes(formData.tipo_equipo) && <CartRegular style={{ fontSize: 24 }} />}
+                                            {!['Laptop', 'Impresora', 'Monitor', 'Cámara', ...TIPOS_TONER].includes(formData.tipo_equipo) && <DesktopRegular style={{ fontSize: 24 }} />}
                                         </div>
                                         <div>
                                             <p className="font-bold text-gray-800">{formData.tipo_equipo || 'Nuevo Equipo'}</p>

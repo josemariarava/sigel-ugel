@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Button, Drawer, DrawerHeader, DrawerHeaderTitle, DrawerBody, DrawerFooter, Card, Badge, Spinner } from '@fluentui/react-components'
-import { DismissRegular, EditRegular, DeleteRegular, LaptopRegular, DesktopRegular, PrintRegular, TvRegular, PhoneTabletRegular, DesktopKeyboardRegular, ProjectionScreenRegular, DocumentRegular } from '@fluentui/react-icons'
+import { DismissRegular, EditRegular, DeleteRegular, LaptopRegular, DesktopRegular, PrintRegular, TvRegular, CameraRegular, PhoneTabletRegular, DesktopKeyboardRegular, ProjectionScreenRegular, DocumentRegular } from '@fluentui/react-icons'
 import { supabase } from '../../lib/supabaseClient'
 
 const CONDICION_COLOR = {
@@ -28,6 +28,7 @@ const tipoIcono = (tipo) => {
         Impresora: <PrintRegular className="text-purple-500" />,
         Proyector: <ProjectionScreenRegular className="text-green-500" />,
         Monitor: <TvRegular className="text-green-500" />,
+        Cámara: <CameraRegular className="text-teal-500" />,
         Escáner: <DocumentRegular className="text-blue-500" />,
         Plotter: <PrintRegular className="text-purple-500" />,
         Multifuncional: <PrintRegular className="text-purple-500" />

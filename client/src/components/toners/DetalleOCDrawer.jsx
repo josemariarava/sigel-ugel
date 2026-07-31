@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { TIPOS_TONER } from '../../lib/utils'
 import { CartRegular, DismissRegular, EditRegular, DeleteRegular, SaveRegular, BoxRegular } from '@fluentui/react-icons'
 import { supabase } from '../../lib/supabaseClient'
 import {
@@ -180,7 +181,7 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onDeleteT
                 {toners.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                         <BoxRegular className="mb-2" style={{ fontSize: 32 }} />
-                        <p className="text-sm">No se encontraron tóneres individuales</p>
+                        <p className="text-sm">No se encontraron consumibles individuales</p>
                     </div>
                 ) : (
                     toners.map((detalle) => (
@@ -192,8 +193,11 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onDeleteT
                                 {detalle.color_toner && (
                                     <span className="text-xs uppercase text-gray-400">{detalle.color_toner}</span>
                                 )}
+                                {detalle.tipo_equipo && detalle.tipo_equipo !== 'Tóner' && (
+                                    <Badge appearance="tint" color="warning" size="small">{detalle.tipo_equipo}</Badge>
+                                )}
                                 <span className="text-xs text-gray-500 ml-auto">
-                                    {detalle.cantidad_recibida} tóner(es)
+                                    {detalle.cantidad_recibida} unidades
                                 </span>
                                 <Button
                                     appearance="subtle"
@@ -210,7 +214,7 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onDeleteT
                             {batchEdit.open && batchEdit.detalleId === detalle.id && (
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3 space-y-3">
                                     <p className="text-xs font-semibold text-blue-700 uppercase flex items-center gap-1">
-                                        <EditRegular className="text-sm" /> Editar todos los tóneres de {detalle.marca} {detalle.modelo}
+                                        <EditRegular className="text-sm" /> Editar todos los consumibles de {detalle.marca} {detalle.modelo}
                                     </p>
                                     <p className="text-[10px] text-blue-500 -mt-2">
                                         Solo se actualizarán los campos que llenes
@@ -280,7 +284,7 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onDeleteT
                                             <Input
                                                 value={batchForm.observaciones}
                                                 onChange={(e) => setBatchForm(p => ({ ...p, observaciones: e.target.value }))}
-                                                placeholder="Notas u observaciones para estos tóneres"
+                                                placeholder="Notas u observaciones para estos consumibles"
                                             />
                                         </Field>
                                     </div>
@@ -308,6 +312,7 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onDeleteT
                             <Table className="w-full mb-6">
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHeaderCell>Tipo</TableHeaderCell>
                                         <TableHeaderCell>Serie</TableHeaderCell>
                                         <TableHeaderCell>Lote</TableHeaderCell>
                                         <TableHeaderCell>Fecha Venc.</TableHeaderCell>
@@ -320,13 +325,20 @@ const DetalleOCDrawer = ({ open, onClose, compra, toners, onEditToner, onDeleteT
                                 <TableBody>
                                     {(detalle.toners || []).length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="text-center py-6 text-gray-400">
-                                                No se encontraron tóneres individuales
+                                            <TableCell colSpan={8} className="text-center py-6 text-gray-400">
+                                                No se encontraron consumibles individuales
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         (detalle.toners || []).map((toner) => (
                                             <TableRow key={toner.id} className="hover:bg-gray-50 transition-colors">
+                                                <TableCell className="text-xs">
+                                                    {toner.tipo_equipo === 'Contenedor de Tóner (Residuo)' ? (
+                                                        <Badge appearance="tint" color="warning" size="small">Contenedor</Badge>
+                                                    ) : (
+                                                        <span className="text-gray-400">Tóner</span>
+                                                    )}
+                                                </TableCell>
                                                 <TableCell className="font-mono text-xs">
                                                     {toner.serie || '—'}
                                                 </TableCell>

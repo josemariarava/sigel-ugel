@@ -120,6 +120,7 @@ const Asignaciones = () => {
                                 <option value="Desktop">Desktop</option>
                                 <option value="Proyector">Proyector</option>
                                 <option value="Impresora">Impresora</option>
+                                <option value="Cámara">Cámara</option>
                             </select>
                             <select value={h.filtros.estadoFiltro} onChange={(e) => h.setFiltros({ ...h.filtros, estadoFiltro: e.target.value })} className="text-xs border rounded-lg px-3 py-2">
                                 <option value="">Todos los estados</option>
@@ -194,15 +195,14 @@ const Asignaciones = () => {
                                                         <Tooltip content="Acta cargo"><Button size="small" appearance="subtle" icon={<DocumentPdfRegular />} className="text-green-600" onClick={() => h.generarActaCargo(asig.persona_id, asig.persona?.nombres, asig.persona?.apellidos, asig.persona)} /></Tooltip>
                                                         <Tooltip content="Trasladar / Devolver / Baja"><Button size="small" appearance="subtle" icon={<ArrowSwapRegular />} onClick={() => { h.setSelectedAsignacion(asig); h.setOpenTrasladoModal(true) }} /></Tooltip>
                                                         <Tooltip content="Historial"><Button size="small" appearance="subtle" icon={<HistoryRegular />} onClick={() => { h.cargarHistorialMovimientos(asig.bien_id, asig.bien); h.setOpenHistorialModal(true) }} /></Tooltip>
-                                                        {asig.acta_url ? (
+                                                        <Tooltip content="Generar Acta">
+                                                            <Button size="small" appearance="subtle" icon={<DocumentPdfRegular />} className="text-red-600" onClick={() => h.generarActaAsignacion(asig)} />
+                                                        </Tooltip>
+                                                        {asig.acta_url && (
                                                             <Tooltip content="Ver Acta">
-                                                                <a href={asig.acta_url} target="_blank" rel="noopener noreferrer">
+                                                                <a href={`${asig.acta_url}?t=${Date.now()}`} target="_blank" rel="noopener noreferrer">
                                                                     <Button size="small" appearance="subtle" icon={<EyeRegular />} className="text-blue-600" />
                                                                 </a>
-                                                            </Tooltip>
-                                                        ) : (
-                                                            <Tooltip content="Generar Acta">
-                                                                <Button size="small" appearance="subtle" icon={<DocumentPdfRegular />} className="text-red-600" onClick={() => h.generarActaAsignacion(asig)} />
                                                             </Tooltip>
                                                         )}
                                                         <Tooltip content="Editar"><Button size="small" appearance="subtle" icon={<EditRegular />} onClick={() => h.handleEdit(asig)} /></Tooltip>
@@ -261,7 +261,7 @@ const Asignaciones = () => {
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2 uppercase tracking-wider text-gray-400">
                                 <BuildingRegular className="text-blue-600 text-lg" />
-                                Distribución por Ubicación (Click para ver bienes)
+                                Distribución por Ubicación (Click para ver bienes y tóners)
                             </h2>
                             <Badge appearance="filled" color="brand">
                                 {h.todosLosAmbientes.length} ambientes
@@ -300,18 +300,26 @@ const Asignaciones = () => {
                                         </div>
                                         <div className="p-3 space-y-2 max-h-[240px] overflow-y-auto">
                                             {piso.ambientes.map((ambiente) => {
-                                                const cantidad = h.asignaciones.filter(a => a.ambiente_id === ambiente.id && a.estado_asignacion === 'Activo').length
+                                                const cantidadBienes = h.asignaciones.filter(a => a.ambiente_id === ambiente.id && a.estado_asignacion === 'Activo').length
+                                                const cantidadToners = h.asignacionesToners.filter(a => a.ambiente_id === ambiente.id).length
                                                 return (
                                                     <div
                                                         key={ambiente.id}
                                                         className="bg-white p-2.5 rounded-lg border border-slate-200/80 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer"
                                                         onClick={() => h.verBienesPorUbicacion(ambiente.id)}
                                                     >
-                                                        <div className="flex justify-between items-center">
-                                                            <p className="text-xs font-semibold text-slate-800">{ambiente.nombre}</p>
-                                                            <Badge appearance={cantidad > 0 ? "filled" : "outline"} color={cantidad > 0 ? "brand" : "neutral"}>
-                                                                {cantidad} bienes
-                                                            </Badge>
+                                                        <div className="flex justify-between items-center gap-1">
+                                                            <p className="text-xs font-semibold text-slate-800 truncate">{ambiente.nombre}</p>
+                                                            <div className="flex gap-1 shrink-0">
+                                                                <Badge appearance={cantidadBienes > 0 ? "filled" : "outline"} color={cantidadBienes > 0 ? "brand" : "neutral"}>
+                                                                    {cantidadBienes} bienes
+                                                                </Badge>
+                                                                {cantidadToners > 0 && (
+                                                                    <Badge appearance="filled" color="warning">
+                                                                        🧴 {cantidadToners} tóners
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                         <p className="text-[10px] font-mono text-gray-400 mt-1">{ambiente.codigo}</p>
                                                         {ambiente.area && (
@@ -336,18 +344,26 @@ const Asignaciones = () => {
                                         </div>
                                         <div className="p-3 space-y-2 max-h-[240px] overflow-y-auto">
                                             {area.ambientes.map((ambiente) => {
-                                                const cantidad = h.asignaciones.filter(a => a.ambiente_id === ambiente.id && a.estado_asignacion === 'Activo').length
+                                                const cantidadBienes = h.asignaciones.filter(a => a.ambiente_id === ambiente.id && a.estado_asignacion === 'Activo').length
+                                                const cantidadToners = h.asignacionesToners.filter(a => a.ambiente_id === ambiente.id).length
                                                 return (
                                                     <div
                                                         key={ambiente.id}
                                                         className="bg-white p-2.5 rounded-lg border border-slate-200/80 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer"
                                                         onClick={() => h.verBienesPorUbicacion(ambiente.id)}
                                                     >
-                                                        <div className="flex justify-between items-center">
-                                                            <p className="text-xs font-semibold text-slate-800">{ambiente.nombre}</p>
-                                                            <Badge appearance={cantidad > 0 ? "filled" : "outline"} color={cantidad > 0 ? "brand" : "neutral"}>
-                                                                {cantidad} bienes
-                                                            </Badge>
+                                                        <div className="flex justify-between items-center gap-1">
+                                                            <p className="text-xs font-semibold text-slate-800 truncate">{ambiente.nombre}</p>
+                                                            <div className="flex gap-1 shrink-0">
+                                                                <Badge appearance={cantidadBienes > 0 ? "filled" : "outline"} color={cantidadBienes > 0 ? "brand" : "neutral"}>
+                                                                    {cantidadBienes} bienes
+                                                                </Badge>
+                                                                {cantidadToners > 0 && (
+                                                                    <Badge appearance="filled" color="warning">
+                                                                        🧴 {cantidadToners} tóners
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                         <p className="text-[10px] font-mono text-gray-400 mt-1">{ambiente.codigo}</p>
                                                         {ambiente.piso && (

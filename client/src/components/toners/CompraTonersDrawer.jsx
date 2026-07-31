@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
+import { TIPOS_TONER } from '../../lib/utils'
 import {
     DismissRegular, AddRegular, DeleteRegular,
     BoxRegular, ClipboardRegular, EditRegular
@@ -24,6 +25,7 @@ import {
 
 const INITIAL_DETALLE = {
     key: 1,
+    tipo_equipo: 'Tóner',
     marca_id: '',
     modelo_id: '',
     marca: '',
@@ -348,6 +350,17 @@ const CompraTonersDrawer = ({ open, onClose, marcas, modelos, prefillCompraId = 
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
+                                <Field label="Tipo *" required>
+                                    <Select
+                                        value={detalle.tipo_equipo}
+                                        onChange={(e, data) => handleDetalleChange(index, 'tipo_equipo', data.value)}
+                                    >
+                                        {TIPOS_TONER.map(t => (
+                                            <option key={t} value={t}>{t}</option>
+                                        ))}
+                                    </Select>
+                                </Field>
+
                                 <Field label="Marca">
                                     {detalle.marcaManual ? (
                                         <Input

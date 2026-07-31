@@ -18,7 +18,7 @@ BEGIN
         UPDATE bienes SET estado = 'Asignado' WHERE id = NEW.bien_id;
 
     ELSIF TG_OP = 'UPDATE' AND OLD.estado_asignacion = 'Activo' THEN
-        SELECT COALESCE(tipo_equipo = 'Tóner', false), condicion
+        SELECT COALESCE(tipo_equipo IN ('Tóner', 'Contenedor de Tóner (Residuo)'), false), condicion
         INTO es_toner, bien_condicion
         FROM bienes WHERE id = NEW.bien_id;
 
@@ -39,7 +39,7 @@ BEGIN
         END IF;
 
     ELSIF TG_OP = 'DELETE' AND OLD.estado_asignacion = 'Activo' THEN
-        SELECT COALESCE(tipo_equipo = 'Tóner', false), condicion
+        SELECT COALESCE(tipo_equipo IN ('Tóner', 'Contenedor de Tóner (Residuo)'), false), condicion
         INTO es_toner, bien_condicion
         FROM bienes WHERE id = OLD.bien_id;
 

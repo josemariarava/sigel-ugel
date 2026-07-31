@@ -1,11 +1,12 @@
 import { Button, Drawer, DrawerHeader, DrawerHeaderTitle, DrawerBody, DrawerFooter, Card } from '@fluentui/react-components'
-import { DismissRegular, OpenRegular } from '@fluentui/react-icons'
+import { DismissRegular, DocumentPdfRegular, OpenRegular } from '@fluentui/react-icons'
 
 export default function DrawerDetallesToners({
     open,
     onClose,
     data,
     personas,
+    generarActaManual,
 }) {
     if (!data) return null
 
@@ -16,10 +17,10 @@ export default function DrawerDetallesToners({
         if (!asig.fecha_asignacion) return '—'
         const inicio = new Date(asig.fecha_asignacion)
         const fin = asig.fecha_terminado ? new Date(asig.fecha_terminado) : new Date()
-        const dias = Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24))
-        if (dias < 1) return 'Menos de 1 día'
-        if (dias === 1) return '1 día'
-        return `${dias} días`
+        const diff = Math.floor((fin - inicio) / (1000 * 60 * 60 * 24))
+        if (diff === 0) return 'Hoy'
+        if (diff === 1) return '1 día'
+        return `${diff} días`
     }
 
     const estadoBadge = (estado) => {
@@ -176,22 +177,34 @@ export default function DrawerDetallesToners({
                                 ({calcularDuracion(data)} de duración)
                             </span>
                         </div>
-                        {tieneActa && (
-                            <a
-                                href={`${data.acta_url}?t=${Date.now()}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
+                        <div className="flex gap-2">
+                            {generarActaManual && (
                                 <Button
                                     size="small"
                                     appearance="outline"
-                                    icon={<OpenRegular />}
-                                    className="text-blue-600"
+                                    icon={<DocumentPdfRegular />}
+                                    onClick={() => generarActaManual(data)}
                                 >
-                                    Abrir Acta
+                                    Regenerar Acta
                                 </Button>
-                            </a>
-                        )}
+                            )}
+                            {tieneActa && (
+                                <a
+                                    href={`${data.acta_url}?t=${Date.now()}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    <Button
+                                        size="small"
+                                        appearance="outline"
+                                        icon={<OpenRegular />}
+                                        className="text-blue-600"
+                                    >
+                                        Abrir Acta
+                                    </Button>
+                                </a>
+                            )}
+                        </div>
                     </div>
                 </Card>
             </DrawerBody>

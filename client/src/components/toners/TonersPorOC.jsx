@@ -1,13 +1,16 @@
 import { CartRegular, InfoRegular, DeleteRegular } from '@fluentui/react-icons'
 import { Button, Card, Badge } from '@fluentui/react-components'
 
-const StockBadge = ({ disponibles, total }) => {
+const StockBadge = ({ disponibles, asignados = 0, agotados = 0, total }) => {
     if (total === 0) return null
-    const pct = disponibles / total
-    if (pct === 0) return <Badge appearance="tint" color="danger" size="small">Agotado</Badge>
-    if (pct <= 0.25) return <Badge appearance="tint" color="warning" size="small">Crítico</Badge>
-    if (pct <= 0.5) return <Badge appearance="tint" color="important" size="small">Bajo</Badge>
-    return <Badge appearance="tint" color="success" size="small">Stock</Badge>
+    if (disponibles > 0) {
+        const pct = disponibles / total
+        if (pct <= 0.25) return <Badge appearance="tint" color="warning" size="small">Crítico</Badge>
+        if (pct <= 0.5) return <Badge appearance="tint" color="important" size="small">Bajo</Badge>
+        return <Badge appearance="tint" color="success" size="small">Stock</Badge>
+    }
+    if (asignados > 0 && agotados === 0) return <Badge appearance="tint" color="warning" size="small">Todos en uso</Badge>
+    return <Badge appearance="tint" color="danger" size="small">Sin stock</Badge>
 }
 
 const TonersPorOC = ({ compras, tonerCountsByDetalle = {}, onCompraClick, onAgregarMas, onEliminarOC }) => {
@@ -52,7 +55,7 @@ const TonersPorOC = ({ compras, tonerCountsByDetalle = {}, onCompraClick, onAgre
                                     </div>
                                 </div>
                                 <Badge appearance="filled" color="brand" size="small">
-                                    {totalRecibido} tóner
+                                    {totalRecibido} unidades
                                 </Badge>
                             </div>
 
@@ -96,7 +99,7 @@ const TonersPorOC = ({ compras, tonerCountsByDetalle = {}, onCompraClick, onAgre
                                             <span className="text-[11px] text-gray-500 font-mono whitespace-nowrap">
                                                 {det.cantidad_recibida}/{det.cantidad_pedida}
                                             </span>
-                                            <StockBadge disponibles={disp} total={total} />
+                                            <StockBadge disponibles={disp} asignados={real?.asignados} agotados={real?.agotados} total={total} />
                                         </div>
                                     )
                                 })}

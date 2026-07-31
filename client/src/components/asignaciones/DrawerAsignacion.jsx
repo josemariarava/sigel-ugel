@@ -10,7 +10,8 @@ import {
     Button,
     Input,
     Textarea,
-    Select,
+    Dropdown,
+    Option,
     Drawer,
     DrawerHeader,
     DrawerHeaderTitle,
@@ -19,7 +20,8 @@ import {
     Field,
     Badge
 } from '@fluentui/react-components'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
+import { supabase } from '../../lib/supabaseClient'
 
 const getCondicionBadge = (condicion) => {
     switch (condicion) {
@@ -56,6 +58,77 @@ export default function DrawerAsignacion({
 }) {
     const dropdownRef = useRef(null)
 
+    const [localPersonas, setLocalPersonas] = useState([])
+    const [localPisos, setLocalPisos] = useState([])
+    const [localAmbientes, setLocalAmbientes] = useState([])
+    const [localBienes, setLocalBienes] = useState([])
+
+    const fetchLocalPersonas = async () => {
+        const { data } = await supabase.from('personas').select('*').order('apellidos')
+        if (data) setLocalPersonas(data)
+    }
+    const fetchLocalPisos = async () => {
+        const { data } = await supabase.from('pisos').select('*').order('nombre')
+        if (data) setLocalPisos(data)
+    }
+    const fetchLocalAmbientes = async () => {
+        const { data } = await supabase.from('ambientes').select('*, piso:pisos(nombre)').order('nombre')
+        if (data) setLocalAmbientes(data)
+    }
+    const fetchLocalBienes = async () => {
+        const { data } = await supabase.from('bienes').select('*').in('estado', ['Activo', 'Disponible']).neq('condicion', 'Chatarra').order('tipo_equipo')
+        if (data) setLocalBienes(data)
+    }
+
+    const mergedBienes = useMemo(() => {
+        if (localBienes.length === 0) return bienes
+        const m = [...localBienes]
+        bienes.forEach(b => { if (!m.some(x => x.id === b.id)) m.push(b) })
+        return m
+    }, [localBienes, bienes])
+
+    const localBienesFiltrados = useMemo(() => {
+        const base = editMode ? mergedBienes : mergedBienes.filter(b =>
+            b.condicion !== 'Chatarra' &&
+            b.estado !== 'Asignado'
+        )
+        if (!searchTermBien) return base
+        const q = searchTermBien.toLowerCase()
+        return base.filter(b =>
+            b.tipo_equipo?.toLowerCase().includes(q) ||
+            b.marca?.toLowerCase().includes(q) ||
+            b.modelo?.toLowerCase().includes(q) ||
+            b.codigo_patrimonial?.toLowerCase().includes(q) ||
+            b.serie?.toLowerCase().includes(q)
+        )
+    }, [mergedBienes, searchTermBien, editMode])
+
+    const mergedPersonas = useMemo(() => {
+        if (localPersonas.length === 0) return personas
+        const m = [...localPersonas]
+        personas.forEach(p => { if (!m.some(x => x.id === p.id)) m.push(p) })
+        return m
+    }, [localPersonas, personas])
+
+    const mergedPisos = useMemo(() => {
+        if (localPisos.length === 0) return pisos
+        const m = [...localPisos]
+        pisos.forEach(p => { if (!m.some(x => x.id === p.id)) m.push(p) })
+        return m
+    }, [localPisos, pisos])
+
+    const mergedAmbientes = useMemo(() => {
+        if (localAmbientes.length === 0) return todosLosAmbientes
+        const m = [...localAmbientes]
+        todosLosAmbientes.forEach(a => { if (!m.some(x => x.id === a.id)) m.push(a) })
+        return m
+    }, [localAmbientes, todosLosAmbientes])
+
+    const ambientesLocalFiltrados = useMemo(() => {
+        if (!selectedPiso) return mergedAmbientes
+        return mergedAmbientes.filter(a => a.piso_id === selectedPiso)
+    }, [mergedAmbientes, selectedPiso])
+
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -83,7 +156,7 @@ export default function DrawerAsignacion({
                 </DrawerHeaderTitle>
             </DrawerHeader>
 
-            <DrawerBody className="space-y-5 p-6">
+            <DrawerBody className="space-y-5 p-5">
                 <Field label="Bien Patrimonial *" required>
                     <div className="relative">
                         <Input
@@ -95,12 +168,15 @@ export default function DrawerAsignacion({
                                 setSearchTermBien(e.target.value)
                                 setShowBienDropdown(true)
                             }}
-                            onFocus={() => setShowBienDropdown(true)}
+                            onFocus={() => {
+                                setShowBienDropdown(true)
+                                fetchLocalBienes()
+                            }}
                         />
 
-                        {showBienDropdown && bienesFiltrados.length > 0 && (
+                        {showBienDropdown && localBienesFiltrados.length > 0 && (
                             <div ref={dropdownRef} className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-sm max-h-64 overflow-y-auto">
-                                {bienesFiltrados.map(b => (
+                                {localBienesFiltrados.map(b => (
                                     <div
                                         key={b.id}
                                         className="px-3 py-2.5 hover:bg-blue-50/50 cursor-pointer border-b last:border-0 transition-colors"
@@ -136,7 +212,7 @@ export default function DrawerAsignacion({
                             </div>
                         )}
 
-                        {showBienDropdown && bienesFiltrados.length === 0 && searchTermBien && (
+                        {showBienDropdown && localBienesFiltrados.length === 0 && searchTermBien && (
                             <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-sm p-4 text-center text-gray-500 text-sm">
                                 No se encontraron bienes con: "{searchTermBien}"
                             </div>
@@ -149,18 +225,18 @@ export default function DrawerAsignacion({
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <span className="text-xs font-semibold text-blue-800">✅ Bien seleccionado</span>
                                             <Badge appearance="filled" color="brand" size="small">
-                                                {bienes.find(b => b.id === formData.bien_id)?.codigo_patrimonial || 'S/C'}
+                                                {mergedBienes.find(b => b.id === formData.bien_id)?.codigo_patrimonial || 'S/C'}
                                             </Badge>
                                         </div>
                                         <p className="text-sm font-semibold text-gray-800 mt-1">
-                                            {bienes.find(b => b.id === formData.bien_id)?.tipo_equipo}
+                                            {mergedBienes.find(b => b.id === formData.bien_id)?.tipo_equipo}
                                         </p>
                                         <p className="text-xs text-gray-600">
-                                            {bienes.find(b => b.id === formData.bien_id)?.marca} {bienes.find(b => b.id === formData.bien_id)?.modelo}
+                                            {mergedBienes.find(b => b.id === formData.bien_id)?.marca} {mergedBienes.find(b => b.id === formData.bien_id)?.modelo}
                                         </p>
                                         <div className="flex gap-2 mt-1">
-                                            <span className="text-[10px] text-gray-400">Serie: {bienes.find(b => b.id === formData.bien_id)?.serie || 'N/A'}</span>
-                                            {getCondicionBadge(bienes.find(b => b.id === formData.bien_id)?.condicion)}
+                                            <span className="text-[10px] text-gray-400">Serie: {mergedBienes.find(b => b.id === formData.bien_id)?.serie || 'N/A'}</span>
+                                            {getCondicionBadge(mergedBienes.find(b => b.id === formData.bien_id)?.condicion)}
                                         </div>
                                     </div>
                                     <button
@@ -178,21 +254,58 @@ export default function DrawerAsignacion({
                     </div>
                 </Field>
 
-                <Field label="Servidor Público Responsable *" required>
-                    <Select
-                        size="small"
-                        name="persona_id"
-                        value={formData.persona_id}
-                        onChange={(e, data) => handlePersonaChange({ target: { name: 'persona_id', value: data.value } })}
-                    >
-                        <option value="">-- Seleccionar Responsable --</option>
-                        {personas.map(p => (
-                            <option key={p.id} value={p.id}>
-                                👤 {p.apellidos}, {p.nombres} - {p.cargo || 'Personal'}
-                            </option>
-                        ))}
-                    </Select>
-                </Field>
+                <div className="grid grid-cols-2 gap-4">
+                    <div style={{ minWidth: 0 }}>
+                        <Field label="Asignado por / Entregado por">
+                            <Dropdown
+                                size="small"
+                                value={(() => {
+                                    if (!formData.persona_origen_id) return ''
+                                    const p = mergedPersonas.find(x => x.id === formData.persona_origen_id)
+                                    return p ? `👤 ${p.apellidos}, ${p.nombres}` : ''
+                                })()}
+                                selectedOptions={formData.persona_origen_id ? [formData.persona_origen_id] : []}
+                                onOptionSelect={(_, data) => handleInputChange({ target: { name: 'persona_origen_id', value: data.optionValue } })}
+                                onOpenChange={(_, data) => { if (data.open) fetchLocalPersonas() }}
+                                placeholder="-- Seleccionar --"
+                            >
+                                {(() => {
+                                    const areaInformatica = areas.find(a => a.nombre?.toLowerCase() === 'informática')
+                                    const filtradas = areaInformatica
+                                        ? mergedPersonas.filter(p => p.area_id === areaInformatica.id)
+                                        : mergedPersonas
+                                    return filtradas.map(p => (
+                                        <Option key={p.id} value={p.id}>
+                                            👤 {p.apellidos}, {p.nombres} - {p.cargo || 'Personal'}
+                                        </Option>
+                                    ))
+                                })()}
+                            </Dropdown>
+                        </Field>
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                        <Field label="Servidor Público Responsable *" required>
+                            <Dropdown
+                                size="small"
+                                value={(() => {
+                                    if (!formData.persona_id) return ''
+                                    const p = mergedPersonas.find(x => x.id === formData.persona_id)
+                                    return p ? `👤 ${p.apellidos}, ${p.nombres}` : ''
+                                })()}
+                                selectedOptions={formData.persona_id ? [formData.persona_id] : []}
+                                onOptionSelect={(_, data) => handlePersonaChange({ target: { name: 'persona_id', value: data.optionValue } })}
+                                onOpenChange={(_, data) => { if (data.open) fetchLocalPersonas() }}
+                                placeholder="-- Seleccionar Responsable --"
+                            >
+                                {mergedPersonas.map(p => (
+                                    <Option key={p.id} value={p.id}>
+                                        👤 {p.apellidos}, {p.nombres} - {p.cargo || 'Personal'}
+                                    </Option>
+                                ))}
+                            </Dropdown>
+                        </Field>
+                    </div>
+                </div>
 
                 {infoResponsable && (
                     <div className="bg-blue-50/30 rounded-xl p-3 border border-blue-100">
@@ -223,34 +336,48 @@ export default function DrawerAsignacion({
 
                 <div className="grid grid-cols-2 gap-4">
                     <Field label="Piso / Nivel">
-                        <Select
+                        <Dropdown
                             size="small"
-                            value={selectedPiso}
-                            onChange={(e, data) => setSelectedPiso(data.value)}
+                            value={(() => {
+                                if (!selectedPiso) return ''
+                                const p = mergedPisos.find(x => x.id === selectedPiso)
+                                return p ? `🏢 ${p.nombre || `Piso ${p.numero}`}` : ''
+                            })()}
+                            selectedOptions={selectedPiso ? [selectedPiso] : []}
+                            onOptionSelect={(_, data) => {
+                                setSelectedPiso(data.optionValue)
+                                handleInputChange({ target: { name: 'ambiente_id', value: '' } })
+                            }}
+                            onOpenChange={(_, data) => { if (data.open) fetchLocalPisos() }}
+                            placeholder="-- Todos los pisos --"
                         >
-                            <option value="">-- Todos los pisos --</option>
-                            {pisos.map(p => (
-                                <option key={p.id} value={p.id}>
+                            {mergedPisos.map(p => (
+                                <Option key={p.id} value={p.id}>
                                     🏢 {p.nombre || `Piso ${p.numero}`}
-                                </option>
+                                </Option>
                             ))}
-                        </Select>
+                        </Dropdown>
                     </Field>
 
                     <Field label="Ambiente / Oficina">
-                        <Select
+                        <Dropdown
                             size="small"
-                            name="ambiente_id"
-                            value={formData.ambiente_id}
-                            onChange={(e, data) => handleAmbienteChange({ target: { name: 'ambiente_id', value: data.value } })}
+                            value={(() => {
+                                if (!formData.ambiente_id) return ''
+                                const a = mergedAmbientes.find(x => x.id === formData.ambiente_id)
+                                return a ? `📍 ${a.nombre} (${a.codigo})` : ''
+                            })()}
+                            selectedOptions={formData.ambiente_id ? [formData.ambiente_id] : []}
+                            onOptionSelect={(_, data) => handleAmbienteChange({ target: { name: 'ambiente_id', value: data.optionValue } })}
+                            onOpenChange={(_, data) => { if (data.open) fetchLocalAmbientes() }}
+                            placeholder="-- Seleccionar Ambiente --"
                         >
-                            <option value="">-- Seleccionar Ambiente --</option>
-                            {(selectedPiso ? ambientesFiltrados : todosLosAmbientes).map(a => (
-                                <option key={a.id} value={a.id}>
+                            {(selectedPiso ? ambientesLocalFiltrados : mergedAmbientes).map(a => (
+                                <Option key={a.id} value={a.id}>
                                     📍 {a.nombre} ({a.codigo})
-                                </option>
+                                </Option>
                             ))}
-                        </Select>
+                        </Dropdown>
                     </Field>
                 </div>
 
@@ -306,17 +433,15 @@ export default function DrawerAsignacion({
                     />
                 </Field>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <Field label="Fecha de Asignación">
-                        <Input
-                            size="small"
-                            type="date"
-                            name="fecha_asignacion"
-                            value={formData.fecha_asignacion}
-                            onChange={handleInputChange}
-                        />
-                    </Field>
-                </div>
+                <Field label="Fecha de Asignación">
+                    <Input
+                        size="small"
+                        type="date"
+                        name="fecha_asignacion"
+                        value={formData.fecha_asignacion}
+                        onChange={handleInputChange}
+                    />
+                </Field>
 
                 <Field label="Documento de referencia">
                     <Input
@@ -329,43 +454,21 @@ export default function DrawerAsignacion({
                     />
                 </Field>
 
-                <Field label="Asignado por / Entregado por">
-                    <Select
-                        size="small"
-                        name="persona_origen_id"
-                        value={formData.persona_origen_id}
-                        onChange={(e, data) => handleInputChange({ target: { name: 'persona_origen_id', value: data.value } })}
-                    >
-                        <option value="">-- Seleccionar --</option>
-                        {(() => {
-                            const areaInformatica = areas.find(a => a.nombre?.toLowerCase() === 'informática')
-                            const filtradas = areaInformatica
-                                ? personas.filter(p => p.area_id === areaInformatica.id)
-                                : personas
-                            return filtradas.map(p => (
-                                <option key={p.id} value={p.id}>
-                                    👤 {p.apellidos}, {p.nombres} - {p.cargo || 'Personal'}
-                                </option>
-                            ))
-                        })()}
-                    </Select>
-                </Field>
-
                 <Field label="Motivo de asignación">
-                    <Select
+                    <Dropdown
                         size="small"
-                        name="motivo"
-                        value={formData.motivo}
-                        onChange={(e, data) => handleInputChange({ target: { name: 'motivo', value: data.value } })}
+                        value={formData.motivo || ''}
+                        selectedOptions={formData.motivo ? [formData.motivo] : []}
+                        onOptionSelect={(_, data) => handleInputChange({ target: { name: 'motivo', value: data.optionValue } })}
+                        placeholder="-- Seleccionar motivo --"
                     >
-                        <option value="">-- Seleccionar motivo --</option>
-                        <option value="Asignación por cargo">👔 Asignación por cargo</option>
-                        <option value="Nueva contratación">🆕 Nueva contratación</option>
-                        <option value="Reemplazo de equipo">🔄 Reemplazo de equipo</option>
-                        <option value="Asignación temporal">⏱️ Asignación temporal</option>
-                        <option value="Inventario inicial">📋 Inventario inicial</option>
-                        <option value="Otro">📝 Otro</option>
-                    </Select>
+                        <Option value="Asignación por cargo">👔 Asignación por cargo</Option>
+                        <Option value="Nueva contratación">🆕 Nueva contratación</Option>
+                        <Option value="Reemplazo de equipo">🔄 Reemplazo de equipo</Option>
+                        <Option value="Asignación temporal">⏱️ Asignación temporal</Option>
+                        <Option value="Inventario inicial">📋 Inventario inicial</Option>
+                        <Option value="Otro">📝 Otro</Option>
+                    </Dropdown>
                 </Field>
 
                 <Field label="Observaciones">
@@ -386,10 +489,10 @@ export default function DrawerAsignacion({
                             Resumen de la Asignación
                         </p>
                         <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-                            <div className="flex items-center gap-1">🔹 <span className="font-medium">Bien:</span> {bienes.find(b => b.id === formData.bien_id)?.tipo_equipo}</div>
-                            <div className="flex items-center gap-1">🔹 <span className="font-medium">Código:</span> {bienes.find(b => b.id === formData.bien_id)?.codigo_patrimonial || 'N/A'}</div>
-                            <div className="flex items-center gap-1">🔹 <span className="font-medium">Responsable:</span> {personas.find(p => p.id === formData.persona_id)?.apellidos}</div>
-                            <div className="flex items-center gap-1">🔹 <span className="font-medium">Ubicación:</span> {todosLosAmbientes.find(a => a.id === formData.ambiente_id)?.nombre || 'Pendiente'}</div>
+                            <div className="flex items-center gap-1">🔹 <span className="font-medium">Bien:</span> {mergedBienes.find(b => b.id === formData.bien_id)?.tipo_equipo}</div>
+                            <div className="flex items-center gap-1">🔹 <span className="font-medium">Código:</span> {mergedBienes.find(b => b.id === formData.bien_id)?.codigo_patrimonial || 'N/A'}</div>
+                            <div className="flex items-center gap-1">🔹 <span className="font-medium">Responsable:</span> {mergedPersonas.find(p => p.id === formData.persona_id)?.apellidos}</div>
+                            <div className="flex items-center gap-1">🔹 <span className="font-medium">Ubicación:</span> {mergedAmbientes.find(a => a.id === formData.ambiente_id)?.nombre || 'Pendiente'}</div>
                             <div className="flex items-center gap-1 col-span-2">🔹 <span className="font-medium">Fecha:</span> {formData.fecha_asignacion}</div>
                         </div>
                     </div>

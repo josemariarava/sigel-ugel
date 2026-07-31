@@ -20,7 +20,7 @@ export default function DrawerDetalle({
                 <DrawerHeaderTitle action={<Button appearance="subtle" icon={<DismissRegular />} onClick={() => setOpenDetalleModal(false)} />}>
                     <div>
                         <span className="text-lg font-bold text-slate-800">
-                            {selectedPersonaDetalle?.esUbicacion ? '📍 Bienes por Ubicación' : '👤 Bienes Asignados'}
+                            {selectedPersonaDetalle?.esUbicacion ? '📍 Bienes y Tóners por Ubicación' : '👤 Bienes Asignados'}
                         </span>
                     </div>
                 </DrawerHeaderTitle>
@@ -45,22 +45,30 @@ export default function DrawerDetalle({
                                 )}
                             </>
                         )}
-                        <span>Total: {bienesPorPersona.length} bienes</span>
+                        <span>
+                            Total: {bienesPorPersona.filter(a => !a._esToner).length} bienes · {bienesPorPersona.filter(a => a._esToner).length} tóners
+                        </span>
                     </div>
                 </div>
                 {bienesPorPersona.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400">No hay bienes asignados</div>
+                    <div className="text-center py-8 text-gray-400">No hay bienes ni tóners asignados</div>
                 ) : (
                     <div className="space-y-3">
                         {bienesPorPersona.map((asig) => (
                             <div key={asig.id} className="bg-blue-50/20 rounded-xl p-4 border border-gray-100 hover:shadow-sm transition-all">
                                 <div className="flex justify-between items-start">
                                     <div className="flex-1">
-                                        <p className="font-semibold text-gray-800">{asig.bien?.tipo_equipo}</p>
-                                        <p className="text-xs text-gray-500">{asig.bien?.marca} {asig.bien?.modelo}</p>
-                                        <p className="text-xs font-mono text-gray-400 mt-1">Código: {asig.bien?.codigo_patrimonial}</p>
+                                        <p className="font-semibold text-gray-800">
+                                            {asig._esToner ? `🧴 ${asig.toner?.tipo_equipo || 'Tóner'}` : asig.bien?.tipo_equipo}
+                                        </p>
+                                        <p className="text-xs text-gray-500">{asig.toner?.marca || asig.bien?.marca} {asig.toner?.modelo || asig.bien?.modelo}</p>
+                                        {asig._esToner ? (
+                                            asig.toner?.serie && <p className="text-xs font-mono text-gray-400 mt-1">Serie: {asig.toner.serie}</p>
+                                        ) : (
+                                            <p className="text-xs font-mono text-gray-400 mt-1">Código: {asig.bien?.codigo_patrimonial}</p>
+                                        )}
                                     </div>
-                                    <Badge appearance="filled" color="success">{asig.estado_asignacion}</Badge>
+                                    <Badge appearance="filled" color={asig._esToner ? "warning" : "success"}>{asig._esToner ? asig.estado : asig.estado_asignacion}</Badge>
                                 </div>
                                 <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500 space-y-1">
                                     <div className="flex justify-between">
@@ -70,7 +78,7 @@ export default function DrawerDetalle({
                                     {asig.numero_acta && <p>📄 Acta N°: {asig.numero_acta}</p>}
                                     {asig.motivo && <p>📌 Motivo: {asig.motivo}</p>}
                                     {asig.documento_referencia && <p>📎 Documento: {asig.documento_referencia}</p>}
-                                    {(asig.persona_origen?.nombres || asig.persona_origen?.apellidos) && (
+                                    {!asig._esToner && (asig.persona_origen?.nombres || asig.persona_origen?.apellidos) && (
                                         <p>👤 Asignado por: {asig.persona_origen.apellidos}, {asig.persona_origen.nombres}</p>
                                     )}
                                 </div>

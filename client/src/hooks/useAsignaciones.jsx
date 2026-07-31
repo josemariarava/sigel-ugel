@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
 import { buildMostrarToast } from '../lib/toastUtils'
 import { createActaCargoPdf, createActaAsignacionPdf } from '../lib/pdfGenerator'
-import { getEstadoColorAsignacion } from '../lib/utils'
+import { getEstadoColorAsignacion, TIPOS_TONER } from '../lib/utils'
 import { Toast, ToastTitle, ToastBody } from '@fluentui/react-components'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -53,6 +53,7 @@ export function useAsignaciones(dispatchToast) {
     const [openDetalleModal, setOpenDetalleModal] = useState(false)
     const [selectedPersonaDetalle, setSelectedPersonaDetalle] = useState(null)
     const [bienesPorPersona, setBienesPorPersona] = useState([])
+    const [asignacionesToners, setAsignacionesToners] = useState([])
 
     const [infoResponsable, setInfoResponsable] = useState(null)
     const [infoAmbiente, setInfoAmbiente] = useState(null)
@@ -242,6 +243,7 @@ export function useAsignaciones(dispatchToast) {
                 supabase.from('ambientes').select('*, piso:pisos(*), area:areas(*)').order('nombre'),
                 supabase.from('areas').select('*').order('nombre'),
                 supabase.from('tipos_movimiento').select('*'),
+                supabase.from('asignacion_toners').select('*, toner:bienes!asignacion_toners_toner_id_fkey(*), persona:personas!asignacion_toners_persona_id_fkey(*), ambiente:ambientes!asignacion_toners_ambiente_id_fkey(*)').eq('estado', 'Activo'),
             ])
 
             const extraer = (r) => r.status === 'fulfilled' ? (r.value.data || []) : []
@@ -252,6 +254,7 @@ export function useAsignaciones(dispatchToast) {
             setTodosLosAmbientes(extraer(results[3]))
             setAreas(extraer(results[4]))
             setTiposMovimiento(extraer(results[5]))
+            setAsignacionesToners(extraer(results[6]))
 
             const fallos = results.filter(r => r.status === 'rejected')
             if (fallos.length > 0) {
@@ -270,7 +273,7 @@ export function useAsignaciones(dispatchToast) {
                 .in('estado', [ESTADOS.BIEN.ACTIVO, ESTADOS.BIEN.ASIGNADO, ESTADOS.BIEN.DISPONIBLE])
                 .order('tipo_equipo')
             if (error) throw error
-            const consumibles = ['Tóner', 'Cartucho', 'Cinta', 'Batería', 'Cargador']
+            const consumibles = [...TIPOS_TONER, 'Cartucho', 'Cinta', 'Batería', 'Cargador']
             setBienes((data || []).filter(b => !consumibles.includes(b.tipo_equipo)))
         } catch (error) {
             mostrarToast(handleApiError(error, 'cargar bienes'), 'error')
@@ -300,7 +303,10 @@ export function useAsignaciones(dispatchToast) {
             asig.ambiente_id === ambienteId &&
             asig.estado_asignacion === ESTADOS.ASIGNACION.ACTIVO
         )
-        setBienesPorPersona(bienesEnUbicacion)
+        const tonersEnUbicacion = asignacionesToners
+            .filter(asig => asig.ambiente_id === ambienteId)
+            .map(asig => ({ ...asig, _esToner: true }))
+        setBienesPorPersona([...bienesEnUbicacion, ...tonersEnUbicacion])
         setSelectedPersonaDetalle({
             id: ambienteId,
             nombre: ambienteSeleccionado?.nombre || 'Ambiente',
@@ -858,19 +864,9 @@ export function useAsignaciones(dispatchToast) {
                 let numeroActa
 
                 for (let attempt = 0; attempt < 3; attempt++) {
-                    const { data: maxActaData } = await supabase
-                        .from('asignaciones')
-                        .select('numero_acta')
-                        .like('numero_acta', `%-${anio}`)
-                        .order('numero_acta', { ascending: false })
-                        .limit(1)
+                    const { data: nextNum, error: actaError } = await supabase.rpc('siguiente_acta', { p_anio: anio })
 
-                    let nextNum = 1
-                    if (maxActaData && maxActaData.length > 0) {
-                        const parts = maxActaData[0].numero_acta.split('-')
-                        const lastNum = parseInt(parts[0], 10)
-                        nextNum = !isNaN(lastNum) ? lastNum + 1 : 1
-                    }
+                    if (actaError) throw actaError
                     numeroActa = `${String(nextNum).padStart(4, '0')}-${anio}`
 
                     const payload = {
@@ -1161,6 +1157,7 @@ export function useAsignaciones(dispatchToast) {
         historialMovimientos, loadingHistorial, historialBienInfo,
         openDetalleModal, setOpenDetalleModal,
         selectedPersonaDetalle, bienesPorPersona,
+        asignacionesToners,
         infoResponsable, setInfoResponsable,
         infoAmbiente, setInfoAmbiente,
         infoNuevoResponsable, setInfoNuevoResponsable,

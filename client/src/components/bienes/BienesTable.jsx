@@ -1,4 +1,5 @@
 import {
+    CameraRegular,
     EditRegular,
     DeleteRegular,
     DocumentRegular,
@@ -44,6 +45,7 @@ const tipoIcono = (tipo) => {
         Laptop: <LaptopRegular className="text-blue-500" />,
         Impresora: <PrintRegular className="text-purple-500" />,
         Monitor: <TvRegular className="text-green-500" />,
+        Cámara: <CameraRegular className="text-teal-500" />,
         Tablet: <PhoneTabletRegular className="text-black" />,
         Desktop: <DesktopKeyboardRegular className="text-orange-500" />,
         Proyector: <ProjectionScreenRegular className="text-green-500" />

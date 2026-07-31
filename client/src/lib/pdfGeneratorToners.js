@@ -1,6 +1,11 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
+const esContenedor = (toner) => toner?.tipo_equipo === 'Contenedor de Tóner (Residuo)'
+const labelTipo = (toner) => esContenedor(toner) ? 'CONTENEDOR DE TÓNER (RESIDUO)' : 'TÓNER'
+const labelTipoLower = (toner) => esContenedor(toner) ? 'contenedor de tóner' : 'tóner'
+const prefixArchivo = (toner) => esContenedor(toner) ? 'Acta_Contenedor' : 'Acta_Toner'
+
 export async function createActaTonerPdf({ asignacion, personaRecibe, entregador, toner, impresora, ambiente }) {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
     const pageW = doc.internal.pageSize.width
@@ -67,9 +72,10 @@ export async function createActaTonerPdf({ asignacion, personaRecibe, entregador
         doc.setFont(FONT, 'bold')
         doc.setFontSize(13)
         doc.setTextColor(32, 31, 30)
-        doc.text(subtitle, col1X, y)
-
-        y += 7
+        const subtitleWidth = rightEdge - LOGO_SIZE - 3 - col1X
+        const subtitleLines = doc.splitTextToSize(subtitle, Math.max(subtitleWidth, 30))
+        doc.text(subtitleLines, col1X, y)
+        y += subtitleLines.length * 4 + 7
         doc.setFont(FONT, 'normal')
         doc.setFontSize(9)
         doc.setTextColor(96, 94, 92)
@@ -85,14 +91,8 @@ export async function createActaTonerPdf({ asignacion, personaRecibe, entregador
         doc.setFontSize(9)
         doc.setTextColor(100, 100, 100)
         
-        const [anioStr, mesStr, diaStr] = asignacion.fecha_asignacion.split('-')
-        const dia = parseInt(diaStr, 10)
-        const anio = parseInt(anioStr, 10)
-        const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre']
-        const mes = meses[parseInt(mesStr, 10) - 1]
-        
         // Texto optimizado y fluido
-        const textoIntroduccion = `En la ciudad de Cajamarca, el ${dia} de ${mes} de ${anio}, reunidos en la sede de la Unidad de Gestión Educativa Local de Cajamarca, ubicada en el Jr. Pisagua N° 466, se procede a la ENTREGA - RECEPCIÓN del siguiente bien consumible:`;
+        const textoIntroduccion = `En la ciudad de Cajamarca, el ${fechaActual}, reunidos en la sede de la Unidad de Gestión Educativa Local de Cajamarca, ubicada en el Jr. Pisagua N° 466, se procede a la ENTREGA - RECEPCIÓN del siguiente bien consumible:`;
         
         // splitTextToSize calcula automáticamente los saltos de línea para que no se desborde
         const lineasIntro = doc.splitTextToSize(textoIntroduccion, maxTextWidth);
@@ -102,11 +102,11 @@ export async function createActaTonerPdf({ asignacion, personaRecibe, entregador
         y += (lineasIntro.length * 4.2) + 3; 
 
         const tonerData = [
-            ['Tipo', 'TÓNER'],
+            ['Tipo', labelTipo(toner)],
             ['Marca / Modelo', `${toner?.marca || ''} ${toner?.modelo || ''}`],
             ['Serie', toner?.serie || '-'],
             ['Color', toner?.color_toner || '-'],
-            ['Rendimiento', toner?.rendimiento ? `${toner.rendimiento} págs` : '-'],
+            ...(toner?.rendimiento ? [['Rendimiento', `${toner.rendimiento} págs`]] : []),
         ]
 
         autoTable(doc, {
@@ -177,11 +177,11 @@ export async function createActaTonerPdf({ asignacion, personaRecibe, entregador
         doc.setTextColor(120, 120, 120)
         
         // También protegemos la NOTA con splitTextToSize por seguridad
-        const notaText = 'NOTA: El presente tóner será utilizado única y exclusivamente en las funciones propias del cargo dentro de la sede institucional de la UGEL Cajamarca.';
+        const notaText = `NOTA: El presente ${labelTipoLower(toner)} será utilizado única y exclusivamente en las funciones propias del cargo dentro de la sede institucional de la UGEL Cajamarca.`;
         const lineasNota = doc.splitTextToSize(notaText, maxTextWidth);
         doc.text(lineasNota, col1X, y);
         
-        y += (lineasNota.length * 3.5) + 12; // Ajustamos espacio dinámico antes de las firmas
+        y += (lineasNota.length * 3.5) + 12; 
 
         const sigLeft = col1X
         const sigRight = rightEdge - 45
@@ -215,15 +215,17 @@ export async function createActaTonerPdf({ asignacion, personaRecibe, entregador
         doc.text(`Fecha de emisión: ${fechaActual}`, col1X, pageH - 6)
     }
 
-    // Renderizado de las copias (Mantiene tus coordenadas perfectas)
-    renderCopy(10, 130, 'ORIGINAL - Área de Informática', 'ACTA DE ENTREGA - RECEPCIÓN DE TÓNER')
+    const tituloActa = `ACTA DE ENTREGA - RECEPCIÓN DE ${labelTipo(toner)}`
+    const subtituloCargo = `CARGO DE ENTREGA DE ${labelTipo(toner)}`
+
+    renderCopy(10, 130, 'ORIGINAL - Área de Informática', tituloActa)
 
     doc.setDrawColor(180, 180, 180)
     doc.setLineDashPattern([3, 3], 0)
     doc.line(pageW / 2, 0, pageW / 2, pageH)
     doc.setLineDashPattern([], 0)
 
-    renderCopy(157, 130, 'CARGO - Servidor Público', 'CARGO DE ENTREGA DE TÓNER')
+    renderCopy(157, 130, 'CARGO - Servidor Público', subtituloCargo)
 
     return doc
 }

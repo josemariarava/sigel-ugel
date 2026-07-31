@@ -10,6 +10,7 @@ import {
     Badge
 } from '@fluentui/react-components'
 import {
+    CameraRegular,
     EditRegular,
     LaptopRegular,
     PrintRegular,
@@ -24,6 +25,7 @@ const tipoIcono = (tipo) => {
         Laptop: <LaptopRegular className="text-blue-500 w-5 h-5" />,
         Impresora: <PrintRegular className="text-purple-500 w-5 h-5" />,
         Monitor: <TvRegular className="text-green-500 w-5 h-5" />,
+        Cámara: <CameraRegular className="text-teal-500 w-5 h-5" />,
         Tablet: <PhoneTabletRegular className="text-black w-5 h-5" />,
         Desktop: <DesktopKeyboardRegular className="text-orange-500 w-5 h-5" />,
         Proyector: <ProjectionScreenRegular className="text-green-500 w-5 h-5" />

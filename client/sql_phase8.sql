@@ -19,7 +19,7 @@
 -- 1. Tóneres marcados como 'Asignado' pero sin asignación activa
 UPDATE bienes
 SET estado = 'Disponible'
-WHERE tipo_equipo = 'Tóner'
+WHERE tipo_equipo IN ('Tóner', 'Contenedor de Tóner (Residuo)')
   AND estado = 'Asignado'
   AND id NOT IN (
       SELECT DISTINCT toner_id
@@ -31,7 +31,7 @@ WHERE tipo_equipo = 'Tóner'
 --    (la asignación fue eliminada pero el UPDATE a 'Disponible' falló)
 UPDATE bienes
 SET estado = 'Disponible'
-WHERE tipo_equipo = 'Tóner'
+WHERE tipo_equipo IN ('Tóner', 'Contenedor de Tóner (Residuo)')
   AND estado = 'Agotado'
   AND id NOT IN (
       SELECT DISTINCT toner_id
@@ -42,7 +42,7 @@ WHERE tipo_equipo = 'Tóner'
 --    (la asignación fue eliminada pero el UPDATE a 'Activo' falló)
 UPDATE bienes
 SET estado = 'Activo'
-WHERE (tipo_equipo IS NULL OR tipo_equipo != 'Tóner')
+WHERE (tipo_equipo IS NULL OR tipo_equipo NOT IN ('Tóner', 'Contenedor de Tóner (Residuo)'))
   AND estado = 'Asignado'
   AND id NOT IN (
       SELECT DISTINCT bien_id
