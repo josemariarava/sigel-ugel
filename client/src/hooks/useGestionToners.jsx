@@ -314,6 +314,9 @@ export function useGestionToners(dispatchToast) {
                         .select()
 
                     if (error) {
+                        if (error.message?.includes('uq_toner_impresora_activo')) {
+                            throw new Error('⚠️ Esta impresora ya tiene un tóner asignado activamente. Debe finalizar esa asignación antes de asignar uno nuevo.')
+                        }
                         if (error.code === '23505' && attempt < 2) continue
                         throw error
                     }

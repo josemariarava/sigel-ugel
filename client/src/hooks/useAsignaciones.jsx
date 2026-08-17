@@ -709,6 +709,11 @@ export function useAsignaciones(dispatchToast) {
             }
 
             if (tipo === 'traslado') {
+                const anio = new Date().getFullYear()
+                const { data: nextNum, error: actaError } = await supabase.rpc('siguiente_acta', { p_anio: anio })
+                if (actaError) throw actaError
+                const numeroActa = `${String(nextNum).padStart(4, '0')}-${anio}`
+
                 const { error: updateOldError } = await supabase
                     .from('asignaciones')
                     .update({
@@ -730,7 +735,8 @@ export function useAsignaciones(dispatchToast) {
                         persona_origen_id: trasladoData.persona_origen_id || asignacionActual.persona_id,
                         motivo: motivoFinal,
                         observaciones: trasladoData.observaciones || `Transferido desde ${asignacionActual.persona?.nombres || ''} ${asignacionActual.persona?.apellidos || ''}`,
-                        documento_referencia: trasladoData.documento_referencia || null
+                        documento_referencia: trasladoData.documento_referencia || null,
+                        numero_acta: numeroActa
                     })
                     .select()
                     .single()
