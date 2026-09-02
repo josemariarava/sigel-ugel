@@ -11,6 +11,9 @@ import {
     ArrowSwapRegular,
     HistoryRegular,
     DocumentPdfRegular,
+    DocumentSignatureRegular,
+    DocumentPersonRegular,
+    DocumentArrowLeftRegular,
     EyeRegular,
     CartRegular,
     TableRegular,
@@ -177,10 +180,16 @@ const Asignaciones = () => {
                                                 <td className="px-6 py-3.5 font-mono text-xs">{asig.bien?.codigo_patrimonial}</td>
                                                 <td className="px-6 py-3.5 font-mono text-xs text-blue-700">{asig.numero_acta || '—'}</td>
                                                 <td className="px-6 py-3.5">
-                                                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => h.verBienesPorPersona(asig.persona_id, asig.persona?.nombres, asig.persona?.apellidos)}>
-                                                        <PersonRegular className="text-gray-400" />
-                                                        <span className="hover:text-blue-600 hover:underline">{asig.persona?.apellidos}, {asig.persona?.nombres}</span>
-                                                    </div>
+                                                    {asig.persona ? (
+                                                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => h.verBienesPorPersona(asig.persona_id, asig.persona?.nombres, asig.persona?.apellidos)}>
+                                                            <PersonRegular className="text-gray-400" />
+                                                            <span className="hover:text-blue-600 hover:underline">{asig.persona?.apellidos}, {asig.persona?.nombres}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <Tooltip content="Devuelto al almacén">
+                                                            <span className="text-gray-400 italic text-[11px]">— Sin responsable</span>
+                                                        </Tooltip>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-3.5">{asig.ambiente?.nombre || 'Almacén'}</td>
                                                 <td className="px-6 py-3.5">{asig.fecha_asignacion}</td>
@@ -190,21 +199,36 @@ const Asignaciones = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-3.5">
-                                                    <div className="flex gap-1 justify-center">
+                                                    <div className="flex items-center gap-0.5 justify-center">
                                                         <Tooltip content="Ver bienes"><Button size="small" appearance="subtle" icon={<EyeRegular />} onClick={() => h.verBienesPorPersona(asig.persona_id, asig.persona?.nombres, asig.persona?.apellidos)} /></Tooltip>
-                                                        <Tooltip content="Acta cargo"><Button size="small" appearance="subtle" icon={<DocumentPdfRegular />} className="text-green-600" onClick={() => h.generarActaCargo(asig.persona_id, asig.persona?.nombres, asig.persona?.apellidos, asig.persona)} /></Tooltip>
-                                                        <Tooltip content="Trasladar / Devolver / Baja"><Button size="small" appearance="subtle" icon={<ArrowSwapRegular />} onClick={() => { h.setSelectedAsignacion(asig); h.setOpenTrasladoModal(true) }} /></Tooltip>
                                                         <Tooltip content="Historial"><Button size="small" appearance="subtle" icon={<HistoryRegular />} onClick={() => { h.cargarHistorialMovimientos(asig.bien_id, asig.bien); h.setOpenHistorialModal(true) }} /></Tooltip>
-                                                        <Tooltip content="Generar Acta">
-                                                            <Button size="small" appearance="subtle" icon={<DocumentPdfRegular />} className="text-red-600" onClick={() => h.generarActaAsignacion(asig)} />
-                                                        </Tooltip>
+                                                        <span className="w-px h-4 bg-gray-200 mx-0.5"></span>
+                                                        <Tooltip content="Acta Cargo"><Button size="small" appearance="subtle" icon={<DocumentPersonRegular />} className="text-green-600" onClick={() => h.generarActaCargo(asig.persona_id, asig.persona?.nombres, asig.persona?.apellidos, asig.persona)} /></Tooltip>
+                                                        <Tooltip content="Acta Asignación"><Button size="small" appearance="subtle" icon={<DocumentSignatureRegular />} className="text-green-600" onClick={() => h.generarActaAsignacion(asig)} /></Tooltip>
                                                         {asig.acta_url && (
-                                                            <Tooltip content="Ver Acta">
+                                                            <Tooltip content="Ver Acta Asignación">
                                                                 <a href={`${asig.acta_url}?t=${Date.now()}`} target="_blank" rel="noopener noreferrer">
                                                                     <Button size="small" appearance="subtle" icon={<EyeRegular />} className="text-blue-600" />
                                                                 </a>
                                                             </Tooltip>
                                                         )}
+                                                        {(asig.estado_asignacion === 'Devuelto' || asig.acta_url_devolucion) && (
+                                                            <span className="w-px h-4 bg-gray-200 mx-0.5"></span>
+                                                        )}
+                                                        {asig.acta_url_devolucion && (
+                                                            <Tooltip content="Ver Acta Devolución">
+                                                                <a href={`${asig.acta_url_devolucion}?t=${Date.now()}`} target="_blank" rel="noopener noreferrer">
+                                                                    <Button size="small" appearance="subtle" icon={<EyeRegular />} className="text-blue-600" />
+                                                                </a>
+                                                            </Tooltip>
+                                                        )}
+                                                        {asig.estado_asignacion === 'Devuelto' && (
+                                                            <Tooltip content={asig.acta_url_devolucion ? "Regenerar Acta Devolución" : "Acta Devolución"}>
+                                                                <Button size="small" appearance="subtle" icon={<DocumentArrowLeftRegular />} className="text-green-600" onClick={() => h.generarActaDevolucion(asig, asig.motivo)} />
+                                                            </Tooltip>
+                                                        )}
+                                                        <span className="w-px h-4 bg-gray-200 mx-0.5"></span>
+                                                        <Tooltip content="Trasladar / Devolver / Baja"><Button size="small" appearance="subtle" icon={<ArrowSwapRegular />} onClick={() => { h.setSelectedAsignacion(asig); h.setOpenTrasladoModal(true) }} /></Tooltip>
                                                         <Tooltip content="Editar"><Button size="small" appearance="subtle" icon={<EditRegular />} onClick={() => h.handleEdit(asig)} /></Tooltip>
                                                         <Tooltip content="Eliminar"><Button size="small" appearance="subtle" icon={<DeleteRegular />} className="text-red-500" onClick={() => h.handleDelete(asig)} /></Tooltip>
                                                     </div>

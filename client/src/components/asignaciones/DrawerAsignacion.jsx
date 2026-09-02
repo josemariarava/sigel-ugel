@@ -58,6 +58,8 @@ export default function DrawerAsignacion({
 }) {
     const dropdownRef = useRef(null)
 
+    const esDevueltoOBaja = editMode && (formData.estado_asignacion === 'Devuelto' || formData.estado_asignacion === 'Baja')
+
     const [localPersonas, setLocalPersonas] = useState([])
     const [localPisos, setLocalPisos] = useState([])
     const [localAmbientes, setLocalAmbientes] = useState([])
@@ -149,7 +151,7 @@ export default function DrawerAsignacion({
                 >
                     <div>
                         <span className="text-lg font-bold text-slate-800">
-                            {editMode ? '✏️ Editar Asignación' : '📝 Nueva Asignación'}
+                            {editMode ? (esDevueltoOBaja ? '✏️ Editar Asignación Devuelta' : '✏️ Editar Asignación') : '📝 Nueva Asignación'}
                         </span>
                         <p className="text-xs text-gray-500 mt-0.5">Complete los datos del bien y el servidor responsable</p>
                     </div>
@@ -157,20 +159,39 @@ export default function DrawerAsignacion({
             </DrawerHeader>
 
             <DrawerBody className="space-y-5 p-5">
+                {esDevueltoOBaja && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-start gap-2">
+                            <WarningRegular className="text-amber-600 mt-0.5" />
+                            <div>
+                                <p className="text-xs font-semibold text-amber-800">
+                                    Asignación {formData.estado_asignacion === 'Devuelto' ? 'Devuelta' : 'Baja'}
+                                </p>
+                                <p className="text-[11px] text-amber-700 mt-0.5">
+                                    Solo puede editar fecha, motivo y observaciones. Para re-asignar este bien, use "Nueva Asignación".
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <Field label="Bien Patrimonial *" required>
                     <div className="relative">
                         <Input
                             size="small"
                             contentBefore={<SearchRegular className="text-gray-400" />}
-                            placeholder="🔍 Buscar por tipo, marca, modelo, código patrimonial o serie..."
+                            placeholder={esDevueltoOBaja ? "Bien asignado (no editable)" : "🔍 Buscar por tipo, marca, modelo, código patrimonial o serie..."}
                             value={searchTermBien}
+                            disabled={esDevueltoOBaja}
                             onChange={(e) => {
                                 setSearchTermBien(e.target.value)
                                 setShowBienDropdown(true)
                             }}
                             onFocus={() => {
-                                setShowBienDropdown(true)
-                                fetchLocalBienes()
+                                if (!esDevueltoOBaja) {
+                                    setShowBienDropdown(true)
+                                    fetchLocalBienes()
+                                }
                             }}
                         />
 
@@ -284,7 +305,7 @@ export default function DrawerAsignacion({
                         </Field>
                     </div>
                     <div style={{ minWidth: 0 }}>
-                        <Field label="Servidor Público Responsable *" required>
+                        <Field label="Servidor Público Responsable" required={!esDevueltoOBaja}>
                             <Dropdown
                                 size="small"
                                 value={(() => {
@@ -295,7 +316,8 @@ export default function DrawerAsignacion({
                                 selectedOptions={formData.persona_id ? [formData.persona_id] : []}
                                 onOptionSelect={(_, data) => handlePersonaChange({ target: { name: 'persona_id', value: data.optionValue } })}
                                 onOpenChange={(_, data) => { if (data.open) fetchLocalPersonas() }}
-                                placeholder="-- Seleccionar Responsable --"
+                                placeholder={esDevueltoOBaja ? "Sin responsable (asignación devuelta)" : "-- Seleccionar Responsable --"}
+                                disabled={esDevueltoOBaja}
                             >
                                 {mergedPersonas.map(p => (
                                     <Option key={p.id} value={p.id}>
@@ -349,7 +371,8 @@ export default function DrawerAsignacion({
                                 handleInputChange({ target: { name: 'ambiente_id', value: '' } })
                             }}
                             onOpenChange={(_, data) => { if (data.open) fetchLocalPisos() }}
-                            placeholder="-- Todos los pisos --"
+                            placeholder={esDevueltoOBaja ? "Ubicación actual (no editable)" : "-- Todos los pisos --"}
+                            disabled={esDevueltoOBaja}
                         >
                             {mergedPisos.map(p => (
                                 <Option key={p.id} value={p.id}>
@@ -370,7 +393,8 @@ export default function DrawerAsignacion({
                             selectedOptions={formData.ambiente_id ? [formData.ambiente_id] : []}
                             onOptionSelect={(_, data) => handleAmbienteChange({ target: { name: 'ambiente_id', value: data.optionValue } })}
                             onOpenChange={(_, data) => { if (data.open) fetchLocalAmbientes() }}
-                            placeholder="-- Seleccionar Ambiente --"
+                            placeholder={esDevueltoOBaja ? "Ubicación actual (no editable)" : "-- Seleccionar Ambiente --"}
+                            disabled={esDevueltoOBaja}
                         >
                             {(selectedPiso ? ambientesLocalFiltrados : mergedAmbientes).map(a => (
                                 <Option key={a.id} value={a.id}>
@@ -504,7 +528,7 @@ export default function DrawerAsignacion({
                     Cancelar
                 </Button>
                 <Button size="small" appearance="primary" icon={<CheckmarkCircleRegular />} onClick={handleSubmit} disabled={submitting}>
-                    {submitting ? 'Guardando...' : (editMode ? 'Actualizar Asignación' : 'Confirmar Asignación')}
+                    {submitting ? 'Guardando...' : (editMode ? (esDevueltoOBaja ? 'Guardar Cambios' : 'Actualizar Asignación') : 'Confirmar Asignación')}
                 </Button>
             </DrawerFooter>
         </Drawer>

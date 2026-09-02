@@ -87,7 +87,7 @@ export function createActaCargoPdf({ personaNombre, personaApellidos, personaDat
     return doc
 }
 
-export async function createActaAsignacionPdf({ asignacion }) {
+export async function createActaAsignacionPdf({ asignacion, personaAsignada, personaOrigenFetch }) {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
     const pageW = doc.internal.pageSize.width
     const pageH = doc.internal.pageSize.height
@@ -130,7 +130,7 @@ export async function createActaAsignacionPdf({ asignacion }) {
     })
 
     const bien = asignacion.bien || {}
-    const persona = asignacion.persona || {}
+    const persona = personaAsignada || asignacion.persona || {}
 
     const bienData = [
         ['Tipo', bien.tipo_equipo || '-'],
@@ -251,7 +251,7 @@ export async function createActaAsignacionPdf({ asignacion }) {
         doc.line(sigRight, y, sigRight + sigWidth, y)
         doc.text('RECIBÍ CONFORME', sigRight, y + 4.5)
 
-        const entregador = asignacion.persona_origen
+        const entregador = personaOrigenFetch || asignacion.persona_origen
         doc.setFont(FONT, 'normal')
         doc.setFontSize(7)
         doc.setTextColor(80, 80, 80)
@@ -278,6 +278,201 @@ export async function createActaAsignacionPdf({ asignacion }) {
     doc.setLineDashPattern([], 0)
 
     renderCopy(157, 'CARGO - Servidor Público', 'CARGO DE ASIGNACIÓN')
+
+    return doc
+}
+
+export async function createActaDevolucionPdf({ asignacion, personaDevuelve, motivoDevolucion, fechaDevolucion }) {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const pageW = doc.internal.pageSize.width
+    const pageH = doc.internal.pageSize.height
+
+    const loadFonts = async () => {
+        try {
+            const [regResp, boldResp] = await Promise.all([
+                fetch('/fonts/Outfit-Regular.ttf'),
+                fetch('/fonts/Outfit-Bold.ttf')
+            ])
+            const [regBuf, boldBuf] = await Promise.all([
+                regResp.arrayBuffer(),
+                boldResp.arrayBuffer()
+            ])
+            const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)))
+            doc.addFileToVFS('Outfit-Regular.ttf', toB64(regBuf))
+            doc.addFont('Outfit-Regular.ttf', 'Outfit', 'normal')
+            doc.addFileToVFS('Outfit-Bold.ttf', toB64(boldBuf))
+            doc.addFont('Outfit-Bold.ttf', 'Outfit', 'bold')
+        } catch {
+            console.warn('No se pudo cargar Outfit, usando Helvetica')
+        }
+    }
+    await loadFonts()
+
+    let logoImg = null
+    try {
+        logoImg = new Image()
+        logoImg.src = '/images/logo-ugel.png'
+        await logoImg.decode()
+    } catch {
+        console.warn('No se pudo cargar el logo')
+    }
+
+    const LOGO_SIZE = 22
+    const FONT = (doc.getFontList()['Outfit']) ? 'Outfit' : 'Helvetica'
+
+    const fechaActual = new Date().toLocaleDateString('es-PE', {
+        year: 'numeric', month: 'long', day: 'numeric'
+    })
+
+    const bien = asignacion.bien || {}
+    const persona = personaDevuelve || {}
+    const personaOrigen = asignacion.persona_origen || {}
+
+    const bienData = [
+        ['Tipo', bien.tipo_equipo || '-'],
+        ['Marca / Modelo', `${bien.marca || 'S/M'} ${bien.modelo || 'S/M'}`],
+        ['Código Patrimonial', bien.codigo_patrimonial || '-'],
+        ['Serie', bien.serie || '-'],
+        ['Condición', bien.condicion || '-'],
+        ['Ubicación', asignacion.ambiente?.nombre || 'Almacén General'],
+        ['Piso', asignacion.ambiente?.piso?.nombre || '-'],
+        ['Fecha Asignación', asignacion.fecha_asignacion || '-'],
+        ['Fecha Devolución', fechaDevolucion || fechaActual],
+        ...(motivoDevolucion ? [['Motivo Devolución', motivoDevolucion]] : []),
+        ...(asignacion.documento_referencia ? [['Documento Ref.', asignacion.documento_referencia]] : []),
+        ['Observaciones', asignacion.observaciones || 'Ninguna']
+    ]
+
+    const renderCopy = (x0, label, title) => {
+        const margin = 5
+        const col1X = x0 + margin
+        const copyW = 130
+        const rightEdge = x0 + copyW - margin
+
+        doc.setFillColor(0, 120, 212)
+        doc.rect(x0, 0, copyW, 3, 'F')
+
+        let y = 6
+
+        if (logoImg) {
+            doc.addImage(logoImg, 'PNG', rightEdge - LOGO_SIZE, 4, LOGO_SIZE, LOGO_SIZE)
+        }
+
+        doc.setFont(FONT, 'bold')
+        doc.setFontSize(9)
+        doc.setTextColor(0, 120, 212)
+        doc.text(label, col1X, y)
+
+        y += 9
+        doc.setFont(FONT, 'bold')
+        doc.setFontSize(13)
+        doc.setTextColor(32, 31, 30)
+        doc.text(title, col1X, y)
+
+        y += 7
+        doc.setFont(FONT, 'normal')
+        doc.setFontSize(9)
+        doc.setTextColor(96, 94, 92)
+        doc.text(`Acta N°: ${asignacion.numero_acta || 'PENDIENTE'}`, col1X, y)
+
+        y += 6
+        doc.setDrawColor(200, 200, 200)
+        doc.line(col1X, y, rightEdge, y)
+        y += 5
+
+        doc.setFont(FONT, 'normal')
+        doc.setFontSize(9)
+        doc.setTextColor(100, 100, 100)
+
+        const textoIntroduccion = `En la ciudad de Cajamarca, el ${fechaActual}, en la sede de la Unidad de Gestión Educativa Local de Cajamarca, ubicada en el Jr. Pisagua N° 466, se procede a la DEVOLUCIÓN del siguiente bien:`
+
+        const maxTextWidth = copyW - (margin * 2)
+        const lineasIntro = doc.splitTextToSize(textoIntroduccion, maxTextWidth)
+        doc.text(lineasIntro, col1X, y)
+
+        y += (lineasIntro.length * 4.2) + 3
+
+        doc.setFont(FONT, 'bold')
+        doc.setFontSize(9)
+        doc.setTextColor(0, 120, 212)
+        doc.text('DATOS DEL RESPONSABLE QUE DEVUELVE', col1X, y)
+
+        y += 5.5
+        doc.setFont(FONT, 'normal')
+        doc.setFontSize(8)
+        doc.setTextColor(50, 49, 48)
+        doc.text(`Nombres: ${persona.nombres || ''} ${persona.apellidos || ''}`, col1X, y)
+        y += 4.5
+        doc.text(`DNI: ${persona.dni || '-'}`, col1X, y)
+        y += 4.5
+        doc.text(`Cargo: ${persona.cargo || '-'}`, col1X, y)
+
+        y += 10
+        doc.setFont(FONT, 'bold')
+        doc.setFontSize(9)
+        doc.setTextColor(0, 120, 212)
+        doc.text('BIEN DEVUELTO', col1X, y)
+
+        y += 2
+        autoTable(doc, {
+            body: bienData.map(([label, value]) => [label, value]),
+            startY: y,
+            theme: 'plain',
+            styles: { font: FONT },
+            bodyStyles: { fontSize: 8, cellPadding: { top: 1.8, bottom: 1.8, left: 0, right: 0 } },
+            columnStyles: {
+                0: { cellWidth: 42, fontStyle: 'bold', fontSize: 8 },
+                1: { cellWidth: copyW - margin * 2 - 42, fontSize: 8 }
+            },
+            margin: { left: col1X, right: pageW - rightEdge },
+            tableLineColor: 200,
+            tableLineWidth: 0
+        })
+
+        y = doc.lastAutoTable.finalY + 5
+        doc.setDrawColor(200, 200, 200)
+        doc.line(col1X, y, rightEdge, y)
+        y += 18
+
+        const sigLeft = col1X
+        const sigRight = rightEdge - 42
+        const sigWidth = 42
+
+        doc.setDrawColor(50, 49, 48)
+        doc.line(sigLeft, y, sigLeft + sigWidth, y)
+        doc.setFont(FONT, 'bold')
+        doc.setFontSize(8)
+        doc.setTextColor(50, 49, 48)
+        doc.text('ENTREGÓ CONFORME', sigLeft, y + 4.5)
+
+        doc.line(sigRight, y, sigRight + sigWidth, y)
+        doc.text('RECIBIÓ CONFORME', sigRight, y + 4.5)
+
+        doc.setFont(FONT, 'normal')
+        doc.setFontSize(7)
+        doc.setTextColor(80, 80, 80)
+        doc.text(`${persona.apellidos || ''} ${persona.nombres || ''}`.trim(), sigLeft, y + 11)
+        if (persona?.dni) doc.text(`DNI: ${persona.dni}`, sigLeft, y + 16)
+
+        const recibe = personaOrigen
+        doc.text(recibe ? `${recibe.apellidos}, ${recibe.nombres}` : 'Área de Informática', sigRight, y + 11)
+        if (recibe?.dni) doc.text(`DNI: ${recibe.dni}`, sigRight, y + 16)
+
+        y += 48
+        doc.setFont(FONT, 'normal')
+        doc.setFontSize(7)
+        doc.setTextColor(150, 150, 150)
+        doc.text(`Fecha de emisión: ${fechaActual}`, col1X, y)
+    }
+
+    renderCopy(10, 'ORIGINAL - Área de Informática', 'ACTA DE DEVOLUCIÓN DE BIEN')
+
+    doc.setDrawColor(180, 180, 180)
+    doc.setLineDashPattern([3, 3], 0)
+    doc.line(pageW / 2, 0, pageW / 2, pageH)
+    doc.setLineDashPattern([], 0)
+
+    renderCopy(157, 'COPIA - Servidor Público', 'COPIA DE DEVOLUCIÓN')
 
     return doc
 }

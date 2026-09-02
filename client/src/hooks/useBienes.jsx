@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
 import { buildMostrarToast } from '../lib/toastUtils'
 import { TIPOS_TONER } from '../lib/utils'
+import { getCamposAplicables } from '../lib/bienesConfig'
 import {
     Toast,
     ToastTitle,
@@ -51,7 +52,12 @@ const emptyForm = {
 
 const safeParseFloat = (val) => (val !== '' && val != null ? parseFloat(val) : null)
 const safeParseInt = (val) => (val !== '' && val != null ? parseInt(val) : null)
-const generarSerieUnica = () => `SIN-SERIE-${crypto.randomUUID().slice(0, 8)}`
+const generarSerieUnica = () => {
+    const rnd = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID().slice(0, 8)
+        : `${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`
+    return `SIN-SERIE-${rnd}`
+}
 const determinarEstado = (tipoEquipo, condicion) => {
     if (TIPOS_TONER.includes(tipoEquipo)) return 'Disponible'
     if (condicion === 'Chatarra') return 'Dado de Baja'
@@ -990,35 +996,24 @@ const useBienes = () => {
                     next.modelo_id = ''
                 }
 
-                if (!categorias.computo.includes(value)) {
-                    next.procesador = ''
-                    next.ram = ''
-                    next.almacenamiento = ''
-                    next.tipo_almacenamiento = ''
-                    next.sistema_operativo = ''
-                    next.direccion_mac = ''
-                }
-                if (value !== 'Monitor') {
-                    next.tamano_pantalla = ''
-                }
-                if (!TIPOS_TONER.includes(value)) {
-                    next.color_toner = ''
-                    next.rendimiento = ''
-                    next.lote = ''
-                    next.fecha_vencimiento = ''
-                    next.proveedor = ''
-                    next.ubicacion_almacen = ''
-                }
+                const esTonerNuevo = TIPOS_TONER.includes(value)
+                const esTonerPrevio = TIPOS_TONER.includes(prev.tipo_equipo)
 
-                if (TIPOS_TONER.includes(value)) {
-                    next.color = ''
-                    if (!editMode) {
+                if (!editMode) {
+                    const aplicables = getCamposAplicables(value)
+                    Object.keys(next).forEach(k => {
+                        if (!aplicables.has(k) && !['tipo_equipo', 'serie', 'marca', 'modelo', 'marca_id', 'modelo_id', 'codigo_patrimonial', 'codigo_ti', 'anio_compra', 'orden_compra', 'valor_compra', 'estado', 'other'].includes(k)) {
+                            next[k] = ''
+                        }
+                    })
+                    if (esTonerNuevo) {
                         next.condicion = 'Bueno'
                         next.estado = 'Disponible'
+                    } else if (esTonerPrevio || !next.estado) {
+                        next.estado = 'Activo'
                     }
-                } else if (TIPOS_TONER.includes(prev.tipo_equipo)) {
+                } else if (esTonerNuevo || esTonerPrevio) {
                     next.color = ''
-                    if (!editMode) next.estado = 'Activo'
                 }
             }
             if (name === 'marca_id') {
@@ -1034,12 +1029,15 @@ const useBienes = () => {
             if (name === 'marca') {
                 const clean = String(value).trim()
                 const match = marcas.find(m => m.nombre.toLowerCase() === clean.toLowerCase())
+                const prevClean = String(prev.marca || '').trim()
                 if (match) {
                     next.marca_id = String(match.id)
                     next.modelo_id = ''
                     next.modelo = ''
-                } else {
+                } else if (clean !== prevClean) {
                     next.marca_id = ''
+                    next.modelo_id = ''
+                    next.modelo = ''
                 }
             }
             if (name === 'modelo') {
@@ -1397,6 +1395,8 @@ const useBienes = () => {
             nullableFields.forEach(f => {
                 if (sanitized[f] === '') sanitized[f] = null
             })
+            sanitized.valor_compra = safeParseFloat(formData.valor_compra)
+            sanitized.anio_compra = safeParseInt(formData.anio_compra)
 
             if (!sanitized.estado) {
                 sanitized.estado = determinarEstado(sanitized.tipo_equipo, sanitized.condicion)

@@ -28,6 +28,7 @@ import {
     MessageBarBody
 } from '@fluentui/react-components'
 import { TIPOS_TONER } from '../../lib/utils'
+import { getConfigTipo } from '../../lib/bienesConfig'
 import {
     DismissRegular,
     ChevronDownRegular,
@@ -77,6 +78,7 @@ const DrawerBien = ({
     const initialFormRef = useRef(null)
     const [showEstadoWarning, setShowEstadoWarning] = useState(false)
     const prevCondicion = useRef(formData.condicion)
+    const cfg = getConfigTipo(formData.tipo_equipo)
 
     useEffect(() => {
         if (open) {
@@ -113,6 +115,15 @@ const DrawerBien = ({
         setConfirmClose(false)
     }
 
+    const handleCloseRequest = () => {
+        if (formDirty) {
+            setConfirmClose(true)
+        } else {
+            onClose()
+            resetForm()
+        }
+    }
+
     const handleDiagnosticarConLoading = async () => {
         setDetectandoMonitores(true)
         await intentarAutoDetectarMonitor()
@@ -142,7 +153,7 @@ const DrawerBien = ({
                             appearance="subtle"
                             aria-label="Close"
                             icon={<DismissRegular />}
-                            onClick={onClose}
+                            onClick={handleCloseRequest}
                         />
                     }
                 >
@@ -248,7 +259,7 @@ const DrawerBien = ({
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-                                    {!TIPOS_TONER.includes(formData.tipo_equipo) && (
+                                    {cfg.color && (
                                         <Field label="Color" hint="Escribe para buscar o ingresa un nuevo color">
                                             <Input name="color" value={formData.color || ''} onChange={handleInputChange} placeholder="Buscar o escribir color..." list="color-suggestions" contentAfter={<ChevronDownRegular />} />
                                             <datalist id="color-suggestions">
@@ -265,7 +276,7 @@ const DrawerBien = ({
                                         </Field>
                                     )}
 
-                                    {formData.tipo_equipo === 'Monitor' && (
+                                    {cfg.grupos.includes('pantalla') && (
                                         <Field label="Tamaño de Pantalla">
                                             <Input name="tamano_pantalla" value={formData.tamano_pantalla || ''} onChange={handleInputChange} placeholder='Ej. 21.5", 27", 32"' />
                                         </Field>
@@ -273,7 +284,7 @@ const DrawerBien = ({
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-                                    {!TIPOS_TONER.includes(formData.tipo_equipo) && (
+                                    {cfg.condicion && (
                                         <Field label="Condición Física">
                                             <Select name="condicion" value={formData.condicion || ''} onChange={handleInputChange}>
                                                 <option value="Bueno">✅ Bueno</option>
@@ -288,8 +299,8 @@ const DrawerBien = ({
                                             {TIPOS_TONER.includes(formData.tipo_equipo) ? (
                                                 <>
                                                     <option value="Disponible">🟢 Disponible</option>
-                                                    <option value="Asignado">🟠 Asignado</option>
-                                                    <option value="Agotado">🔴 Agotado</option>
+                                                    {editMode && <option value="Asignado">🟠 Asignado</option>}
+                                                    {editMode && <option value="Agotado">🔴 Agotado</option>}
                                                 </>
                                             ) : (
                                                 <>
@@ -302,7 +313,7 @@ const DrawerBien = ({
                                     </Field>
                                 </div>
 
-                                {showEstadoWarning && !TIPOS_TONER.includes(formData.tipo_equipo) && (
+                                {showEstadoWarning && cfg.condicion && (
                                     <MessageBar intent="warning" layout="multiline"
                                         actions={{
                                             children: (
@@ -493,7 +504,7 @@ const DrawerBien = ({
                                 </div>
                             )}
 
-                            {TIPOS_TONER.includes(formData.tipo_equipo) && (
+                            {cfg.grupos.includes('toner') && (
                                 <div className="bg-amber-50 p-5 rounded-xl border border-amber-200">
                                     <Subtitle2 className="text-amber-700 flex items-center gap-2 mb-3">
                                         <CartRegular />
@@ -533,7 +544,7 @@ const DrawerBien = ({
                                 </div>
                             )}
 
-                            {['Laptop', 'Desktop', 'CPU', 'Tablet', 'All-in-One'].includes(formData.tipo_equipo) && (
+                            {cfg.grupos.includes('especificaciones') && (
                                 <div className="bg-cyan-50 p-5 rounded-xl border border-cyan-200">
                                     <Subtitle2 className="text-cyan-700 flex items-center gap-2 mb-3">
                                         <LaptopRegular />
@@ -562,7 +573,7 @@ const DrawerBien = ({
                                 </div>
                             )}
 
-                            {![...TIPOS_TONER, 'Laptop', 'Desktop', 'CPU', 'Tablet', 'All-in-One'].includes(formData.tipo_equipo) && (
+                            {!cfg.grupos.includes('especificaciones') && !cfg.grupos.includes('toner') && (
                                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 flex flex-col items-center gap-2 text-gray-400">
                                     <DesktopRegular style={{ fontSize: 40 }} />
                                     <p className="text-sm">No se requieren especificaciones adicionales para este tipo de equipo.</p>
@@ -629,7 +640,7 @@ const DrawerBien = ({
                 </div>
 
                 <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 flex gap-2 justify-end">
-                    <Button appearance="secondary" onClick={onClose}>Cancelar</Button>
+                    <Button appearance="secondary" onClick={handleCloseRequest}>Cancelar</Button>
                     <Button appearance="primary" onClick={() => setShowConfirmSave(true)}>
                         {editMode ? 'Actualizar' : 'Guardar'}
                     </Button>
@@ -696,15 +707,29 @@ const DrawerBien = ({
             <Dialog open={confirmClose} onOpenChange={(_, d) => setConfirmClose(d.open)}>
                 <DialogSurface>
                     <DialogBody>
-                        <DialogTitle>¿Descartar cambios?</DialogTitle>
+                        <DialogTitle>¿Salir sin guardar?</DialogTitle>
                         <DialogContent>
-                            Hay cambios sin guardar. Si cierras ahora, se perderán los datos modificados.
+                            <div className="flex flex-col gap-3">
+                                <p className="text-sm text-gray-600">
+                                    Tienes cambios sin guardar en el formulario. Si sales ahora, se perderán los datos que modificaste.
+                                </p>
+                                <Card className="!p-3">
+                                    <div className="flex items-center gap-2 text-xs">
+                                        <span className="font-semibold text-gray-800">{formData.tipo_equipo || 'Nuevo Equipo'}</span>
+                                        <span className="text-gray-400">·</span>
+                                        <span className="text-gray-500">{[formData.marca, formData.modelo].filter(Boolean).join(' ') || '—'}</span>
+                                    </div>
+                                    {formData.serie && (
+                                        <p className="text-xs text-gray-400 mt-1 font-mono">Serie: {formData.serie}</p>
+                                    )}
+                                </Card>
+                            </div>
                         </DialogContent>
                         <DialogActions>
                             <Button appearance="secondary" onClick={handleCancelClose}>
                                 Seguir editando
                             </Button>
-                            <Button appearance="primary" onClick={handleConfirmClose}>
+                            <Button appearance="subtle" className="text-red-600" onClick={handleConfirmClose}>
                                 Descartar cambios
                             </Button>
                         </DialogActions>

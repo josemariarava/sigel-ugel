@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
 import { buildMostrarToast } from '../lib/toastUtils'
-import { createActaCargoPdf, createActaAsignacionPdf } from '../lib/pdfGenerator'
+import { createActaCargoPdf, createActaAsignacionPdf, createActaDevolucionPdf } from '../lib/pdfGenerator'
 import { getEstadoColorAsignacion, TIPOS_TONER } from '../lib/utils'
 import { Toast, ToastTitle, ToastBody } from '@fluentui/react-components'
 import { jsPDF } from 'jspdf'
@@ -416,7 +416,42 @@ export function useAsignaciones(dispatchToast) {
         try {
             setExportando(true)
 
-            const doc = await createActaAsignacionPdf({ asignacion })
+            console.log('[generarActaAsignacion] asignacion.persona:', asignacion.persona)
+            console.log('[generarActaAsignacion] asignacion.persona_id:', asignacion.persona_id)
+            console.log('[generarActaAsignacion] asignacion.persona_origen:', asignacion.persona_origen)
+
+            let personaData = asignacion.persona
+            if ((!personaData || !personaData.nombres) && asignacion.persona_id) {
+                console.log('[generarActaAsignacion] Fetching persona from DB...')
+                const { data: personaFetch, error: personaErr } = await supabase
+                    .from('personas')
+                    .select('*')
+                    .eq('id', asignacion.persona_id)
+                    .single()
+                console.log('[generarActaAsignacion] personaFetch:', personaFetch, 'error:', personaErr)
+                if (personaFetch) personaData = personaFetch
+            }
+
+            let personaOrigenData = asignacion.persona_origen
+            if ((!personaOrigenData || !personaOrigenData.nombres) && asignacion.persona_origen_id) {
+                console.log('[generarActaAsignacion] Fetching persona_origen from DB...')
+                const { data: origenFetch, error: origenErr } = await supabase
+                    .from('personas')
+                    .select('*')
+                    .eq('id', asignacion.persona_origen_id)
+                    .single()
+                console.log('[generarActaAsignacion] origenFetch:', origenFetch, 'error:', origenErr)
+                if (origenFetch) personaOrigenData = origenFetch
+            }
+
+            console.log('[generarActaAsignacion] FINAL personaData:', personaData)
+            console.log('[generarActaAsignacion] FINAL personaOrigenData:', personaOrigenData)
+
+            const doc = await createActaAsignacionPdf({
+                asignacion,
+                personaAsignada: personaData,
+                personaOrigenFetch: personaOrigenData
+            })
 
             doc.save(`Acta_Equipo_${asignacion.numero_acta || 'NUEVA'}.pdf`)
 
@@ -454,6 +489,75 @@ export function useAsignaciones(dispatchToast) {
             mostrarToast('Acta generada correctamente 📄', 'success')
         } catch (error) {
             mostrarToast(handleApiError(error, 'generar acta'), 'error')
+        } finally {
+            setExportando(false)
+        }
+    }
+
+    const generarActaDevolucion = async (asignacion, motivoDevolucion) => {
+        try {
+            setExportando(true)
+
+            let personaDevuelve = asignacion.persona
+
+            if (!personaDevuelve) {
+                const tipoDevId = tipoMovimientoId('Devolución')
+                if (tipoDevId) {
+                    const { data: historial } = await supabase
+                        .from('historial_movimientos')
+                        .select('persona_origen:personas!historial_movimientos_persona_origen_id_fkey(*)')
+                        .eq('bien_id', asignacion.bien_id)
+                        .eq('tipo_movimiento_id', tipoDevId)
+                        .order('fecha_movimiento', { ascending: false })
+                        .limit(1)
+                        .single()
+                    personaDevuelve = historial?.persona_origen || null
+                }
+            }
+
+            const doc = await createActaDevolucionPdf({
+                asignacion,
+                personaDevuelve,
+                motivoDevolucion: motivoDevolucion || asignacion.motivo || '',
+                fechaDevolucion: trasladoData.fecha || asignacion.fecha_actualizacion || new Date().toISOString().split('T')[0]
+            })
+
+            doc.save(`Acta_Devolucion_${asignacion.numero_acta || 'NUEVA'}.pdf`)
+
+            try {
+                const blob = doc.output('blob')
+                const fileName = `actas/devoluciones/Acta_Devolucion_${asignacion.numero_acta || 'NUEVA'}.pdf`
+
+                const { error: uploadError } = await supabase.storage
+                    .from('actas')
+                    .upload(fileName, blob, { contentType: 'application/pdf', upsert: true })
+
+                if (uploadError) {
+                    console.warn('Error subiendo acta de devolución:', uploadError)
+                    mostrarToast(`⚠️ Error al subir acta: ${uploadError.message}`, 'warning')
+                } else {
+                    const { data: urlData } = supabase.storage
+                        .from('actas')
+                        .getPublicUrl(fileName)
+
+                    if (urlData?.publicUrl) {
+                        await supabase
+                            .from('asignaciones')
+                            .update({ acta_url_devolucion: urlData.publicUrl })
+                            .eq('id', asignacion.id)
+
+                        setAsignaciones(prev => prev.map(a =>
+                            a.id === asignacion.id ? { ...a, acta_url_devolucion: urlData.publicUrl } : a
+                        ))
+                    }
+                }
+            } catch (storageError) {
+                console.warn('No se pudo subir el acta de devolución al storage:', storageError)
+            }
+
+            mostrarToast('Acta de devolución generada correctamente 📄', 'success')
+        } catch (error) {
+            mostrarToast(handleApiError(error, 'generar acta de devolución'), 'error')
         } finally {
             setExportando(false)
         }
@@ -682,7 +786,7 @@ export function useAsignaciones(dispatchToast) {
             mostrarToast('Seleccione el nuevo responsable', 'error')
             return
         }
-        if (!trasladoData.ambiente_destino_id && trasladoData.tipo !== 'baja') {
+        if (!trasladoData.ambiente_destino_id && trasladoData.tipo !== 'baja' && trasladoData.tipo !== 'devolucion') {
             mostrarToast('Seleccione la nueva ubicación', 'error')
             return
         }
@@ -763,6 +867,10 @@ export function useAsignaciones(dispatchToast) {
                 getMovimiento(tipo, asignacionActual, tipoMovId, motivoFinal, usuarioRegistroNombre)
             )
 
+            if (tipo === 'devolucion') {
+                await generarActaDevolucion(asignacionActual, motivoFinal)
+            }
+
             const mensajeBase = tipo === 'traslado' ? '✅ Bien trasladado exitosamente' :
                 tipo === 'devolucion' ? '↩️ Bien devuelto al almacén' :
                     '⚠️ Bien dado de baja'
@@ -804,7 +912,15 @@ export function useAsignaciones(dispatchToast) {
 
     const handleSubmit = async () => {
         if (submittingRef.current) return
-        if (!formData.bien_id || !formData.persona_id) {
+
+        const esDevueltoOBaja = editMode && (formData.estado_asignacion === 'Devuelto' || formData.estado_asignacion === 'Baja')
+
+        if (!formData.bien_id) {
+            mostrarToast('Seleccione un bien', 'error')
+            return
+        }
+
+        if (!esDevueltoOBaja && !formData.persona_id) {
             mostrarToast('Complete los campos obligatorios', 'error')
             return
         }
@@ -847,18 +963,27 @@ export function useAsignaciones(dispatchToast) {
             const anio = new Date().getFullYear()
 
             if (editMode) {
-                const payload = {
-                    bien_id: formData.bien_id,
-                    persona_id: formData.persona_id,
-                    ambiente_id: formData.ambiente_id || null,
-                    fecha_asignacion: formData.fecha_asignacion,
-                    observaciones: formData.observaciones,
-                    ubicacion_detalle: formData.ubicacion_detalle || null,
-                    documento_referencia: formData.documento_referencia || null,
-                    persona_origen_id: formData.persona_origen_id || null,
-                    motivo: formData.motivo || null,
-                    estado_asignacion: formData.estado_asignacion,
-                }
+                const esDevueltoOBajaEdit = formData.estado_asignacion === 'Devuelto' || formData.estado_asignacion === 'Baja'
+
+                const payload = esDevueltoOBajaEdit
+                    ? {
+                        fecha_asignacion: formData.fecha_asignacion,
+                        observaciones: formData.observaciones,
+                        documento_referencia: formData.documento_referencia || null,
+                        motivo: formData.motivo || null,
+                    }
+                    : {
+                        bien_id: formData.bien_id,
+                        persona_id: formData.persona_id,
+                        ambiente_id: formData.ambiente_id || null,
+                        fecha_asignacion: formData.fecha_asignacion,
+                        observaciones: formData.observaciones,
+                        ubicacion_detalle: formData.ubicacion_detalle || null,
+                        documento_referencia: formData.documento_referencia || null,
+                        persona_origen_id: formData.persona_origen_id || null,
+                        motivo: formData.motivo || null,
+                        estado_asignacion: formData.estado_asignacion,
+                    }
                 const { error } = await supabase
                     .from('asignaciones')
                     .update({ ...payload, fecha_actualizacion: new Date().toISOString().split('T')[0] })
@@ -1184,7 +1309,7 @@ export function useAsignaciones(dispatchToast) {
         verBienesPorPersona, verBienesPorUbicacion,
         handlePersonaChange, handleAmbienteChange,
         handleNuevoResponsableChange, handleNuevoAmbienteChange,
-        generarActaCargo, generarActaAsignacion,
+        generarActaCargo, generarActaAsignacion, generarActaDevolucion,
         exportarAExcel, exportarAPdf, generarReportePorPeriodo,
         cargarHistorialMovimientos, handleTraslado, resetTrasladoForm,
         handleInputChange, handleSubmit, handleEdit, handleDelete, confirmDelete,
