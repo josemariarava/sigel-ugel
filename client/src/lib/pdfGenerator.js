@@ -125,7 +125,8 @@ export async function createActaAsignacionPdf({ asignacion, personaAsignada, per
     const LOGO_SIZE = 22
     const FONT = (doc.getFontList()['Outfit']) ? 'Outfit' : 'Helvetica'
 
-    const fechaActual = new Date().toLocaleDateString('es-PE', {
+    const fechaAsignacionStr = asignacion.fecha_asignacion || new Date().toISOString().split('T')[0]
+    const fechaActual = new Date(fechaAsignacionStr + 'T00:00:00').toLocaleDateString('es-PE', {
         year: 'numeric', month: 'long', day: 'numeric'
     })
 
@@ -320,7 +321,8 @@ export async function createActaDevolucionPdf({ asignacion, personaDevuelve, mot
     const LOGO_SIZE = 22
     const FONT = (doc.getFontList()['Outfit']) ? 'Outfit' : 'Helvetica'
 
-    const fechaActual = new Date().toLocaleDateString('es-PE', {
+    const fechaDevStr = fechaDevolucion || asignacion.fecha_actualizacion || asignacion.fecha_asignacion || new Date().toISOString().split('T')[0]
+    const fechaActual = new Date(fechaDevStr + 'T00:00:00').toLocaleDateString('es-PE', {
         year: 'numeric', month: 'long', day: 'numeric'
     })
 
@@ -337,7 +339,7 @@ export async function createActaDevolucionPdf({ asignacion, personaDevuelve, mot
         ['Ubicación', asignacion.ambiente?.nombre || 'Almacén General'],
         ['Piso', asignacion.ambiente?.piso?.nombre || '-'],
         ['Fecha Asignación', asignacion.fecha_asignacion || '-'],
-        ['Fecha Devolución', fechaDevolucion || fechaActual],
+        ['Fecha Devolución', fechaActual],
         ...(motivoDevolucion ? [['Motivo Devolución', motivoDevolucion]] : []),
         ...(asignacion.documento_referencia ? [['Documento Ref.', asignacion.documento_referencia]] : []),
         ['Observaciones', asignacion.observaciones || 'Ninguna']

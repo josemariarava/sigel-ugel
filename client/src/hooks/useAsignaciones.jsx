@@ -416,6 +416,12 @@ export function useAsignaciones(dispatchToast) {
         try {
             setExportando(true)
 
+            // Defensa: re-fecha de la BD para evitar stale state tras edición
+            try {
+                const { data: _fresh } = await supabase.from('asignaciones').select('fecha_asignacion').eq('id', asignacion.id).single()
+                if (_fresh?.fecha_asignacion) asignacion.fecha_asignacion = _fresh.fecha_asignacion
+            } catch { /* si falla el re-fetch, usa la fecha del objeto pasado */ }
+
             console.log('[generarActaAsignacion] asignacion.persona:', asignacion.persona)
             console.log('[generarActaAsignacion] asignacion.persona_id:', asignacion.persona_id)
             console.log('[generarActaAsignacion] asignacion.persona_origen:', asignacion.persona_origen)
@@ -498,6 +504,13 @@ export function useAsignaciones(dispatchToast) {
         try {
             setExportando(true)
 
+            // Defensa: re-fecha de la BD para evitar stale state tras edición
+            try {
+                const { data: _fresh } = await supabase.from('asignaciones').select('fecha_actualizacion,fecha_asignacion').eq('id', asignacion.id).single()
+                if (_fresh?.fecha_actualizacion) asignacion.fecha_actualizacion = _fresh.fecha_actualizacion
+                if (_fresh?.fecha_asignacion) asignacion.fecha_asignacion = _fresh.fecha_asignacion
+            } catch { /* si falla el re-fetch, usa la fecha del objeto pasado */ }
+
             let personaDevuelve = asignacion.persona
 
             if (!personaDevuelve) {
@@ -519,7 +532,7 @@ export function useAsignaciones(dispatchToast) {
                 asignacion,
                 personaDevuelve,
                 motivoDevolucion: motivoDevolucion || asignacion.motivo || '',
-                fechaDevolucion: trasladoData.fecha || asignacion.fecha_actualizacion || new Date().toISOString().split('T')[0]
+                fechaDevolucion: trasladoData.fecha || asignacion.fecha_actualizacion || asignacion.fecha_asignacion || new Date().toISOString().split('T')[0]
             })
 
             doc.save(`Acta_Devolucion_${asignacion.numero_acta || 'NUEVA'}.pdf`)

@@ -143,7 +143,8 @@ const CompraTonersDrawer = ({ open, onClose, marcas, modelos, prefillCompraId = 
             resetForm()
             onClose()
         } catch {
-            // error handled by parent via toast
+            resetForm()
+            onClose()
         } finally {
             setIsSaving(false)
         }

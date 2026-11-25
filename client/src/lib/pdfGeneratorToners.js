@@ -44,7 +44,8 @@ export async function createActaTonerPdf({ asignacion, personaRecibe, entregador
     const LOGO_SIZE = 22
     const FONT = (doc.getFontList()['Outfit']) ? 'Outfit' : 'Helvetica'
 
-    const fechaActual = new Date().toLocaleDateString('es-PE', {
+    const fechaAsignacionStr = asignacion.fecha_asignacion || new Date().toISOString().split('T')[0]
+    const fechaActual = new Date(fechaAsignacionStr + 'T00:00:00').toLocaleDateString('es-PE', {
         year: 'numeric', month: 'long', day: 'numeric'
     })
 

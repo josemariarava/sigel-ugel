@@ -858,6 +858,8 @@ const useBienes = () => {
     }
 
     const handleRegistrarCompra = async ({ compraForm, detalles, compraMode, selectedExistingCompra }) => {
+        if (submittingRef.current) return
+
         if (!compraForm.orden_compra) {
             mostrarToast('La orden de compra es obligatoria', 'error')
             throw new Error('Validation failed')
@@ -867,10 +869,14 @@ const useBienes = () => {
             throw new Error('Validation failed')
         }
 
+        submittingRef.current = true
+
+        let compra = null
+        let wasExisting = false
+        let totalCreados = 0
+
         try {
             setLoading(true)
-
-            let compra
             if (compraMode === 'existente' && selectedExistingCompra) {
                 const { data: existing } = await supabase
                     .from('compras_toners')
@@ -878,22 +884,35 @@ const useBienes = () => {
                     .eq('id', selectedExistingCompra)
                     .single()
                 compra = existing
+                wasExisting = true
             } else {
-                const { data: newCompra, error: errCompra } = await supabase
+                const { data: existingByOC } = await supabase
                     .from('compras_toners')
-                    .insert([{
-                        orden_compra: compraForm.orden_compra,
-                        proveedor: compraForm.proveedor,
-                        fecha_compra: compraForm.fecha_compra,
-                        observaciones: compraForm.observaciones
-                    }])
-                    .select()
-                    .single()
-                if (errCompra) throw errCompra
-                compra = newCompra
+                    .select('*')
+                    .eq('orden_compra', compraForm.orden_compra)
+                    .limit(1)
+                    .maybeSingle()
+
+                if (existingByOC) {
+                    compra = existingByOC
+                    wasExisting = true
+                    mostrarToast(`Se reutilizó la O/C existente: ${compraForm.orden_compra}`, 'info')
+                } else {
+                    const { data: newCompra, error: errCompra } = await supabase
+                        .from('compras_toners')
+                        .insert([{
+                            orden_compra: compraForm.orden_compra,
+                            proveedor: compraForm.proveedor,
+                            fecha_compra: compraForm.fecha_compra,
+                            observaciones: compraForm.observaciones
+                        }])
+                        .select()
+                        .single()
+                    if (errCompra) throw errCompra
+                    compra = newCompra
+                }
             }
 
-            let totalCreados = 0
             let globalSerieCounter = 0
             for (const detalle of detalles) {
                 const recibido = parseInt(detalle.cantidad_recibida) || 0
@@ -928,6 +947,8 @@ const useBienes = () => {
                     seriesInput = detalle.series_manual.split(/[\n,]+/).map(s => s.trim()).filter(Boolean)
                 }
                 const totalSeries = seriesInput.length > 0 ? seriesInput.length : recibido
+
+                const seriesEnBatch = new Set()
                 for (let i = 0; i < totalSeries; i++) {
                     globalSerieCounter++
                     const numSerie = String(globalSerieCounter).padStart(3, '0')
@@ -936,6 +957,12 @@ const useBienes = () => {
                         : detalle.lote
                             ? `${detalle.lote}-${numSerie}-${now}`
                             : `${compraForm.orden_compra.replace(/[/\s]/g, '-')}-${numSerie}-${now}`
+
+                    if (seriesEnBatch.has(serie)) {
+                        await supabase.from('compra_detalles').delete().eq('id', detalleId)
+                        throw new Error(`Serie duplicada en el formulario: "${serie}". Elimina las series duplicadas y vuelve a intentar.`)
+                    }
+                    seriesEnBatch.add(serie)
 
                     bienesData.push({
                         tipo_equipo: detalle.tipo_equipo || 'Tóner',
@@ -959,6 +986,18 @@ const useBienes = () => {
                     })
                 }
 
+                const seriesValues = bienesData.map(b => b.serie)
+                const { data: existentes } = await supabase
+                    .from('bienes')
+                    .select('serie')
+                    .in('serie', seriesValues)
+
+                if (existentes && existentes.length > 0) {
+                    const duplicadas = existentes.map(e => e.serie)
+                    await supabase.from('compra_detalles').delete().eq('id', detalleId)
+                    throw new Error(`Serie(s) ya registrada(s) en el sistema: ${duplicadas.join(', ')}. Verifica las series e intenta de nuevo.`)
+                }
+
                 const { error: errBienes } = await supabase
                     .from('bienes')
                     .insert(bienesData)
@@ -970,15 +1009,23 @@ const useBienes = () => {
                 totalCreados += totalSeries
             }
 
+            if (totalCreados === 0 && !wasExisting) {
+                await supabase.from('compras_toners').delete().eq('id', compra.id)
+            }
+
             mostrarToast(`✅ ${totalCreados} tóner(es) agregados a O/C ${compraForm.orden_compra}`)
             loadStats(true).catch(err => console.warn('[useBienes]', err))
             cargarBienesPorCategoria(activeTab, true).catch(err => console.warn('[useBienes]', err))
             cargarCompras(searchTerm).catch(err => console.warn('[useBienes]', err))
         } catch (error) {
             if (error.message === 'Validation failed') throw error
+            if (totalCreados === 0 && !wasExisting && compra?.id) {
+                await supabase.from('compras_toners').delete().eq('id', compra.id)
+            }
             mostrarToast(handleApiError(error, 'registrar compra'), 'error')
             throw error
         } finally {
+            submittingRef.current = false
             setLoading(false)
         }
     }

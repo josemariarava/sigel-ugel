@@ -549,6 +549,12 @@ export function useGestionToners(dispatchToast) {
 
     const generarActa = async (asignacion) => {
         try {
+            // Defensa: re-fecha de la BD para evitar stale state tras edición
+            try {
+                const { data: _fresh } = await supabase.from('asignacion_toners').select('fecha_asignacion').eq('id', asignacion.id).single()
+                if (_fresh?.fecha_asignacion) asignacion.fecha_asignacion = _fresh.fecha_asignacion
+            } catch { /* si falla el re-fetch, usa la fecha del objeto pasado */ }
+
             const personaRecibe = personas.find(p => p.id === asignacion.persona_id)
             const entregaPersonaId = asignacion.entregado_por || entregadoPor
             const entregador = personas.find(p => p.id === entregaPersonaId)
