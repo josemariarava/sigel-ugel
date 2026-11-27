@@ -793,6 +793,7 @@ export function useGestionToners(dispatchToast) {
             coincide(asig.toner?.modelo) ||
             coincide(asig.toner?.serie) ||
             coincide(asig.toner?.color_toner) ||
+            coincide(asig.numero_acta) ||
             coincide(asig.persona?.nombres) ||
             coincide(asig.persona?.apellidos) ||
             coincide(`${asig.persona?.nombres ?? ''} ${asig.persona?.apellidos ?? ''}`) ||

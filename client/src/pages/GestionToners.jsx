@@ -83,7 +83,7 @@ const GestionToners = () => {
                 <div className="flex gap-3 items-center">
                     <div className="flex-1">
                         <Input
-                            placeholder="Buscar por marca, modelo, serie, color, responsable, DNI, impresora o ambiente..."
+                            placeholder="Buscar por marca, modelo, serie, acta, color, responsable, DNI, impresora o ambiente..."
                             contentBefore={<SearchRegular />}
                             value={h.searchTerm}
                             onChange={(e) => h.handleSearchChange(e.target.value)}
@@ -110,6 +110,7 @@ const GestionToners = () => {
                                 <tr>
                                     <th className="px-4 py-3">Tóner</th>
                                     <th className="px-4 py-3">Serie / Código</th>
+                                    <th className="px-4 py-3 whitespace-nowrap">N° Acta</th>
                                     <th className="px-4 py-3">Responsable</th>
                                     <th className="px-4 py-3">Impresora</th>
                                     <th className="px-4 py-3">Ubicación</th>
@@ -119,10 +120,10 @@ const GestionToners = () => {
                                     <th className="px-4 py-3 text-center">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y text-[10px]">
+                            <tbody className="divide-y text-[11px]">
                                 {h.filteredAsignaciones.length === 0 ? (
                                     <tr>
-                                        <td colSpan="9" className="text-center py-12 text-gray-500">
+                                        <td colSpan="10" className="text-center py-12 text-gray-500">
                                             {h.searchTerm.trim()
                                                 ? `No se encontraron asignaciones para "${h.searchTerm.trim()}"`
                                                 : 'No hay asignaciones de tóneres registradas'}
@@ -130,12 +131,16 @@ const GestionToners = () => {
                                     </tr>
                                 ) : (
                                     h.paginatedData.map((asig) => (
-                                        <tr key={asig.id} className="hover:bg-gray-50 transition-colors">
+                                        <tr key={asig.id} className="hover:bg-gray-50 transition-colors even:bg-slate-50/40">
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-2">
                                                     <CartRegular className="text-amber-600" />
                                                     <div>
-                                                        <span className="font-medium">{asig.toner?.marca} {asig.toner?.modelo}</span>
+                                                        <span className="font-medium">
+                                                            {asig.toner
+                                                                ? `${asig.toner.marca ?? ''} ${asig.toner.modelo ?? ''}`.trim() || '—'
+                                                                : '—'}
+                                                        </span>
                                                         {asig.toner?.compra_detalle?.compra && (
                                                             <div className="text-[10px] text-gray-400 mt-0.5">
                                                                 O/C: {asig.toner.compra_detalle.compra.orden_compra}
@@ -145,16 +150,27 @@ const GestionToners = () => {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 font-mono text-xs">{asig.toner?.serie || '-'}</td>
-                                            <td className="px-4 py-3">{asig.persona?.apellidos}, {asig.persona?.nombres}</td>
+                                            <td className="px-4 py-3 font-mono text-xs">
+                                                {asig.toner?.serie || asig.toner?.codigo_ti || asig.toner?.codigo_patrimonial || '—'}
+                                            </td>
+                                            <td className="px-4 py-3 font-mono text-xs text-blue-700 whitespace-nowrap">{asig.numero_acta || '—'}</td>
+                                            <td className="px-4 py-3">
+                                                {asig.persona
+                                                    ? `${asig.persona.apellidos ?? ''}, ${asig.persona.nombres ?? ''}`
+                                                    : <span className="text-[10px] text-gray-400 italic">— Sin responsable</span>}
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-1">
                                                     <PrintRegular className="text-gray-400 text-sm" />
-                                                    <span className="text-xs">{asig.impresora?.marca} {asig.impresora?.modelo}</span>
+                                                    <span className="text-xs">
+                                                        {asig.impresora
+                                                            ? `${asig.impresora.marca ?? ''} ${asig.impresora.modelo ?? ''}`.trim() || '—'
+                                                            : '—'}
+                                                    </span>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3">{asig.ambiente?.nombre || '-'}</td>
-                                            <td className="px-4 py-3 font-mono text-xs">{asig.fecha_asignacion}</td>
+                                            <td className="px-4 py-3">{asig.ambiente?.nombre || '—'}</td>
+                                            <td className="px-4 py-3 font-mono text-xs">{asig.fecha_asignacion || '—'}</td>
                                             <td className="px-4 py-3 font-mono text-xs">
                                                 {h.calcularDuracion(asig)}
                                             </td>
@@ -249,41 +265,49 @@ const GestionToners = () => {
                         </table>
                     </div>
                 )}
-                {!h.loading && h.filteredAsignaciones.length > h.PAGE_SIZE && (
+                {!h.loading && h.filteredAsignaciones.length > 0 &&
+                    (h.totalPages > 1 || h.searchTerm.trim()) && (
                     <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-500">
                         <span>
-                            Mostrando {(h.currentPage - 1) * h.PAGE_SIZE + 1}–{Math.min(h.currentPage * h.PAGE_SIZE, h.filteredAsignaciones.length)} de {h.filteredAsignaciones.length}
+                            Página {h.currentPage} de {h.totalPages} · Mostrando{' '}
+                            {(h.currentPage - 1) * h.PAGE_SIZE + 1}–{Math.min(h.currentPage * h.PAGE_SIZE, h.filteredAsignaciones.length)} de{' '}
+                            {h.filteredAsignaciones.length}
+                            {h.searchTerm.trim() && h.filteredAsignaciones.length !== h.asignaciones.length && (
+                                <span className="text-gray-400"> · {h.asignaciones.length} en total</span>
+                            )}
                         </span>
-                        <div className="flex items-center gap-1">
-                            <Button size="small" appearance="subtle" disabled={h.currentPage <= 1} onClick={() => h.setCurrentPage(h.currentPage - 1)}>
-                                Anterior
-                            </Button>
-                            {Array.from({ length: Math.min(h.totalPages, 5) }, (_, i) => {
-                                let pageNum
-                                if (h.totalPages <= 5) {
-                                    pageNum = i + 1
-                                } else if (h.currentPage <= 3) {
-                                    pageNum = i + 1
-                                } else if (h.currentPage >= h.totalPages - 2) {
-                                    pageNum = h.totalPages - 4 + i
-                                } else {
-                                    pageNum = h.currentPage - 2 + i
-                                }
-                                return (
-                                    <Button
-                                        key={pageNum}
-                                        size="small"
-                                        appearance={h.currentPage === pageNum ? 'primary' : 'subtle'}
-                                        onClick={() => h.setCurrentPage(pageNum)}
-                                    >
-                                        {pageNum}
-                                    </Button>
-                                )
-                            })}
-                            <Button size="small" appearance="subtle" disabled={h.currentPage >= h.totalPages} onClick={() => h.setCurrentPage(h.currentPage + 1)}>
-                                Siguiente
-                            </Button>
-                        </div>
+                        {h.totalPages > 1 && (
+                            <div className="flex items-center gap-1">
+                                <Button size="small" appearance="subtle" disabled={h.currentPage <= 1} onClick={() => h.setCurrentPage(h.currentPage - 1)}>
+                                    Anterior
+                                </Button>
+                                {Array.from({ length: Math.min(h.totalPages, 5) }, (_, i) => {
+                                    let pageNum
+                                    if (h.totalPages <= 5) {
+                                        pageNum = i + 1
+                                    } else if (h.currentPage <= 3) {
+                                        pageNum = i + 1
+                                    } else if (h.currentPage >= h.totalPages - 2) {
+                                        pageNum = h.totalPages - 4 + i
+                                    } else {
+                                        pageNum = h.currentPage - 2 + i
+                                    }
+                                    return (
+                                        <Button
+                                            key={pageNum}
+                                            size="small"
+                                            appearance={h.currentPage === pageNum ? 'primary' : 'subtle'}
+                                            onClick={() => h.setCurrentPage(pageNum)}
+                                        >
+                                            {pageNum}
+                                        </Button>
+                                    )
+                                })}
+                                <Button size="small" appearance="subtle" disabled={h.currentPage >= h.totalPages} onClick={() => h.setCurrentPage(h.currentPage + 1)}>
+                                    Siguiente
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 )}
             </Card>
