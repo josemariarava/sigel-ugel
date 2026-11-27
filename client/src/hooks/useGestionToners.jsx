@@ -1,10 +1,12 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { handleApiError } from '../lib/errorHandler'
 import { buildMostrarToast } from '../lib/toastUtils'
 import { createActaTonerPdf } from '../lib/pdfGeneratorToners'
 import { getEstadoColorToner, TIPOS_TONER } from '../lib/utils'
 import { Toast, ToastTitle, ToastBody } from '@fluentui/react-components'
+
+const normalizar = (valor) => String(valor ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 export function useGestionToners(dispatchToast) {
     const [asignaciones, setAsignaciones] = useState([])
@@ -780,13 +782,32 @@ export function useGestionToners(dispatchToast) {
         })
     }
 
-    const filteredAsignaciones = asignaciones.filter(asig =>
-        asig.toner?.marca?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        asig.toner?.modelo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        asig.toner?.serie?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        asig.persona?.apellidos?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        asig.impresora?.marca?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const filteredAsignaciones = useMemo(() => {
+        const s = normalizar(searchTerm).trim()
+        if (!s) return asignaciones
+
+        const coincide = (valor) => normalizar(valor).includes(s)
+
+        return asignaciones.filter(asig =>
+            coincide(asig.toner?.marca) ||
+            coincide(asig.toner?.modelo) ||
+            coincide(asig.toner?.serie) ||
+            coincide(asig.toner?.color_toner) ||
+            coincide(asig.persona?.nombres) ||
+            coincide(asig.persona?.apellidos) ||
+            coincide(`${asig.persona?.nombres ?? ''} ${asig.persona?.apellidos ?? ''}`) ||
+            coincide(`${asig.persona?.apellidos ?? ''} ${asig.persona?.nombres ?? ''}`) ||
+            coincide(asig.persona?.dni) ||
+            coincide(asig.impresora?.marca) ||
+            coincide(asig.impresora?.modelo) ||
+            coincide(asig.ambiente?.nombre)
+        )
+    }, [asignaciones, searchTerm])
+
+    const handleSearchChange = (value) => {
+        setSearchTerm(value)
+        setCurrentPage(1)
+    }
 
     const totalPages = Math.max(1, Math.ceil(filteredAsignaciones.length / PAGE_SIZE))
     const paginatedData = filteredAsignaciones.slice(
@@ -827,7 +848,7 @@ export function useGestionToners(dispatchToast) {
     return {
         asignaciones, toners, impresoras, personas, ambientes, pisos,
         selectedPiso, setSelectedPiso, ambientesFiltrados,
-        loading, searchTerm, setSearchTerm,
+        loading, searchTerm, setSearchTerm, handleSearchChange,
         openDrawer, setOpenDrawer, openDrawerToners,
         editMode, setEditMode,
         selectedAsignacion, setSelectedAsignacion,

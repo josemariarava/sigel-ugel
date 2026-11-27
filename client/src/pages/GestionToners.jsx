@@ -83,10 +83,10 @@ const GestionToners = () => {
                 <div className="flex gap-3 items-center">
                     <div className="flex-1">
                         <Input
-                            placeholder="Buscar por marca, modelo, serie, responsable o impresora..."
+                            placeholder="Buscar por marca, modelo, serie, color, responsable, DNI, impresora o ambiente..."
                             contentBefore={<SearchRegular />}
                             value={h.searchTerm}
-                            onChange={(e) => h.setSearchTerm(e.target.value)}
+                            onChange={(e) => h.handleSearchChange(e.target.value)}
                             className="w-full"
                         />
                     </div>
@@ -123,7 +123,9 @@ const GestionToners = () => {
                                 {h.filteredAsignaciones.length === 0 ? (
                                     <tr>
                                         <td colSpan="9" className="text-center py-12 text-gray-500">
-                                            No hay asignaciones de tóneres registradas
+                                            {h.searchTerm.trim()
+                                                ? `No se encontraron asignaciones para "${h.searchTerm.trim()}"`
+                                                : 'No hay asignaciones de tóneres registradas'}
                                         </td>
                                     </tr>
                                 ) : (
